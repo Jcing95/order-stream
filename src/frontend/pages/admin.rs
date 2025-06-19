@@ -8,9 +8,9 @@ use crate::frontend::components::{
     category_list::CategoryList,
     order_list::OrderList,
 };
-use crate::backend::api::items::{get_items, create_item};
-use crate::backend::api::categories::{get_categories, create_category, delete_category};
-use crate::backend::api::orders::{get_orders, create_order, delete_order};
+use crate::backend::services::items::{get_items, create_item};
+use crate::backend::services::categories::{get_categories, create_category, delete_category};
+use crate::backend::services::orders::{get_orders, create_order, delete_order};
 
 #[component]
 pub fn AdminPage() -> impl IntoView {

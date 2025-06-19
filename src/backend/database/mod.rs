@@ -6,7 +6,6 @@ use surrealdb::opt::auth::Root;
 use surrealdb::Surreal;
 
 pub mod model;
-pub mod dao;
 
 pub type Database = Surreal<Client>;
 
