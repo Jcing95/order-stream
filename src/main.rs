@@ -1,10 +1,14 @@
-use axum::Router;
-use leptos::prelude::*;
-use leptos_axum::{generate_route_list, LeptosRoutes};
-use order_stream::app::{shell, App};
-
+#[cfg(feature = "ssr")]
 #[tokio::main]
 async fn main() {
+    use axum::Router;
+    use leptos::prelude::*;
+    use leptos_axum::{generate_route_list, LeptosRoutes};
+    use order_stream::app::{shell, App};
+
+    // Setup database
+    let db = order_stream::setup_database().await.expect("Failed to setup database");
+    
     // Setting this to None means we'll be using cargo-leptos and its env vars
     let conf = get_configuration(None).unwrap();
     let leptos_options = conf.leptos_options;
@@ -19,6 +23,9 @@ async fn main() {
         })
         .fallback(leptos_axum::file_and_error_handler(shell))
         .with_state(leptos_options);
+
+    // Add API routes
+    let app = order_stream::add_api_routes(app, db);
 
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
