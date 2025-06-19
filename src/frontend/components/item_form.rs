@@ -1,9 +1,12 @@
 use leptos::prelude::*;
 use leptos::web_sys;
-use crate::common::types::CreateItemRequest;
+use crate::common::types::{CreateItemRequest, Category};
 
 #[component]
-pub fn ItemForm<F>(on_submit: F) -> impl IntoView 
+pub fn ItemForm<F>(
+    categories: ReadSignal<Vec<Category>>,
+    on_submit: F,
+) -> impl IntoView 
 where
     F: Fn(CreateItemRequest) + 'static + Clone,
 {
@@ -34,7 +37,7 @@ where
 
         let request = CreateItemRequest {
             name: name.get().trim().to_string(),
-            category: category.get().trim().to_string(),
+            category_id: category.get().trim().to_string(),
             price: price_value,
         };
 
@@ -80,13 +83,21 @@ where
                 <label class="block text-sm font-medium text-gray-700">
                     "Category"
                 </label>
-                <input
-                    type="text"
+                <select
                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                     prop:value=move || category.get()
-                    on:input=move |ev| set_category.set(event_target_value(&ev))
+                    on:change=move |ev| set_category.set(event_target_value(&ev))
                     required
-                />
+                >
+                    <option value="">"Select a category..."</option>
+                    {move || {
+                        categories.get().into_iter().map(|cat| {
+                            view! {
+                                <option value={cat.id.clone()}>{move || cat.name.clone()}</option>
+                            }
+                        }).collect_view()
+                    }}
+                </select>
             </div>
             
             <div>

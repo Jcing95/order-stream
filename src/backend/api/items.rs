@@ -1,15 +1,6 @@
 use leptos::prelude::*;
 use crate::common::types::{CreateItemRequest, Item, UpdateItemRequest};
 
-#[cfg(feature = "ssr")]
-async fn get_db_connection() -> Result<crate::backend::database::Database, ServerFnError> {
-    use crate::backend::database::connect_database;
-    use crate::backend::config::AppConfig;
-    
-    let config = AppConfig::from_env().map_err(|e| ServerFnError::new(e.to_string()))?;
-    let db = connect_database(&config.database).await.map_err(|e| ServerFnError::new(e.to_string()))?;
-    Ok(db)
-}
 
 #[server(GetItems, "/api")]
 pub async fn get_items() -> Result<Vec<Item>, ServerFnError> {
@@ -18,7 +9,7 @@ pub async fn get_items() -> Result<Vec<Item>, ServerFnError> {
         use crate::common::errors::AppError;
         use crate::backend::services::items;
         
-        let db = get_db_connection().await?;
+        let db = super::get_db_connection().await?;
         let items = items::Service::get_items(&db).await.map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
         Ok(items)
     }
@@ -35,7 +26,7 @@ pub async fn create_item(request: CreateItemRequest) -> Result<Item, ServerFnErr
         use crate::common::errors::AppError;
         use crate::backend::services::items;
         
-        let db = get_db_connection().await?;
+        let db = super::get_db_connection().await?;
         let item = items::Service::create_item(&db, request).await.map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
         Ok(item)
     }
@@ -52,7 +43,7 @@ pub async fn get_item(id: String) -> Result<Item, ServerFnError> {
         use crate::common::errors::AppError;
         use crate::backend::services::items;
         
-        let db = get_db_connection().await?;
+        let db = super::get_db_connection().await?;
         let item = items::Service::get_item(&db, &id).await.map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
         match item {
             Some(item) => Ok(item),
@@ -72,7 +63,7 @@ pub async fn update_item(id: String, request: UpdateItemRequest) -> Result<Item,
         use crate::common::errors::AppError;
         use crate::backend::services::items;
         
-        let db = get_db_connection().await?;
+        let db = super::get_db_connection().await?;
         let item = items::Service::update_item(&db, &id, request).await.map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
         Ok(item)
     }
@@ -89,7 +80,7 @@ pub async fn delete_item(id: String) -> Result<(), ServerFnError> {
         use crate::common::errors::AppError;
         use crate::backend::services::items;
         
-        let db = get_db_connection().await?;
+        let db = super::get_db_connection().await?;
         items::Service::delete_item(&db, &id).await.map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
         Ok(())
     }

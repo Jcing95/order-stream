@@ -21,19 +21,19 @@ pub fn ItemList(items: ReadSignal<Vec<Item>>) -> impl IntoView {
                             view! {
                                 <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
                                     <div>
-                                        <div class="font-medium">{item.name}</div>
-                                        <div class="text-sm text-gray-600">{item.category}</div>
+                                        <div class="font-medium">{move || item.name.clone()}</div>
+                                        <div class="text-sm text-gray-600">{move || item.category_id.clone()}</div>
                                     </div>
                                     <div class="text-right">
-                                        <div class="font-semibold">"$"{format!("{:.2}", item.price)}</div>
-                                        <div class={
+                                        <div class="font-semibold">"$"{move || format!("{:.2}", item.price)}</div>
+                                        <div class={move || 
                                             if item.active { 
                                                 "text-xs text-green-600" 
                                             } else { 
                                                 "text-xs text-red-600" 
                                             }
                                         }>
-                                            {if item.active { "Active" } else { "Inactive" }}
+                                            {move || if item.active { "Active" } else { "Inactive" }}
                                         </div>
                                     </div>
                                 </div>

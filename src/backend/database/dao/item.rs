@@ -14,7 +14,7 @@ impl Dao {
         #[derive(serde::Serialize)]
         struct CreateItemData {
             name: String,
-            category: String,
+            category_id: String,
             price: f64,
             active: bool,
             created_at: Datetime,
@@ -25,7 +25,7 @@ impl Dao {
             .create("items")
             .content(CreateItemData {
                 name: request.name,
-                category: request.category,
+                category_id: request.category_id,
                 price: request.price,
                 active: true,
                 created_at: Datetime::default(),
@@ -79,13 +79,13 @@ impl Dao {
             }
             existing.name = name;
         }
-        if let Some(category) = request.category {
-            if category.trim().is_empty() {
+        if let Some(category_id) = request.category_id {
+            if category_id.trim().is_empty() {
                 return Err(AppError::ValidationError(
-                    "Category cannot be empty".to_string(),
+                    "Category ID cannot be empty".to_string(),
                 ));
             }
-            existing.category = category;
+            existing.category_id = category_id;
         }
         if let Some(price) = request.price {
             if price < 0.0 {
