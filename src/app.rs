@@ -1,7 +1,7 @@
 use leptos::prelude::*;
-use leptos_meta::{provide_meta_context, MetaTags, Title};
+use leptos_meta::*;
 use leptos_router::{
-    components::{Route, Router, Routes},
+    components::{FlatRoutes, Route, Router},
     StaticSegment,
 };
 
@@ -14,6 +14,8 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                 <meta name="viewport" content="width=device-width, initial-scale=1"/>
                 <AutoReload options=options.clone() />
                 <HydrationScripts options/>
+                <link rel="stylesheet" id="leptos" href="/pkg/order-stream.css"/>
+                <link rel="shortcut icon" type="image/ico" href="/favicon.ico"/>
                 <MetaTags/>
             </head>
             <body>
@@ -25,25 +27,22 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
 
 #[component]
 pub fn App() -> impl IntoView {
-    // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context();
 
     view! {
         <Router>
-            <main>
-                <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=StaticSegment("") view=HomePage/>
-                </Routes>
-            </main>
+            <FlatRoutes fallback=|| "Page not found.">
+                <Route path=StaticSegment("") view=Home/>
+            </FlatRoutes>
         </Router>
     }
 }
 
-/// Renders the home page of your application.
 #[component]
-fn HomePage() -> impl IntoView {
+fn Home() -> impl IntoView {
     let (value, set_value) = signal(0);
 
+    // thanks to https://tailwindcomponents.com/component/blue-buttons-example for the showcase layout
     view! {
         <Title text="Leptos + Tailwindcss"/>
         <main>
