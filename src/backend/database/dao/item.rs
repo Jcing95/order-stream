@@ -7,15 +7,11 @@ use surrealdb::sql::{Datetime};
 pub struct Dao;
 impl Dao {
     pub async fn create_item(db: &Database, request: types::CreateItemRequest) -> AppResult<types::Item> {
-        println!("DEBUG: About to query database for items");
         request
             .validate()
             .map_err(|e| AppError::ValidationError(e))?;
-        println!("VALIDATED");
 
-        use serde::Serialize;
-        
-        #[derive(Serialize)]
+        #[derive(serde::Serialize)]
         struct CreateItemData {
             name: String,
             category: String,
@@ -37,24 +33,16 @@ impl Dao {
             })
             .await
             .map_err(|e| AppError::DatabaseError(format!("Failed to create item: {}", e)))?;
-        println!("CREATED ITEM: {:?}", item);
+
         item.map(|record| record.into())
-            .ok_or_else(|| AppError::InternalError("Failed to create item".to_string()))
+            .ok_or_else(|| AppError::InternalError("Failed to create item: no record returned from database".to_string()))
     }
 
     pub async fn get_items(db: &Database) -> AppResult<Vec<types::Item>> {
-        println!("DEBUG: About to query database for items");
-        
-        let raw_response = db
+        let items: Vec<ItemRecord> = db
             .select("items")
             .await
             .map_err(|e| AppError::DatabaseError(format!("Failed to get items: {}", e)))?;
-            
-        println!("DEBUG: Raw response from DB: {:?}", raw_response);
-        
-        let items: Vec<ItemRecord> = raw_response;
-        
-        println!("DEBUG: Parsed into ItemRecord: {:?}", items);
 
         Ok(items.into_iter().map(|record| record.into()).collect())
     }
@@ -121,7 +109,7 @@ impl Dao {
 
         updated
             .map(|record| record.into())
-            .ok_or_else(|| AppError::InternalError("Failed to update item".to_string()))
+            .ok_or_else(|| AppError::InternalError("Failed to update item: no record returned from database".to_string()))
     }
 
     pub async fn delete_item(db: &Database, id: &str) -> AppResult<()> {

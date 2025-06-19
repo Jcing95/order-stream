@@ -122,24 +122,31 @@ src/
 The application uses Leptos's SSR (Server-Side Rendering) with hydration, where the server renders the initial HTML and the client takes over with WASM for interactivity. Leptos feature flags (`ssr` vs `hydrate`) handle compilation differences automatically.
 
 **Backend Architecture:**
-- **API Layer** (`backend/api/`): HTTP endpoints and WebSocket handlers using Axum
+- **API Layer** (`backend/api/`): Leptos server functions with conditional compilation for SSR
 - **Service Layer** (`backend/services/`): Business logic and orchestration  
 - **DAO Layer** (`backend/database/dao/`): Data Access Objects for database operations
-- **Model Layer** (`backend/database/model/`): Database-specific record types with conversions to common types
+- **Model Layer** (`backend/database/model/`): Database-specific record types (ItemRecord) with conversions to common types
 - **Configuration** (`backend/config.rs`): Environment-based configuration management
 - **Error Handling** (`backend/errors.rs`): SurrealDB error conversions and backend-specific errors
+
+**Key Architecture Decisions:**
+- **Server Functions over REST**: Eliminates API redundancy while maintaining clean backend layers
+- **Feature-gated Modules**: Backend modules available only in SSR, API layer available to both client/server
+- **SurrealDB Thing IDs**: Automatic ID generation with schema inference from Rust types
+- **Simplified Common Types**: Frontend types exclude database-specific fields like timestamps
 
 This layered architecture ensures clean separation of concerns and makes the codebase maintainable and testable.
 
 ## Development Phases
 
-**MVP Phase 0 - Infrastructure (First Priority):**
-- Basic project structure with defined modules
-- SurrealDB connection and configuration
-- Simple `Item` model (name, price, category)
-- Basic CRUD operations for items (admin only)  
-- One simple admin page to add/list items
-- Get everything compiling and connecting to database
+**MVP Phase 0 - Infrastructure (✅ COMPLETED):**
+- ✅ Basic project structure with defined modules
+- ✅ SurrealDB connection with automatic schema inference
+- ✅ `Item` model with full CRUD operations (name, price, category, active status)
+- ✅ Leptos server functions replacing REST API endpoints
+- ✅ Working admin page connected to real backend
+- ✅ Clean feature-gated compilation for client/server separation
+- ✅ Type-safe database operations with SurrealDB Thing IDs
 
 **Future Planned Phases:**
 - **Phase 1**: Add `Order` and `OrderItem` models with basic CRUD
