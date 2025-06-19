@@ -2,56 +2,7 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use crate::common::types::{CreateItemRequest, Item};
 use crate::frontend::components::{item_form::ItemForm, item_list::ItemList};
-
-// Server function to get all items
-#[server(GetItems, "/api")]
-pub async fn get_items() -> Result<Vec<Item>, ServerFnError> {
-    #[cfg(feature = "ssr")]
-    {
-        // This is a simple implementation - in reality you'd want to properly pass the database
-        // For now, return empty list as placeholder
-        Ok(vec![])
-    }
-    #[cfg(not(feature = "ssr"))]
-    {
-        // Client-side implementation using reqwest
-        let response = reqwest::get("/api/items").await?;
-        let items: Vec<Item> = response.json().await?;
-        Ok(items)
-    }
-}
-
-// Server function to create an item
-#[server(CreateItem, "/api")]
-pub async fn create_item(request: CreateItemRequest) -> Result<Item, ServerFnError> {
-    #[cfg(feature = "ssr")]
-    {
-        // SSR implementation - would use database here
-        // For now, return a mock item
-        use chrono::Utc;
-        Ok(Item {
-            id: "item:mock".to_string(),
-            name: request.name,
-            category: request.category,
-            price: request.price,
-            active: true,
-            created_at: Utc::now(),
-            updated_at: Utc::now(),
-        })
-    }
-    #[cfg(not(feature = "ssr"))]
-    {
-        // Client-side implementation using reqwest
-        let client = reqwest::Client::new();
-        let response = client
-            .post("/api/items")
-            .json(&request)
-            .send()
-            .await?;
-        let item: Item = response.json().await?;
-        Ok(item)
-    }
-}
+use crate::backend::api::items::{get_items, create_item};
 
 #[component]
 pub fn AdminPage() -> impl IntoView {

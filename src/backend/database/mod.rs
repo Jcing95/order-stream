@@ -27,32 +27,6 @@ pub async fn connect_database(config: &DatabaseConfig) -> AppResult<Database> {
         .await
         .map_err(|e| AppError::DatabaseError(format!("Failed to select namespace/database: {}", e)))?;
 
+    // SurrealDB will automatically create table schema based on our model usage
     Ok(db)
-}
-
-pub async fn initialize_database(db: &Database) -> AppResult<()> {
-    // Define the table
-    db.query("DEFINE TABLE IF NOT EXISTS items SCHEMAFULL")
-        .await?
-        .check()?;
-
-    // Define each field separately
-    let field_defs = [
-        r#"DEFINE FIELD IF NOT EXISTS name ON items TYPE string ASSERT $value != NONE AND string::len($value) > 0;"#,
-        r#"DEFINE FIELD IF NOT EXISTS category ON items TYPE string ASSERT $value != NONE AND string::len($value) > 0;"#,
-        r#"DEFINE FIELD IF NOT EXISTS price ON items TYPE number ASSERT $value != NONE AND $value >= 0;"#,
-        r#"DEFINE FIELD IF NOT EXISTS active ON items TYPE bool ASSERT $value != NONE;"#,
-        r#"DEFINE FIELD IF NOT EXISTS created_at ON items TYPE datetime ASSERT $value != NONE;"#,
-        r#"DEFINE FIELD IF NOT EXISTS updated_at ON items TYPE datetime ASSERT $value != NONE;"#,
-    ];
-
-    for def in field_defs {
-        db.query(def)
-            .await
-            .map_err(|e| AppError::DatabaseError(format!("Field definition failed: {}", e)))?
-            .check()
-            .map_err(|e| AppError::DatabaseError(format!("Field check failed: {}", e)))?;
-    }
-
-    Ok(())
 }

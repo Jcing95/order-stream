@@ -2,47 +2,64 @@ use crate::common::errors::{AppError, AppResult};
 use crate::common::types;
 use crate::backend::database::model::item::ItemRecord;
 use crate::backend::database::Database;
-use chrono::Utc;
-use uuid::Uuid;
+use surrealdb::sql::{Datetime};
 
 pub struct Dao;
 impl Dao {
     pub async fn create_item(db: &Database, request: types::CreateItemRequest) -> AppResult<types::Item> {
+        println!("DEBUG: About to query database for items");
         request
             .validate()
             .map_err(|e| AppError::ValidationError(e))?;
+        println!("VALIDATED");
 
-        let id = format!("item:{}", Uuid::new_v4());
-        let now = Utc::now();
+        use serde::Serialize;
+        
+        #[derive(Serialize)]
+        struct CreateItemData {
+            name: String,
+            category: String,
+            price: f64,
+            active: bool,
+            created_at: Datetime,
+            updated_at: Datetime,
+        }
 
         let item: Option<ItemRecord> = db
-            .create(("items", id.clone()))
-            .content(ItemRecord {
-                id: id.parse().unwrap(),
+            .create("items")
+            .content(CreateItemData {
                 name: request.name,
                 category: request.category,
                 price: request.price,
                 active: true,
-                created_at: now,
-                updated_at: now,
+                created_at: Datetime::default(),
+                updated_at: Datetime::default(),
             })
             .await
             .map_err(|e| AppError::DatabaseError(format!("Failed to create item: {}", e)))?;
-
+        println!("CREATED ITEM: {:?}", item);
         item.map(|record| record.into())
             .ok_or_else(|| AppError::InternalError("Failed to create item".to_string()))
     }
 
     pub async fn get_items(db: &Database) -> AppResult<Vec<types::Item>> {
-        let items: Vec<ItemRecord> = db
+        println!("DEBUG: About to query database for items");
+        
+        let raw_response = db
             .select("items")
             .await
             .map_err(|e| AppError::DatabaseError(format!("Failed to get items: {}", e)))?;
+            
+        println!("DEBUG: Raw response from DB: {:?}", raw_response);
+        
+        let items: Vec<ItemRecord> = raw_response;
+        
+        println!("DEBUG: Parsed into ItemRecord: {:?}", items);
 
         Ok(items.into_iter().map(|record| record.into()).collect())
     }
 
-    pub async fn get_item(db: &Database, id: &str) -> AppResult<Option<types::Item>> {
+    pub async fn get_item(db: &Database, id: &str) -> AppResult<Option<types::Item>> {            
         let item: Option<ItemRecord> = db
             .select(("items", id))
             .await
@@ -55,7 +72,7 @@ impl Dao {
         db: &Database,
         id: &str,
         request: types::UpdateItemRequest,
-    ) -> AppResult<types::Item> {
+    ) -> AppResult<types::Item> {            
         // First check if item exists
         let existing: Option<ItemRecord> = db
             .select(("items", id))
@@ -94,7 +111,7 @@ impl Dao {
             existing.active = active;
         }
 
-        existing.updated_at = Utc::now();
+        existing.updated_at = Datetime::default();
 
         let updated: Option<ItemRecord> = db
             .update(("items", id))
@@ -108,6 +125,7 @@ impl Dao {
     }
 
     pub async fn delete_item(db: &Database, id: &str) -> AppResult<()> {
+            
         let deleted: Option<ItemRecord> = db
             .delete(("items", id))
             .await
