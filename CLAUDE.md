@@ -141,6 +141,26 @@ The application uses Leptos's SSR (Server-Side Rendering) with hydration, where 
 
 *Goal: Maintain working state after each phase with minimal viable increments*
 
+**Phase Documentation:**
+Each phase has detailed implementation plans in separate files (e.g., `phase_0.md`, `phase_1.md`, etc.)
+
+## Development Guidelines
+
+### Dependency Management
+- **NEVER** edit `Cargo.toml` manually for dependencies
+- **ALWAYS** use `cargo add` command to add dependencies
+- **ALWAYS** use `cargo remove` command to remove dependencies
+- Use cargo flags for proper configuration: `--optional`, `--features`, `--no-default-features`
+- This ensures latest compatible versions and proper feature handling
+
+Examples:
+```bash
+cargo add surrealdb --features json
+cargo add serde --features derive
+cargo add tokio --optional --features full
+cargo remove old-dependency
+```
+
 ## Development Commands
 
 ### Installation Requirements
