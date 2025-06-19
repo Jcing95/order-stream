@@ -2,36 +2,21 @@ use leptos::prelude::*;
 use crate::common::types::{CreateItemRequest, Item, UpdateItemRequest};
 
 #[cfg(feature = "ssr")]
-use crate::common::errors::{AppError, AppResult};
+use crate::backend::errors::AppError;
 #[cfg(feature = "ssr")]
-use crate::backend::database::model::item::ItemRecord;
-#[cfg(feature = "ssr")]
-use crate::backend::database::Database;
-#[cfg(feature = "ssr")]
-use surrealdb::sql::Datetime;
-
-#[cfg(feature = "ssr")]
-async fn get_db_connection() -> Result<Database, ServerFnError> {
-    use crate::backend::database::connect_database;
-    use crate::backend::config::AppConfig;
-    
-    let config = AppConfig::from_env().map_err(|e| ServerFnError::new(e.to_string()))?;
-    let db = connect_database(&config.database).await.map_err(|e| ServerFnError::new(e.to_string()))?;
-    Ok(db)
-}
+use crate::backend::database;
 
 #[server(GetItems, "/api")]
 pub async fn get_items() -> Result<Vec<Item>, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        let db = get_db_connection().await?;
-        
-        let items: Vec<ItemRecord> = db
-            .select("items")
+        let db = database::get_db_connection()
             .await
-            .map_err(|e| ServerFnError::new(format!("Failed to get items: {}", e)))?;
-
-        Ok(items.into_iter().map(|record| record.into()).collect())
+            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+        
+        database::items::get_items(&db)
+            .await
+            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
     }
     #[cfg(not(feature = "ssr"))]
     {
@@ -43,37 +28,18 @@ pub async fn get_items() -> Result<Vec<Item>, ServerFnError> {
 pub async fn create_item(request: CreateItemRequest) -> Result<Item, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        let db = get_db_connection().await?;
-        
+        // Validation happens in service layer
         request
             .validate()
             .map_err(|e| ServerFnError::new(e))?;
 
-        #[derive(serde::Serialize)]
-        struct CreateItemData {
-            name: String,
-            category_id: String,
-            price: f64,
-            active: bool,
-            created_at: Datetime,
-            updated_at: Datetime,
-        }
-
-        let item: Option<ItemRecord> = db
-            .create("items")
-            .content(CreateItemData {
-                name: request.name,
-                category_id: request.category_id,
-                price: request.price,
-                active: true,
-                created_at: Datetime::default(),
-                updated_at: Datetime::default(),
-            })
+        let db = database::get_db_connection()
             .await
-            .map_err(|e| ServerFnError::new(format!("Failed to create item: {}", e)))?;
-
-        item.map(|record| record.into())
-            .ok_or_else(|| ServerFnError::new("Failed to create item: no record returned from database".to_string()))
+            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+        
+        database::items::create_item(&db, request)
+            .await
+            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
     }
     #[cfg(not(feature = "ssr"))]
     {
@@ -85,15 +51,16 @@ pub async fn create_item(request: CreateItemRequest) -> Result<Item, ServerFnErr
 pub async fn get_item(id: String) -> Result<Item, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        let db = get_db_connection().await?;
-        
-        let item: Option<ItemRecord> = db
-            .select(("items", id.as_str()))
+        let db = database::get_db_connection()
             .await
-            .map_err(|e| ServerFnError::new(format!("Failed to get item: {}", e)))?;
-
+            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+        
+        let item = database::items::get_item(&db, &id)
+            .await
+            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+            
         match item {
-            Some(record) => Ok(record.into()),
+            Some(item) => Ok(item),
             None => Err(ServerFnError::new(format!("Item with id {} not found", id))),
         }
     }
@@ -107,51 +74,13 @@ pub async fn get_item(id: String) -> Result<Item, ServerFnError> {
 pub async fn update_item(id: String, request: UpdateItemRequest) -> Result<Item, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        let db = get_db_connection().await?;
+        let db = database::get_db_connection()
+            .await
+            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
         
-        // First check if item exists
-        let existing: Option<ItemRecord> = db
-            .select(("items", id.as_str()))
+        database::items::update_item(&db, &id, request)
             .await
-            .map_err(|e| ServerFnError::new(format!("Failed to get item: {}", e)))?;
-
-        let mut existing = existing
-            .ok_or_else(|| ServerFnError::new(format!("Item with id {} not found", id)))?;
-
-        // Update fields if provided
-        if let Some(name) = request.name {
-            if name.trim().is_empty() {
-                return Err(ServerFnError::new("Name cannot be empty".to_string()));
-            }
-            existing.name = name;
-        }
-        if let Some(category_id) = request.category_id {
-            if category_id.trim().is_empty() {
-                return Err(ServerFnError::new("Category ID cannot be empty".to_string()));
-            }
-            existing.category_id = category_id;
-        }
-        if let Some(price) = request.price {
-            if price < 0.0 {
-                return Err(ServerFnError::new("Price cannot be negative".to_string()));
-            }
-            existing.price = price;
-        }
-        if let Some(active) = request.active {
-            existing.active = active;
-        }
-
-        existing.updated_at = Datetime::default();
-
-        let updated: Option<ItemRecord> = db
-            .update(("items", id.as_str()))
-            .content(existing)
-            .await
-            .map_err(|e| ServerFnError::new(format!("Failed to update item: {}", e)))?;
-
-        updated
-            .map(|record| record.into())
-            .ok_or_else(|| ServerFnError::new("Failed to update item: no record returned from database".to_string()))
+            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
     }
     #[cfg(not(feature = "ssr"))]
     {
@@ -163,18 +92,13 @@ pub async fn update_item(id: String, request: UpdateItemRequest) -> Result<Item,
 pub async fn delete_item(id: String) -> Result<(), ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        let db = get_db_connection().await?;
-        
-        let deleted: Option<ItemRecord> = db
-            .delete(("items", id.as_str()))
+        let db = database::get_db_connection()
             .await
-            .map_err(|e| ServerFnError::new(format!("Failed to delete item: {}", e)))?;
-
-        if deleted.is_none() {
-            return Err(ServerFnError::new(format!("Item with id {} not found", id)));
-        }
-
-        Ok(())
+            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+        
+        database::items::delete_item(&db, &id)
+            .await
+            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
     }
     #[cfg(not(feature = "ssr"))]
     {
