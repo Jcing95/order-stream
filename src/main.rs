@@ -7,8 +7,10 @@ async fn main() {
     use order_stream::app::{shell, App};
 
     // Setup database
-    let db = order_stream::setup_database().await.expect("Failed to setup database");
-    
+    let db = order_stream::setup_database()
+        .await
+        .expect("Failed to setup database");
+
     // Setting this to None means we'll be using cargo-leptos and its env vars
     let conf = get_configuration(None).unwrap();
     let leptos_options = conf.leptos_options;
@@ -25,13 +27,12 @@ async fn main() {
         .with_state(leptos_options);
 
     // Add API routes
-    let app = order_stream::add_api_routes(app, db);
-
+    let api = order_stream::add_api_routes(db);
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     println!("listening on http://{}", &addr);
-    axum::serve(listener, app.into_make_service())
+    axum::serve(listener, app.merge(api).into_make_service())
         .await
         .unwrap();
 }

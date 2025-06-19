@@ -5,6 +5,7 @@ use axum::{
     routing::{delete, get, post, put},
     Router,
 };
+use serde_json;
 
 use crate::common::errors::{AppError};
 use crate::common::types::{CreateItemRequest, Item, UpdateItemRequest};
@@ -15,9 +16,9 @@ pub fn items_router() -> Router<Database> {
     Router::new()
         .route("/api/items", get(get_items))
         .route("/api/items", post(create_item))
-        .route("/api/items/:id", get(get_item))
-        .route("/api/items/:id", put(update_item))
-        .route("/api/items/:id", delete(delete_item))
+        .route("/api/items/{id}", get(get_item))
+        .route("/api/items/{id}", put(update_item))
+        .route("/api/items/{id}", delete(delete_item))
 }
 
 async fn get_items(State(db): State<Database>) -> Result<Json<Vec<Item>>, AppError> {

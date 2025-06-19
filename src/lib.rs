@@ -33,11 +33,10 @@ pub async fn setup_database() -> Result<crate::backend::database::service::conne
 
 #[cfg(feature = "ssr")]
 pub fn add_api_routes(
-    app: axum::Router<leptos::prelude::LeptosOptions>, 
     db: crate::backend::database::service::connection::Database
 ) -> axum::Router {
     use crate::backend::api::items::items_router;
     
     let api_routes = items_router().with_state(db);
-    app.merge(api_routes)
+    return api_routes;
 }
