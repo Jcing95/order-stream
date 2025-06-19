@@ -99,13 +99,14 @@ src/
 │   ├── pages/        # Route components (/cashier, /bar, /admin, etc.)
 │   ├── components/   # Reusable UI components
 │   └── state/        # Frontend state management and hydration
-├── backend/
-│   ├── api/          # HTTP endpoints and WebSocket handlers
-│   ├── services/     # Business logic (order processing, auth, etc.)
-│   └── config.rs     # App configuration and environment variables
-└── database/
-    ├── model/        # Schema definitions
-    └── service/      # Database operations (importable by backend services)
+└── backend/
+    ├── api/          # HTTP endpoints and WebSocket handlers
+    ├── services/     # Business logic layer
+    ├── database/
+    │   ├── model/    # Database schema definitions (ItemRecord, etc.)
+    │   └── dao/      # Data Access Objects (database operations)
+    ├── config.rs     # App configuration and environment variables
+    └── errors.rs     # Backend-specific error handling
 ```
 
 **Entry Points:**
@@ -119,6 +120,16 @@ src/
 - `backend/config.rs` for structured configuration management
 
 The application uses Leptos's SSR (Server-Side Rendering) with hydration, where the server renders the initial HTML and the client takes over with WASM for interactivity. Leptos feature flags (`ssr` vs `hydrate`) handle compilation differences automatically.
+
+**Backend Architecture:**
+- **API Layer** (`backend/api/`): HTTP endpoints and WebSocket handlers using Axum
+- **Service Layer** (`backend/services/`): Business logic and orchestration  
+- **DAO Layer** (`backend/database/dao/`): Data Access Objects for database operations
+- **Model Layer** (`backend/database/model/`): Database-specific record types with conversions to common types
+- **Configuration** (`backend/config.rs`): Environment-based configuration management
+- **Error Handling** (`backend/errors.rs`): SurrealDB error conversions and backend-specific errors
+
+This layered architecture ensures clean separation of concerns and makes the codebase maintainable and testable.
 
 ## Development Phases
 

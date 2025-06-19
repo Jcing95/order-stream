@@ -21,17 +21,17 @@ cargo add uuid --optional --features v4,serde
 ## Detailed Action Plan
 
 ### 1. Project Structure Setup
-- [ ] Create module directories:
+- [x] Create module directories:
   - `src/common/`
   - `src/frontend/pages/`
   - `src/frontend/components/`
   - `src/frontend/state/`
   - `src/backend/api/`
   - `src/backend/services/`
-  - `src/database/model/`
-  - `src/database/service/`
-- [ ] Create `mod.rs` files in each module
-- [ ] Update `main.rs` and `lib.rs` to import new modules
+  - `src/backend/database/model/`
+  - `src/backend/database/dao/`
+- [x] Create `mod.rs` files in each module
+- [x] Update `main.rs` and `lib.rs` to import new modules
 
 ### 2. Configuration
 - [ ] Create `.env` file with database configuration
@@ -43,13 +43,14 @@ cargo add uuid --optional --features v4,serde
 - [ ] Create `src/database/model/item.rs` with SurrealDB schema
 
 ### 4. Database Layer
-- [ ] Create `src/database/service/connection.rs` for DB connection setup
-- [ ] Create `src/database/service/item.rs` with CRUD operations:
-  - `create_item(item: CreateItemRequest) -> Result<Item>`
-  - `get_items() -> Result<Vec<Item>>`
-  - `get_item(id: String) -> Result<Option<Item>>`
-  - `update_item(id: String, item: UpdateItemRequest) -> Result<Item>`
-  - `delete_item(id: String) -> Result<()>`
+- [x] Create `src/backend/database/mod.rs` with connection setup and initialization
+- [x] Create `src/backend/database/model/item.rs` with `ItemRecord` struct
+- [x] Create `src/backend/database/dao/item.rs` with DAO pattern:
+  - `create_item(db: &Database, request: CreateItemRequest) -> Result<Item>`
+  - `get_items(db: &Database) -> Result<Vec<Item>>`
+  - `get_item(db: &Database, id: &str) -> Result<Option<Item>>`
+  - `update_item(db: &Database, id: &str, request: UpdateItemRequest) -> Result<Item>`
+  - `delete_item(db: &Database, id: &str) -> Result<()>`
 
 ### 5. Backend API
 - [ ] Create `src/backend/api/items.rs` with HTTP endpoints:
@@ -62,8 +63,9 @@ cargo add uuid --optional --features v4,serde
 - [ ] Connect API endpoints to database service via backend services
 
 ### 6. Backend Services
-- [ ] Create `src/backend/services/items.rs` for business logic layer
-- [ ] Connect backend services to database services
+- [x] Create `src/backend/services/items.rs` for business logic layer
+- [x] Connect backend services to database DAO layer
+- [x] Create `src/backend/errors.rs` for SurrealDB error conversions
 
 ### 7. Frontend
 - [ ] Create `src/frontend/components/item_form.rs` for adding/editing items
@@ -125,9 +127,24 @@ SURREAL_DB=orderstream
 SURREAL_NS=production
 ```
 
+## Architecture Notes
+
+### Clean Layered Design
+The backend follows a clean architecture pattern:
+- **DAO Layer**: Direct database operations with `ItemRecord` types
+- **Service Layer**: Business logic orchestration 
+- **API Layer**: HTTP endpoint handling with proper error responses
+- **Model Conversion**: `ItemRecord` ↔ `Item` conversions keep concerns separated
+
+### Key Improvements Made
+- **Feature Gating**: Backend modules properly gated with `#[cfg(feature = "ssr")]`
+- **Error Handling**: Dedicated `backend/errors.rs` for SurrealDB error conversions
+- **Type Safety**: `ItemRecord` for database, `Item` for API/frontend
+- **Database Schema**: Improved field definitions with `IF NOT EXISTS` checks
+- **DAO Pattern**: Clean separation between business logic and data access
+
 ## Notes
 - Keep categories as simple strings for now (will become separate model in later phases)
 - Focus on getting basic functionality working before optimization
-- Use basic error handling (will be improved in later phases)
 - Admin interface should be functional but doesn't need to be pretty yet
 - Use SurrealDB's `item:uuid` ID format throughout

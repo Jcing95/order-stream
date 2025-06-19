@@ -9,8 +9,8 @@ use serde_json;
 
 use crate::common::errors::{AppError};
 use crate::common::types::{CreateItemRequest, Item, UpdateItemRequest};
-use crate::backend::services::items::ItemBusinessService;
-use crate::backend::database::service::connection::Database;
+use crate::backend::services::items;
+use crate::backend::database::Database;
 
 pub fn items_router() -> Router<Database> {
     Router::new()
@@ -22,7 +22,7 @@ pub fn items_router() -> Router<Database> {
 }
 
 async fn get_items(State(db): State<Database>) -> Result<Json<Vec<Item>>, AppError> {
-    let items = ItemBusinessService::get_items(&db).await?;
+    let items = items::Service::get_items(&db).await?;
     Ok(Json(items))
 }
 
@@ -30,7 +30,7 @@ async fn create_item(
     State(db): State<Database>,
     Json(request): Json<CreateItemRequest>,
 ) -> Result<(StatusCode, Json<Item>), AppError> {
-    let item = ItemBusinessService::create_item(&db, request).await?;
+    let item = items::Service::create_item(&db, request).await?;
     Ok((StatusCode::CREATED, Json(item)))
 }
 
@@ -38,7 +38,7 @@ async fn get_item(
     State(db): State<Database>,
     Path(id): Path<String>,
 ) -> Result<Json<Item>, AppError> {
-    let item = ItemBusinessService::get_item(&db, &id).await?;
+    let item = items::Service::get_item(&db, &id).await?;
     match item {
         Some(item) => Ok(Json(item)),
         None => Err(AppError::NotFound(format!("Item with id {} not found", id))),
@@ -50,7 +50,7 @@ async fn update_item(
     Path(id): Path<String>,
     Json(request): Json<UpdateItemRequest>,
 ) -> Result<Json<Item>, AppError> {
-    let item = ItemBusinessService::update_item(&db, &id, request).await?;
+    let item = items::Service::update_item(&db, &id, request).await?;
     Ok(Json(item))
 }
 
@@ -58,7 +58,7 @@ async fn delete_item(
     State(db): State<Database>,
     Path(id): Path<String>,
 ) -> Result<StatusCode, AppError> {
-    ItemBusinessService::delete_item(&db, &id).await?;
+    items::Service::delete_item(&db, &id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 

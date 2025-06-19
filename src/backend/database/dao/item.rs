@@ -1,14 +1,13 @@
 use crate::common::errors::{AppError, AppResult};
-use crate::common::types::{CreateItemRequest, Item, UpdateItemRequest};
+use crate::common::types;
 use crate::backend::database::model::item::ItemRecord;
-use crate::backend::database::service::connection::Database;
+use crate::backend::database::Database;
 use chrono::Utc;
 use uuid::Uuid;
 
-pub struct ItemService;
-
-impl ItemService {
-    pub async fn create_item(db: &Database, request: CreateItemRequest) -> AppResult<Item> {
+pub struct Dao;
+impl Dao {
+    pub async fn create_item(db: &Database, request: types::CreateItemRequest) -> AppResult<types::Item> {
         request
             .validate()
             .map_err(|e| AppError::ValidationError(e))?;
@@ -34,7 +33,7 @@ impl ItemService {
             .ok_or_else(|| AppError::InternalError("Failed to create item".to_string()))
     }
 
-    pub async fn get_items(db: &Database) -> AppResult<Vec<Item>> {
+    pub async fn get_items(db: &Database) -> AppResult<Vec<types::Item>> {
         let items: Vec<ItemRecord> = db
             .select("items")
             .await
@@ -43,7 +42,7 @@ impl ItemService {
         Ok(items.into_iter().map(|record| record.into()).collect())
     }
 
-    pub async fn get_item(db: &Database, id: &str) -> AppResult<Option<Item>> {
+    pub async fn get_item(db: &Database, id: &str) -> AppResult<Option<types::Item>> {
         let item: Option<ItemRecord> = db
             .select(("items", id))
             .await
@@ -55,8 +54,8 @@ impl ItemService {
     pub async fn update_item(
         db: &Database,
         id: &str,
-        request: UpdateItemRequest,
-    ) -> AppResult<Item> {
+        request: types::UpdateItemRequest,
+    ) -> AppResult<types::Item> {
         // First check if item exists
         let existing: Option<ItemRecord> = db
             .select(("items", id))

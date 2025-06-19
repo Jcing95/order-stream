@@ -1,28 +1,28 @@
 use crate::common::errors::AppResult;
 use crate::common::types::{CreateItemRequest, Item, UpdateItemRequest};
-use crate::backend::database::service::connection::Database;
-use crate::backend::database::service::item::ItemService;
+use crate::backend::database::Database;
+use crate::backend::database::dao::item;
 
-pub struct ItemBusinessService;
+pub struct Service;
 
-impl ItemBusinessService {
+impl Service {
     pub async fn create_item(db: &Database, request: CreateItemRequest) -> AppResult<Item> {
-        ItemService::create_item(db, request).await
+        item::Dao::create_item(db, request).await
     }
 
     pub async fn get_items(db: &Database) -> AppResult<Vec<Item>> {
-        ItemService::get_items(db).await
+        item::Dao::get_items(db).await
     }
 
     pub async fn get_item(db: &Database, id: &str) -> AppResult<Option<Item>> {
-        ItemService::get_item(db, id).await
+        item::Dao::get_item(db, id).await
     }
 
     pub async fn update_item(db: &Database, id: &str, request: UpdateItemRequest) -> AppResult<Item> {
-        ItemService::update_item(db, id, request).await
+        item::Dao::update_item(db, id, request).await
     }
 
     pub async fn delete_item(db: &Database, id: &str) -> AppResult<()> {
-        ItemService::delete_item(db, id).await
+        item::Dao::delete_item(db, id).await
     }
 }
