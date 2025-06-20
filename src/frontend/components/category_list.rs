@@ -1,5 +1,6 @@
 use leptos::prelude::*;
 use crate::common::types::Category;
+use crate::frontend::state::theme::{card_surface, text_primary, text_secondary, text_muted, button_danger, button_small};
 
 #[component]
 pub fn CategoryList<F>(
@@ -13,13 +14,13 @@ where
 
     view! {
         <div class="space-y-4">
-            <h3 class="text-lg font-semibold">"Categories"</h3>
+            <h3 class=format!("text-lg font-semibold {}", text_primary())>"Categories"</h3>
             
             {move || {
                 let cats = categories.get();
                 if cats.is_empty() {
                     view! {
-                        <div class="text-gray-500 italic p-4 border rounded-lg">
+                        <div class=format!("italic p-4 {} {}", text_muted(), card_surface())>
                             "No categories yet. Add one above to get started."
                         </div>
                     }.into_any()
@@ -28,15 +29,15 @@ where
                         let category_id = category.id.clone();
                         let on_delete_inner = on_delete_clone.clone();
                         view! {
-                            <div class="flex items-center justify-between p-4 border rounded-lg bg-gray-50">
+                            <div class=format!("flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600")>
                                 <div>
-                                    <h4 class="font-medium">{move || category.name.clone()}</h4>
-                                    <p class="text-sm text-gray-500">
+                                    <h4 class=format!("font-medium {}", text_primary())>{move || category.name.clone()}</h4>
+                                    <p class=format!("text-sm {}", text_secondary())>
                                         "ID: " {move || category.id.clone()}
                                     </p>
                                 </div>
                                 <button
-                                    class="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                                    class=format!("{} {}", button_danger(), button_small())
                                     on:click=move |_| on_delete_inner(category_id.clone())
                                 >
                                     "Delete"

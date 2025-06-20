@@ -1,4 +1,5 @@
 use leptos::prelude::*;
+use crate::frontend::state::theme::{tab_nav, tab_active, tab_inactive};
 
 #[component]
 pub fn TabNav(
@@ -18,9 +19,9 @@ pub fn TabNav(
                                     let tab_id = tab_id.clone();
                                     move || {
                                         if active_tab.get() == tab_id {
-                                            "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-lg whitespace-nowrap px-6 py-3 rounded-lg font-semibold text-sm transition-all duration-200 transform scale-[1.02]"
+                                            format!("bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-lg whitespace-nowrap px-6 py-3 rounded-lg font-semibold text-sm transition-all duration-200 transform scale-[1.02]")
                                         } else {
-                                            "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-gray-700/50 whitespace-nowrap px-6 py-3 rounded-lg font-medium text-sm transition-all duration-200 hover:scale-[1.01]"
+                                            format!("text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-white/50 dark:hover:bg-gray-700/50 whitespace-nowrap px-6 py-3 rounded-lg font-medium text-sm transition-all duration-200 hover:scale-[1.01]")
                                         }
                                     }
                                 }

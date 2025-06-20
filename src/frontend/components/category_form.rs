@@ -1,6 +1,7 @@
 use leptos::prelude::*;
 use leptos::web_sys;
 use crate::common::types::CreateCategoryRequest;
+use crate::frontend::state::theme::{card_surface, input_field, label_text, button_primary, text_primary, alert_base, alert_error};
 
 #[component]
 pub fn CategoryForm<F>(on_submit: F) -> impl IntoView 
@@ -35,22 +36,22 @@ where
     };
 
     view! {
-        <form on:submit=submit_form class="space-y-4 p-4 border rounded-lg">
-            <h3 class="text-lg font-semibold">"Add New Category"</h3>
+        <form on:submit=submit_form class=format!("space-y-4 p-4 {}", card_surface())>
+            <h3 class=format!("text-lg font-semibold {}", text_primary())>"Add New Category"</h3>
             
             {move || error.get().map(|err| view! {
-                <div class="text-red-600 bg-red-50 p-2 rounded">
+                <div class=format!("{} {}", alert_base(), alert_error())>
                     {err}
                 </div>
             })}
             
             <div>
-                <label class="block text-sm font-medium text-gray-700">
+                <label class=label_text()>
                     "Category Name"
                 </label>
                 <input
                     type="text"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    class=format!("mt-1 {}", input_field())
                     prop:value=move || name.get()
                     on:input=move |ev| set_name.set(event_target_value(&ev))
                     placeholder="e.g., Drinks, Food, Snacks"
@@ -60,7 +61,7 @@ where
             
             <button
                 type="submit"
-                class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+                class=format!("w-full {}", button_primary())
             >
                 "Add Category"
             </button>

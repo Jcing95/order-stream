@@ -174,15 +174,15 @@ impl ThemeState {
 pub fn button_primary() -> &'static str {
     "inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg \
      bg-blue-600 text-white hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 \
-     dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-offset-gray-900 \
+     dark:bg-blue-500 dark:hover:bg-blue-600 dark:focus:ring-blue-400 dark:focus:ring-offset-gray-900 \
      transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
 }
 
 /// Secondary button styling
 pub fn button_secondary() -> &'static str {
     "inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg \
-     bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 \
-     dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600 dark:focus:ring-offset-gray-900 \
+     bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 \
+     dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700 dark:focus:ring-blue-400 dark:focus:ring-offset-gray-900 \
      transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
 }
 
@@ -190,7 +190,7 @@ pub fn button_secondary() -> &'static str {
 pub fn button_danger() -> &'static str {
     "inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg \
      bg-red-600 text-white hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 \
-     dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-offset-gray-900 \
+     dark:bg-red-500 dark:hover:bg-red-600 dark:focus:ring-red-400 dark:focus:ring-offset-gray-900 \
      transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
 }
 
@@ -206,20 +206,20 @@ pub fn button_large() -> &'static str {
 
 /// Card/surface background styling
 pub fn card_surface() -> &'static str {
-    "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm"
+    "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-sm"
 }
 
 /// Elevated card styling (with more shadow)
 pub fn card_elevated() -> &'static str {
-    "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg"
+    "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-lg"
 }
 
 /// Input field styling
 pub fn input_field() -> &'static str {
-    "block w-full px-3 py-2 text-sm border border-gray-300 rounded-lg \
-     bg-white text-gray-900 placeholder-gray-500 \
-     dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 dark:placeholder-gray-400 \
-     focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 \
+    "block w-full px-3 py-2 text-sm border rounded-lg \
+     bg-white text-gray-900 placeholder-gray-500 border-gray-300 \
+     dark:bg-gray-700 dark:border-gray-500 dark:text-gray-100 dark:placeholder-gray-400 \
+     focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 \
      transition-colors duration-200"
 }
 
@@ -265,7 +265,7 @@ pub fn page_background() -> &'static str {
 
 /// Tab navigation styling
 pub fn tab_nav() -> &'static str {
-    "border-b border-gray-200 dark:border-gray-700"
+    "border-b border-gray-200 dark:border-gray-600"
 }
 
 /// Active tab styling
@@ -278,7 +278,7 @@ pub fn tab_active() -> &'static str {
 pub fn tab_inactive() -> &'static str {
     "inline-flex items-center px-4 py-2 text-sm font-medium border-b-2 border-transparent \
      text-gray-500 hover:text-gray-700 hover:border-gray-300 \
-     dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-600 \
+     dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-500 \
      transition-colors duration-200"
 }
 
@@ -289,22 +289,22 @@ pub fn alert_base() -> &'static str {
 
 /// Success alert styling
 pub fn alert_success() -> &'static str {
-    "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300"
+    "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700 text-green-700 dark:text-green-300"
 }
 
 /// Error alert styling
 pub fn alert_error() -> &'static str {
-    "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300"
+    "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700 text-red-700 dark:text-red-300"
 }
 
 /// Warning alert styling
 pub fn alert_warning() -> &'static str {
-    "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-300"
+    "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700 text-yellow-700 dark:text-yellow-300"
 }
 
 /// Info alert styling
 pub fn alert_info() -> &'static str {
-    "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300"
+    "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300"
 }
 
 /// Loading spinner styling
@@ -319,6 +319,6 @@ pub fn icon_interactive() -> &'static str {
 
 /// Gradient text styling for headers
 pub fn text_gradient() -> &'static str {
-    "bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"
+    "bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent dark:from-blue-400 dark:to-purple-400"
 }
 

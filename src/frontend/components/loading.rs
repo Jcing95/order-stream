@@ -15,7 +15,7 @@ pub fn LoadingSpinner() -> impl IntoView {
 #[component]
 pub fn LoadingCard() -> impl IntoView {
     view! {
-        <div class="animate-pulse bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-lg hover:shadow-xl transition-all duration-300 backdrop-blur-sm">
+        <div class="animate-pulse bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 p-6 shadow-lg hover:shadow-xl transition-all duration-300 backdrop-blur-sm">
             <div class="space-y-4">
                 <div class="h-5 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded-lg w-3/4"></div>
                 <div class="h-4 bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 rounded-lg w-1/2"></div>
@@ -49,7 +49,7 @@ pub fn LoadingSkeleton() -> impl IntoView {
 #[component] 
 pub fn LoadingBanner() -> impl IntoView {
     view! {
-        <div class="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-900/20 dark:via-indigo-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-6 shadow-sm backdrop-blur-sm">
+        <div class="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-900/20 dark:via-indigo-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-700 rounded-xl p-4 mb-6 shadow-sm backdrop-blur-sm">
             <div class="flex items-center space-x-3">
                 <div class="relative">
                     <div class="animate-spin rounded-full h-5 w-5 border-2 border-blue-200 border-t-blue-600 dark:border-blue-600 dark:border-t-blue-400"></div>
