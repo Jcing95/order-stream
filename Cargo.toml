@@ -31,6 +31,7 @@ dotenvy = { version = "0.15.7", optional = true }
 reqwest = { version = "0.12.20", features = ["json"], optional = true }
 cfg-if = "1.0.1"
 serde_json = "1.0.140"
+web-sys = { version = "0.3.77", features = ["Window", "Document", "Storage", "MediaQueryList"] }
 
 [features]
 hydrate = ["leptos/hydrate"]
