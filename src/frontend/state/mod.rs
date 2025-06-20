@@ -1,1 +1,1 @@
-// Frontend state management will be implemented in later phases
+pub mod admin;

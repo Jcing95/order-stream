@@ -3,3 +3,7 @@ pub mod item_list;
 pub mod category_form;
 pub mod category_list;
 pub mod order_list;
+pub mod tab_nav;
+pub mod category_section;
+pub mod item_section;
+pub mod order_section;
