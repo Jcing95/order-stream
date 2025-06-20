@@ -100,11 +100,16 @@ src/
 │   ├── components/   # Reusable UI components
 │   └── state/        # Frontend state management and hydration
 └── backend/
-    ├── api/          # HTTP endpoints and WebSocket handlers
-    ├── services/     # Business logic layer
-    ├── database/
-    │   ├── model/    # Database schema definitions (ItemRecord, etc.)
-    │   └── dao/      # Data Access Objects (database operations)
+    ├── services/     # Leptos server functions (available to client & server)
+    │   ├── items.rs
+    │   ├── categories.rs
+    │   ├── orders.rs
+    │   └── order_items.rs
+    ├── database/     # Database operations and records (SSR only)
+    │   ├── items.rs
+    │   ├── categories.rs
+    │   ├── orders.rs
+    │   └── order_items.rs
     ├── config.rs     # App configuration and environment variables
     └── errors.rs     # Backend-specific error handling
 ```
@@ -122,18 +127,25 @@ src/
 The application uses Leptos's SSR (Server-Side Rendering) with hydration, where the server renders the initial HTML and the client takes over with WASM for interactivity. Leptos feature flags (`ssr` vs `hydrate`) handle compilation differences automatically.
 
 **Backend Architecture:**
-- **API Layer** (`backend/api/`): Leptos server functions with conditional compilation for SSR
-- **Service Layer** (`backend/services/`): Business logic and orchestration  
-- **DAO Layer** (`backend/database/dao/`): Data Access Objects for database operations
-- **Model Layer** (`backend/database/model/`): Database-specific record types (ItemRecord) with conversions to common types
+- **Services Layer** (`backend/services/`): Leptos server functions available to both client and server
+  - Contains `#[server]` functions that handle API endpoints
+  - Uses conditional compilation for SSR vs client-side access
+  - Calls database layer functions for data operations
+- **Database Layer** (`backend/database/`): SSR-only database operations and record types
+  - Individual modules for each entity (items, categories, orders, order_items)
+  - Contains database record types (e.g., `ItemRecord`) with timestamps and SurrealDB `Thing` IDs
+  - Provides conversion functions from database records to common types
+  - Handles direct SurrealDB interactions and queries
 - **Configuration** (`backend/config.rs`): Environment-based configuration management
 - **Error Handling** (`backend/errors.rs`): SurrealDB error conversions and backend-specific errors
 
 **Key Architecture Decisions:**
 - **Server Functions over REST**: Eliminates API redundancy while maintaining clean backend layers
-- **Feature-gated Modules**: Backend modules available only in SSR, API layer available to both client/server
+- **Two-Layer Backend Architecture**: Services layer (Leptos server functions) + Database layer (SSR-only operations)
+- **Feature-gated Modules**: Database operations available only in SSR, services available to both client/server
 - **SurrealDB Thing IDs**: Automatic ID generation with schema inference from Rust types
-- **Simplified Common Types**: Frontend types exclude database-specific fields like timestamps
+- **Simplified Common Types**: Frontend types exclude database-specific fields like timestamps and SurrealDB Thing IDs
+- **Database Record Conversion**: Clean separation between database records and common types via `From` traits
 
 This layered architecture ensures clean separation of concerns and makes the codebase maintainable and testable.
 
@@ -142,14 +154,21 @@ This layered architecture ensures clean separation of concerns and makes the cod
 **MVP Phase 0 - Infrastructure (✅ COMPLETED):**
 - ✅ Basic project structure with defined modules
 - ✅ SurrealDB connection with automatic schema inference
-- ✅ `Item` model with full CRUD operations (name, price, category, active status)
+- ✅ `Item` model with full CRUD operations
 - ✅ Leptos server functions replacing REST API endpoints
 - ✅ Working admin page connected to real backend
 - ✅ Clean feature-gated compilation for client/server separation
 - ✅ Type-safe database operations with SurrealDB Thing IDs
+- ✅ Two-layer backend architecture (services + database layers)
+- ✅ Database record to common type conversion patterns
+
+**Phase 1 - Orders Infrastructure (🚧 IN PROGRESS):**
+- ✅ `Category`, `Order` and `OrderItem` database schemas and CRUD operations
+- 🚧 Server functions for order management
+- 🚧 Order state management and validation
+- 🚧 Frontend components for order display and interaction
 
 **Future Planned Phases:**
-- **Phase 1**: Add `Order` and `OrderItem` models with basic CRUD
 - **Phase 2**: Add cashier interface for order creation
 - **Phase 3**: Add basic staff interface for order viewing
 - **Phase 4**: Implement WebSocket real-time synchronization
