@@ -6,7 +6,7 @@ use leptos_router::{
 };
 use crate::frontend::pages::admin::AdminPage;
 use crate::frontend::pages::home::Home;
-use crate::frontend::state::theme::ThemeState;
+use crate::frontend::state::theme::{ThemeState, page_background};
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -35,16 +35,8 @@ pub fn App() -> impl IntoView {
     let theme_state = ThemeState::new();
     provide_context(theme_state);
 
-    let theme_classes = Signal::derive(move || {
-        if theme_state.is_dark().get() {
-            "min-h-screen bg-gray-900 text-gray-100 transition-colors duration-200"
-        } else {
-            "min-h-screen bg-gray-50 text-gray-900 transition-colors duration-200"
-        }
-    });
-
     view! {
-        <div class=theme_classes>
+        <div class=page_background()>
             <Router>
                 <FlatRoutes fallback=|| "Page not found.">
                     <Route path=StaticSegment("") view=Home/>
