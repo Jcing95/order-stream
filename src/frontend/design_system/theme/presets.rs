@@ -41,6 +41,12 @@ fn light_color_tokens() -> ColorTokens {
             danger: "text-rose-700",        // Warm rose red
             warning: "text-amber-700",      // Rich amber
             info: "text-sky-700",           // Clear sky blue
+            
+            // Alert text colors for light theme
+            alert_success: "text-emerald-800",
+            alert_danger: "text-rose-800", 
+            alert_warning: "text-amber-800",
+            alert_info: "text-sky-800",
         },
         background: BackgroundColors {
             primary: "bg-indigo-500",           // Softer indigo primary
@@ -59,6 +65,12 @@ fn light_color_tokens() -> ColorTokens {
             page: "bg-slate-50",                // Warm neutral background
             surface: "bg-white",                // Pure white surfaces
             elevated: "bg-white",               // Clean elevated surfaces
+            
+            // Alert backgrounds for light theme
+            alert_success: "bg-emerald-50",
+            alert_danger: "bg-rose-50",
+            alert_warning: "bg-amber-50", 
+            alert_info: "bg-sky-50",
         },
         border: BorderColors {
             default: "border-slate-300",        // Subtle modern borders
@@ -91,6 +103,12 @@ fn dark_color_tokens() -> ColorTokens {
             danger: "text-rose-400",        // Softer rose for dark mode
             warning: "text-amber-400",      // Warm amber for dark mode
             info: "text-sky-400",           // Gentle sky blue
+            
+            // Alert text colors for dark theme
+            alert_success: "text-emerald-200",
+            alert_danger: "text-rose-200",
+            alert_warning: "text-amber-200", 
+            alert_info: "text-sky-200",
         },
         background: BackgroundColors {
             primary: "bg-indigo-600",           // Muted indigo for dark mode
@@ -109,6 +127,12 @@ fn dark_color_tokens() -> ColorTokens {
             page: "bg-slate-950",               // Deep, comfortable dark background
             surface: "bg-slate-900",            // Card surfaces with subtle warmth
             elevated: "bg-slate-800",           // Elevated elements like modals
+            
+            // Alert backgrounds for dark theme
+            alert_success: "bg-emerald-900/30",
+            alert_danger: "bg-rose-900/30",
+            alert_warning: "bg-amber-900/30",
+            alert_info: "bg-sky-900/30",
         },
         border: BorderColors {
             default: "border-slate-700",        // Subtle borders that don't overpower

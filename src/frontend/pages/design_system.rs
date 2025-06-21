@@ -1,9 +1,9 @@
 use leptos::prelude::*;
 
 use crate::frontend::design_system::{
-    Button, Input, Text, Icon, ThemeSwitcher,
+    Button, Input, Text, Icon, ThemeSwitcher, Card, Alert, Select, Spinner,
     theme::{Size, Intent, ComponentState},
-    atoms::{InputType, TextVariant, FontWeight, IconVariant},
+    atoms::{InputType, TextVariant, FontWeight, IconVariant, CardVariant, SelectOption, SpinnerVariant},
 };
 
 #[component]
@@ -312,6 +312,168 @@ pub fn DesignSystemPage() -> impl IntoView {
                     </div>
                 </section>
 
+                // Card Section
+                <section class="space-y-6">
+                    <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold>
+                        "Cards"
+                    </Text>
+                    
+                    <div class="space-y-4">
+                        <Text variant=TextVariant::Label size=Size::Sm weight=FontWeight::Medium>
+                            "Card Variants"
+                        </Text>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <Card variant=CardVariant::Default>
+                                <Text variant=TextVariant::Heading size=Size::Md weight=FontWeight::Semibold>
+                                    "Default Card"
+                                </Text>
+                                <Text variant=TextVariant::Body class="mt-2">
+                                    "This is a default card with standard styling."
+                                </Text>
+                            </Card>
+                            
+                            <Card variant=CardVariant::Elevated>
+                                <Text variant=TextVariant::Heading size=Size::Md weight=FontWeight::Semibold>
+                                    "Elevated Card"
+                                </Text>
+                                <Text variant=TextVariant::Body class="mt-2">
+                                    "This card has enhanced shadow for elevation."
+                                </Text>
+                            </Card>
+                            
+                            <Card variant=CardVariant::Outlined>
+                                <Text variant=TextVariant::Heading size=Size::Md weight=FontWeight::Semibold>
+                                    "Outlined Card"
+                                </Text>
+                                <Text variant=TextVariant::Body class="mt-2">
+                                    "This card uses a thicker border outline."
+                                </Text>
+                            </Card>
+                        </div>
+                    </div>
+                </section>
+
+                // Alert Section  
+                <section class="space-y-6">
+                    <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold>
+                        "Alerts"
+                    </Text>
+                    
+                    <div class="space-y-4">
+                        <Text variant=TextVariant::Label size=Size::Sm weight=FontWeight::Medium>
+                            "Alert Intents"
+                        </Text>
+                        <div class="space-y-3">
+                            <Alert intent=Intent::Success>
+                                "Success! Your action was completed successfully."
+                            </Alert>
+                            <Alert intent=Intent::Danger>
+                                "Error! Something went wrong with your request."
+                            </Alert>
+                            <Alert intent=Intent::Warning>
+                                "Warning! Please review your input before proceeding."
+                            </Alert>
+                            <Alert intent=Intent::Info>
+                                "Info: Here's some helpful information for you."
+                            </Alert>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <Text variant=TextVariant::Label size=Size::Sm weight=FontWeight::Medium>
+                            "Alert with Title"
+                        </Text>
+                        <Alert intent=Intent::Success title="Success">
+                            "Your form has been submitted successfully and will be processed shortly."
+                        </Alert>
+                    </div>
+                </section>
+
+                // Select Section
+                <section class="space-y-6">
+                    <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold>
+                        "Select Dropdown"
+                    </Text>
+                    
+                    <div class="space-y-4">
+                        <Text variant=TextVariant::Label size=Size::Sm weight=FontWeight::Medium>
+                            "Basic Select"
+                        </Text>
+                        <div class="max-w-xs">
+                            <Select 
+                                options=vec![
+                                    SelectOption::new("option1", "Option 1"),
+                                    SelectOption::new("option2", "Option 2"), 
+                                    SelectOption::new("option3", "Option 3"),
+                                ]
+                                placeholder="Choose an option..."
+                            />
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <Text variant=TextVariant::Label size=Size::Sm weight=FontWeight::Medium>
+                            "Select Intents"
+                        </Text>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Select 
+                                intent=Intent::Success
+                                options=vec![
+                                    SelectOption::new("success1", "Success Option"),
+                                ]
+                                placeholder="Success select..."
+                            />
+                            <Select 
+                                intent=Intent::Danger
+                                options=vec![
+                                    SelectOption::new("error1", "Error Option"),
+                                ]
+                                placeholder="Error select..."
+                            />
+                        </div>
+                    </div>
+                </section>
+
+                // Spinner Section
+                <section class="space-y-6">
+                    <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold>
+                        "Spinners"
+                    </Text>
+                    
+                    <div class="space-y-4">
+                        <Text variant=TextVariant::Label size=Size::Sm weight=FontWeight::Medium>
+                            "Spinner Variants"
+                        </Text>
+                        <div class="flex items-center gap-8">
+                            <div class="flex flex-col items-center gap-2">
+                                <Spinner variant=SpinnerVariant::Circle />
+                                <Text variant=TextVariant::Caption>"Circle"</Text>
+                            </div>
+                            <div class="flex flex-col items-center gap-2">
+                                <Spinner variant=SpinnerVariant::Pulse />
+                                <Text variant=TextVariant::Caption>"Pulse"</Text>
+                            </div>
+                            <div class="flex flex-col items-center gap-2">
+                                <Spinner variant=SpinnerVariant::Dots />
+                                <Text variant=TextVariant::Caption>"Dots"</Text>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <Text variant=TextVariant::Label size=Size::Sm weight=FontWeight::Medium>
+                            "Spinner Sizes"
+                        </Text>
+                        <div class="flex items-end gap-6">
+                            <Spinner size=Size::Xs />
+                            <Spinner size=Size::Sm />
+                            <Spinner size=Size::Md />
+                            <Spinner size=Size::Lg />
+                            <Spinner size=Size::Xl />
+                        </div>
+                    </div>
+                </section>
+
                 // Molecules Section
                 <section class="space-y-6">
                     <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold>
@@ -383,26 +545,38 @@ pub fn DesignSystemPage() -> impl IntoView {
                             </div>
                         </div>
 
-                        // Status Messages
-                        <div class="p-6 border rounded-lg space-y-4">
+                        // Status Messages using Alert components
+                        <Card variant=CardVariant::Default class="space-y-4">
                             <Text variant=TextVariant::Heading size=Size::Md>
                                 "Status Messages"
                             </Text>
                             <div class="space-y-3">
-                                <div class="flex items-center gap-2 p-3 bg-green-50 rounded">
-                                    <Icon name="check" intent=Intent::Success />
-                                    <Text intent=Intent::Success>"Operation completed successfully"</Text>
-                                </div>
-                                <div class="flex items-center gap-2 p-3 bg-red-50 rounded">
-                                    <Icon name="x" intent=Intent::Danger />
-                                    <Text intent=Intent::Danger>"An error occurred"</Text>
-                                </div>
-                                <div class="flex items-center gap-2 p-3 bg-yellow-50 rounded">
-                                    <Icon name="minus" intent=Intent::Warning />
-                                    <Text intent=Intent::Warning>"Please review your input"</Text>
-                                </div>
+                                <Alert intent=Intent::Success>
+                                    <div class="flex items-center gap-2">
+                                        <Icon name="check" intent=Intent::Success size=Size::Sm />
+                                        "Operation completed successfully"
+                                    </div>
+                                </Alert>
+                                <Alert intent=Intent::Danger>
+                                    <div class="flex items-center gap-2">
+                                        <Icon name="x" intent=Intent::Danger size=Size::Sm />
+                                        "An error occurred"
+                                    </div>
+                                </Alert>
+                                <Alert intent=Intent::Warning>
+                                    <div class="flex items-center gap-2">
+                                        <Icon name="minus" intent=Intent::Warning size=Size::Sm />
+                                        "Please review your input"
+                                    </div>
+                                </Alert>
+                                <Alert intent=Intent::Info>
+                                    <div class="flex items-center gap-2">
+                                        <Icon name="search" intent=Intent::Info size=Size::Sm />
+                                        "Here's some helpful information"
+                                    </div>
+                                </Alert>
                             </div>
-                        </div>
+                        </Card>
                     </div>
                 </section>
             </div>

@@ -30,6 +30,12 @@ pub struct TextColors {
     pub danger: &'static str,
     pub warning: &'static str,
     pub info: &'static str,
+    
+    // Alert text colors (for use on alert backgrounds)
+    pub alert_success: &'static str,
+    pub alert_danger: &'static str,
+    pub alert_warning: &'static str,
+    pub alert_info: &'static str,
 }
 
 #[derive(Clone, Debug)]
@@ -52,6 +58,12 @@ pub struct BackgroundColors {
     pub page: &'static str,
     pub surface: &'static str,
     pub elevated: &'static str,
+    
+    // Alert backgrounds
+    pub alert_success: &'static str,
+    pub alert_danger: &'static str,
+    pub alert_warning: &'static str,
+    pub alert_info: &'static str,
 }
 
 #[derive(Clone, Debug)]
@@ -325,6 +337,12 @@ impl Default for TextColors {
             danger: "text-red-700",
             warning: "text-yellow-700",
             info: "text-blue-700",
+            
+            // Default alert text colors
+            alert_success: "text-green-800",
+            alert_danger: "text-red-800",
+            alert_warning: "text-yellow-800",
+            alert_info: "text-blue-800",
         }
     }
 }
@@ -361,6 +379,12 @@ impl Default for BackgroundColors {
             page: "bg-gray-50",
             surface: "bg-white",
             elevated: "bg-white",
+            
+            // Default alert backgrounds
+            alert_success: "bg-green-50",
+            alert_danger: "bg-red-50",
+            alert_warning: "bg-yellow-50",
+            alert_info: "bg-blue-50",
         }
     }
 }
