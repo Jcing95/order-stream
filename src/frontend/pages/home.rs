@@ -1,9 +1,13 @@
 use leptos::prelude::*;
 use leptos_meta::*;
 use leptos_router::components::A;
+use crate::frontend::design_system::{Button, ThemeContext, Theme, Size, Intent};
 
 #[component]
 pub fn Home() -> impl IntoView {
+    // Get themes from context
+    let (light_theme, dark_theme) = use_context::<(Theme, Theme)>()
+        .expect("Themes not found in context");
     view! {
         <Title text="Order Stream Demo"/>
         <main>
@@ -20,6 +24,45 @@ pub fn Home() -> impl IntoView {
                                 "Admin Panel"
                             </div>
                         </A>
+                        
+                        // Theme test section
+                        <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6 space-y-4">
+                            <h3 class="text-lg font-semibold">"Design System Test"</h3>
+                            
+                            <div class="flex space-x-2">
+                                <Button 
+                                    size=Size::Md
+                                    intent=Intent::Primary
+                                    on_click=Callback::new(move |_| {
+                                        ThemeContext::set_theme(light_theme.clone());
+                                    })
+                                >
+                                    "Light"
+                                </Button>
+                                
+                                <Button 
+                                    size=Size::Md
+                                    intent=Intent::Secondary
+                                    on_click=Callback::new(move |_| {
+                                        ThemeContext::set_theme(dark_theme.clone());
+                                    })
+                                >
+                                    "Dark"
+                                </Button>
+                            </div>
+                            
+                            <div class="flex space-x-2">
+                                <Button size=Size::Sm intent=Intent::Secondary>
+                                    "Small"
+                                </Button>
+                                <Button size=Size::Md intent=Intent::Success>
+                                    "Success"
+                                </Button>
+                                <Button size=Size::Lg intent=Intent::Danger>
+                                    "Danger"
+                                </Button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
