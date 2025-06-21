@@ -3,7 +3,7 @@ use leptos::ev::MouseEvent;
 
 use crate::frontend::design_system::theme::{
     ThemeContext, Size, Intent, ComponentState,
-    variants::utils::*,
+    tokens::{FromSize, FromIntent},
 };
 
 /// Button component with variant support
@@ -52,32 +52,41 @@ pub fn Button(
     let final_classes = Signal::derive(move || {
         let theme = theme_signal.get();
         
-        // Build component classes based on variants
-        let base_classes = "inline-flex items-center justify-center font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2";
+        // Size-based tokens
+        let (px, py) = match size {
+            Size::Xs => (theme.spacing.from_size(Size::Xs), theme.spacing.from_size(Size::Xs)),
+            Size::Sm => (theme.spacing.from_size(Size::Sm), theme.spacing.from_size(Size::Xs)),
+            Size::Md => (theme.spacing.from_size(Size::Md), theme.spacing.from_size(Size::Sm)),
+            Size::Lg => (theme.spacing.from_size(Size::Lg), theme.spacing.from_size(Size::Md)),
+            Size::Xl => (theme.spacing.from_size(Size::Xl), theme.spacing.from_size(Size::Lg)),
+        };
+        let text_size = theme.typography.from_size(size);
+        let radius = theme.borders.radius.from_size(size);
         
-        let size_classes = combine_classes(&[
-            &get_padding_classes(size, &theme.spacing),
-            get_typography_classes(size, &theme.typography),
-            get_border_radius_classes(size, &theme.borders),
-        ]);
-        
-        let (bg_class, bg_hover_class) = get_background_classes(intent, &theme.colors.background);
-        let text_class = match intent {
-            Intent::Secondary => get_text_classes(intent, &theme.colors.text),
-            _ => "text-white", // Primary, Success, Danger, Warning, Info use white text
+        // Intent-based tokens
+        let bg = theme.colors.background.from_intent(intent);
+        let bg_hover = match intent {
+            Intent::Primary => theme.colors.background.primary_hover,
+            Intent::Secondary => theme.colors.background.secondary_hover,
+            Intent::Success => theme.colors.background.success_hover,
+            Intent::Danger => theme.colors.background.danger_hover,
+            Intent::Warning => theme.colors.background.warning_hover,
+            Intent::Info => theme.colors.background.info_hover,
         };
         
-        let border_class = match intent {
-            Intent::Secondary => combine_classes(&[
-                theme.borders.width.thin,
-                get_border_classes(intent, &theme.colors.border),
-            ]),
+        let text_color = match intent {
+            Intent::Secondary => theme.colors.text.from_intent(intent),
+            _ => "text-white",
+        };
+        
+        let border = match intent {
+            Intent::Secondary => format!("{} border-gray-300", theme.borders.width.thin),
             _ => String::new(),
         };
         
-        let focus_ring_class = match intent {
+        let focus_ring = match intent {
             Intent::Primary | Intent::Info => "focus:ring-blue-500",
-            Intent::Secondary => "focus:ring-gray-500",
+            Intent::Secondary => "focus:ring-gray-500", 
             Intent::Success => "focus:ring-green-500",
             Intent::Danger => "focus:ring-red-500",
             Intent::Warning => "focus:ring-yellow-500",
@@ -85,16 +94,28 @@ pub fn Button(
         
         let state_classes = state.get_modifier_classes();
         
-        combine_classes(&[
-            base_classes,
-            &size_classes,
-            bg_class,
-            bg_hover_class,
-            text_class,
-            &border_class,
-            focus_ring_class,
+        // Create owned strings for dynamic values
+        let px_class = format!("px-{}", px);
+        let py_class = format!("py-{}", py);
+        
+        let mut classes = vec![
+            "inline-flex items-center justify-center font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2",
+            &px_class,
+            &py_class,
+            text_size,
+            radius,
+            bg,
+            bg_hover,
+            text_color,
+            focus_ring,
             state_classes,
-        ])
+        ];
+        
+        if !border.is_empty() {
+            classes.push(&border);
+        }
+        
+        classes.into_iter().filter(|s| !s.is_empty()).collect::<Vec<_>>().join(" ")
     });
     
     let is_disabled = state == ComponentState::Disabled;
@@ -116,70 +137,3 @@ pub fn Button(
     }
 }
 
-/// Icon button variant for buttons with just icons
-#[component]
-pub fn IconButton(
-    /// Button size variant
-    #[prop(default = Size::Md)]
-    size: Size,
-    
-    /// Button intent/color variant
-    #[prop(default = Intent::Secondary)]
-    intent: Intent,
-    
-    /// Button state
-    #[prop(default = ComponentState::Enabled)]
-    state: ComponentState,
-    
-    /// Click event handler
-    #[prop(optional)]
-    on_click: Option<Callback<MouseEvent>>,
-    
-    /// Accessible label for screen readers
-    #[prop(optional)]
-    aria_label: Option<&'static str>,
-    
-    /// Button content (usually an icon)
-    children: Children,
-) -> impl IntoView {
-    let theme_signal = ThemeContext::use_theme();
-    
-    // Make class computation reactive
-    let icon_classes = Signal::derive(move || {
-        let theme = theme_signal.get();
-        
-        // Icon buttons are square with equal padding
-        let padding = match size {
-            Size::Xs => theme.spacing.xs,
-            Size::Sm => theme.spacing.sm,
-            Size::Md => theme.spacing.md,
-            Size::Lg => theme.spacing.lg,
-            Size::Xl => theme.spacing.xl,
-        };
-        
-        format!(
-            "inline-flex items-center justify-center p-{} {} {} transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 {}",
-            padding,
-            get_typography_classes(size, &theme.typography),
-            get_border_radius_classes(size, &theme.borders),
-            state.get_modifier_classes()
-        )
-    });
-    
-    view! {
-        <button
-            class=move || icon_classes.get()
-            disabled=state == ComponentState::Disabled
-            aria-label=aria_label
-            on:click=move |ev| {
-                if let Some(handler) = on_click {
-                    if state == ComponentState::Enabled {
-                        handler.run(ev);
-                    }
-                }
-            }
-        >
-            {children()}
-        </button>
-    }
-}

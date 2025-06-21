@@ -1,6 +1,18 @@
 /// Design tokens for the theme system
 /// Uses nested structure for better organization and partial overrides
 
+use super::{Size, Intent};
+
+/// Trait for token structs that can be indexed by Size
+pub trait FromSize {
+    fn from_size(&self, size: Size) -> &'static str;
+}
+
+/// Trait for token structs that can be indexed by Intent
+pub trait FromIntent {
+    fn from_intent(&self, intent: Intent) -> &'static str;
+}
+
 #[derive(Clone, Debug)]
 pub struct ColorTokens {
     pub text: TextColors,
@@ -131,6 +143,19 @@ impl Default for TextColors {
     }
 }
 
+impl FromIntent for TextColors {
+    fn from_intent(&self, intent: Intent) -> &'static str {
+        match intent {
+            Intent::Primary => self.primary,
+            Intent::Secondary => self.secondary,
+            Intent::Success => self.success,
+            Intent::Danger => self.danger,
+            Intent::Warning => self.warning,
+            Intent::Info => self.info,
+        }
+    }
+}
+
 impl Default for BackgroundColors {
     fn default() -> Self {
         Self {
@@ -150,6 +175,19 @@ impl Default for BackgroundColors {
             page: "bg-gray-50",
             surface: "bg-white",
             elevated: "bg-white",
+        }
+    }
+}
+
+impl FromIntent for BackgroundColors {
+    fn from_intent(&self, intent: Intent) -> &'static str {
+        match intent {
+            Intent::Primary => self.primary,
+            Intent::Secondary => self.secondary,
+            Intent::Success => self.success,
+            Intent::Danger => self.danger,
+            Intent::Warning => self.warning,
+            Intent::Info => self.info,
         }
     }
 }
@@ -182,6 +220,18 @@ impl Default for SpacingTokens {
     }
 }
 
+impl FromSize for SpacingTokens {
+    fn from_size(&self, size: Size) -> &'static str {
+        match size {
+            Size::Xs => self.xs,
+            Size::Sm => self.sm,
+            Size::Md => self.md,
+            Size::Lg => self.lg,
+            Size::Xl => self.xl,
+        }
+    }
+}
+
 impl Default for TypographyTokens {
     fn default() -> Self {
         Self {
@@ -192,6 +242,18 @@ impl Default for TypographyTokens {
             xl: "text-xl",
             xl2: "text-2xl",
             xl3: "text-3xl",
+        }
+    }
+}
+
+impl FromSize for TypographyTokens {
+    fn from_size(&self, size: Size) -> &'static str {
+        match size {
+            Size::Xs => self.xs,
+            Size::Sm => self.sm,
+            Size::Md => self.base,
+            Size::Lg => self.lg,
+            Size::Xl => self.xl,
         }
     }
 }
@@ -224,6 +286,18 @@ impl Default for BorderRadiusTokens {
             lg: "rounded-lg",
             xl: "rounded-xl",
             full: "rounded-full",
+        }
+    }
+}
+
+impl FromSize for BorderRadiusTokens {
+    fn from_size(&self, size: Size) -> &'static str {
+        match size {
+            Size::Xs => self.sm,
+            Size::Sm => self.md,
+            Size::Md => self.md,
+            Size::Lg => self.lg,
+            Size::Xl => self.xl,
         }
     }
 }
