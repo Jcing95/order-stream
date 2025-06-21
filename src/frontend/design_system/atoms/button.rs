@@ -54,11 +54,11 @@ pub fn Button(
         
         // Size-based tokens
         let (px, py) = match size {
-            Size::Xs => (theme.spacing.from_size(Size::Xs), theme.spacing.from_size(Size::Xs)),
-            Size::Sm => (theme.spacing.from_size(Size::Sm), theme.spacing.from_size(Size::Xs)),
-            Size::Md => (theme.spacing.from_size(Size::Md), theme.spacing.from_size(Size::Sm)),
-            Size::Lg => (theme.spacing.from_size(Size::Lg), theme.spacing.from_size(Size::Md)),
-            Size::Xl => (theme.spacing.from_size(Size::Xl), theme.spacing.from_size(Size::Lg)),
+            Size::Xs => (theme.spacing.px.from_size(Size::Xs), theme.spacing.py.from_size(Size::Xs)),
+            Size::Sm => (theme.spacing.px.from_size(Size::Sm), theme.spacing.py.from_size(Size::Xs)),
+            Size::Md => (theme.spacing.px.from_size(Size::Md), theme.spacing.py.from_size(Size::Sm)),
+            Size::Lg => (theme.spacing.px.from_size(Size::Lg), theme.spacing.py.from_size(Size::Md)),
+            Size::Xl => (theme.spacing.px.from_size(Size::Xl), theme.spacing.py.from_size(Size::Lg)),
         };
         let text_size = theme.typography.from_size(size);
         let radius = theme.borders.radius.from_size(size);
@@ -95,14 +95,10 @@ pub fn Button(
         
         let state_classes = state.get_modifier_classes();
         
-        // Create owned strings for dynamic values
-        let px_class = format!("px-{}", px);
-        let py_class = format!("py-{}", py);
-        
         let mut classes = vec![
             "inline-flex items-center justify-center font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2",
-            &px_class,
-            &py_class,
+            px,
+            py,
             text_size,
             radius,
             bg,

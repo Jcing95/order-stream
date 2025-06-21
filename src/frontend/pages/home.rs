@@ -48,16 +48,27 @@ pub fn Home() -> impl IntoView {
                                 </Button>
                             </div>
                             
-                            <div class="flex space-x-2">
-                                <Button size=Size::Sm intent=Intent::Secondary>
-                                    "Small"
-                                </Button>
-                                <Button size=Size::Md intent=Intent::Success>
-                                    "Success"
-                                </Button>
-                                <Button size=Size::Lg intent=Intent::Danger>
-                                    "Danger"
-                                </Button>
+                            <div class="space-y-4">
+                                <div class="flex space-x-2 items-center">
+                                    <Button size=Size::Xs intent=Intent::Secondary>
+                                        "XS"
+                                    </Button>
+                                    <Button size=Size::Sm intent=Intent::Secondary>
+                                        "Small"
+                                    </Button>
+                                    <Button size=Size::Md intent=Intent::Success>
+                                        "Medium"
+                                    </Button>
+                                    <Button size=Size::Lg intent=Intent::Danger>
+                                        "Large"
+                                    </Button>
+                                    <Button size=Size::Xl intent=Intent::Warning>
+                                        "XL"
+                                    </Button>
+                                </div>
+                                <div class="text-sm text-white/70">
+                                    "Button size progression test - check if sizes look proportional"
+                                </div>
                             </div>
                         </div>
                     </div>
