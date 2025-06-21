@@ -7,7 +7,7 @@ use leptos_router::{
 use crate::frontend::pages::admin::AdminPage;
 use crate::frontend::pages::home::Home;
 use crate::frontend::pages::design_system::DesignSystemPage;
-use crate::frontend::state::theme::{ThemeState, page_background};
+use crate::frontend::state::theme::ThemeState;
 use crate::frontend::design_system::{Theme, ThemeContext};
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
@@ -34,14 +34,37 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
 pub fn App() -> impl IntoView {
     provide_meta_context();
     
+    // Initialize the old theme state system (for compatibility)
     let theme_state = ThemeState::new();
     provide_context(theme_state);
 
-    // Provide design system theme context with light theme as default
-    ThemeContext::provide(Theme::light());
+    // Initialize design system theme based on old theme state
+    let initial_theme = if theme_state.is_dark().get_untracked() {
+        Theme::dark()
+    } else {
+        Theme::light()
+    };
+    ThemeContext::provide(initial_theme);
+
+    // Sync the old theme state with the design system theme
+    Effect::new(move |_| {
+        let is_dark = theme_state.is_dark().get();
+        let new_theme = if is_dark {
+            Theme::dark()
+        } else {
+            Theme::light()
+        };
+        ThemeContext::set_theme(new_theme);
+    });
+
+    // Create reactive page background based on design system theme
+    let page_bg_class = Signal::derive(move || {
+        let theme = ThemeContext::use_theme().get();
+        format!("min-h-screen transition-colors duration-200 {}", theme.colors.background.page)
+    });
 
     view! {
-        <div class=page_background()>
+        <div class=move || page_bg_class.get()>
             <Router>
                 <FlatRoutes fallback=|| "Page not found.">
                     <Route path=StaticSegment("") view=Home/>

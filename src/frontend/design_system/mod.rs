@@ -50,4 +50,4 @@ pub mod molecules;
 // Re-export everything for convenience
 pub use theme::*;
 pub use atoms::*;
-// pub use molecules::*;
+pub use molecules::*;

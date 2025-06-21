@@ -1,7 +1,7 @@
 use leptos::prelude::*;
 
 use crate::frontend::design_system::{
-    Button, Input, Text, Icon,
+    Button, Input, Text, Icon, ThemeSwitcher,
     theme::{Size, Intent, ComponentState},
     atoms::{InputType, TextVariant, FontWeight, IconVariant},
 };
@@ -12,22 +12,30 @@ pub fn DesignSystemPage() -> impl IntoView {
     
     view! {
             <div class="max-w-6xl mx-auto p-8 space-y-12">
-                // Header
-                <div class="text-center">
-                    <Text 
-                        variant=TextVariant::Heading 
-                        size=Size::Xl 
-                        weight=FontWeight::Bold
-                    >
-                        "Order Stream Design System"
-                    </Text>
-                    <Text 
-                        variant=TextVariant::Body 
-                        intent=Intent::Secondary 
-                        class="mt-2"
-                    >
-                        "Atomic components following the design system principles"
-                    </Text>
+                // Header with Theme Switcher
+                <div class="flex items-start justify-between">
+                    <div class="text-center flex-1">
+                        <Text 
+                            variant=TextVariant::Heading 
+                            size=Size::Xl 
+                            weight=FontWeight::Bold
+                        >
+                            "Order Stream Design System"
+                        </Text>
+                        <Text 
+                            variant=TextVariant::Body 
+                            intent=Intent::Secondary 
+                            class="mt-2"
+                        >
+                            "Atomic components following the design system principles"
+                        </Text>
+                    </div>
+                    <div class="flex flex-col items-end gap-2">
+                        <Text variant=TextVariant::Label size=Size::Sm>
+                            "Theme"
+                        </Text>
+                        <ThemeSwitcher size=Size::Md show_label=true />
+                    </div>
                 </div>
 
                 // Button Section
@@ -288,7 +296,7 @@ pub fn DesignSystemPage() -> impl IntoView {
                         </Text>
                         <div class="grid grid-cols-6 md:grid-cols-10 gap-4">
                             {["check", "x", "plus", "minus", "chevron-down", "chevron-up", 
-                              "chevron-left", "chevron-right", "search", "menu", "home"]
+                              "chevron-left", "chevron-right", "search", "menu", "home", "sun", "moon"]
                                 .iter()
                                 .map(|icon_name| view! {
                                     <div class="flex flex-col items-center gap-2 p-2">
@@ -300,6 +308,39 @@ pub fn DesignSystemPage() -> impl IntoView {
                                 })
                                 .collect_view()
                             }
+                        </div>
+                    </div>
+                </section>
+
+                // Molecules Section
+                <section class="space-y-6">
+                    <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold>
+                        "Molecules"
+                    </Text>
+                    
+                    // Theme Switcher
+                    <div class="space-y-4">
+                        <Text variant=TextVariant::Label size=Size::Sm weight=FontWeight::Medium>
+                            "Theme Switcher"
+                        </Text>
+                        <div class="p-6 border rounded-lg space-y-4">
+                            <Text variant=TextVariant::Body>
+                                "Toggle between light and dark themes. The switcher automatically updates all components."
+                            </Text>
+                            <div class="flex items-center gap-6 flex-wrap">
+                                <div class="flex flex-col gap-2">
+                                    <Text variant=TextVariant::Caption>"Compact"</Text>
+                                    <ThemeSwitcher size=Size::Sm />
+                                </div>
+                                <div class="flex flex-col gap-2">
+                                    <Text variant=TextVariant::Caption>"With Label"</Text>
+                                    <ThemeSwitcher size=Size::Md show_label=true />
+                                </div>
+                                <div class="flex flex-col gap-2">
+                                    <Text variant=TextVariant::Caption>"Large"</Text>
+                                    <ThemeSwitcher size=Size::Lg show_label=true />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>
