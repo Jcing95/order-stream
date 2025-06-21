@@ -24,6 +24,24 @@ pub async fn get_order_items(order_id: String) -> Result<Vec<OrderItem>, ServerF
     }
 }
 
+#[server(GetAllOrderItems, "/api")]
+pub async fn get_all_order_items() -> Result<Vec<OrderItem>, ServerFnError> {
+    #[cfg(feature = "ssr")]
+    {
+        let db = database::get_db_connection()
+            .await
+            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+        
+        database::order_items::get_all_order_items(&db)
+            .await
+            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
+    }
+    #[cfg(not(feature = "ssr"))]
+    {
+        unreachable!("Server function called on client side")
+    }
+}
+
 #[server(CreateOrderItem, "/api")]
 pub async fn create_order_item(request: CreateOrderItemRequest) -> Result<OrderItem, ServerFnError> {
     #[cfg(feature = "ssr")]

@@ -89,6 +89,15 @@ pub async fn get_order_items(db: &Database, order_id: &str) -> AppResult<Vec<typ
     Ok(order_items.into_iter().map(|record| record.into()).collect())
 }
 
+pub async fn get_all_order_items(db: &Database) -> AppResult<Vec<types::OrderItem>> {
+    let order_items: Vec<OrderItemRecord> = db
+        .select("order_items")
+        .await
+        .map_err(|e| AppError::DatabaseError(format!("Failed to get all order items: {}", e)))?;
+
+    Ok(order_items.into_iter().map(|record| record.into()).collect())
+}
+
 pub async fn get_order_item(db: &Database, id: &str) -> AppResult<Option<types::OrderItem>> {
     let order_item: Option<OrderItemRecord> = db
         .select(("order_items", id))

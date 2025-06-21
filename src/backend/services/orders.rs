@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use crate::common::types::{Order, UpdateOrderRequest};
+use crate::common::types::{Order, UpdateOrderRequest, OrderStatus};
 
 #[cfg(feature = "ssr")]
 use crate::backend::errors::AppError;
@@ -71,6 +71,28 @@ pub async fn update_order(id: String, request: UpdateOrderRequest) -> Result<Ord
         let db = database::get_db_connection()
             .await
             .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+        
+        database::orders::update_order(&db, &id, request)
+            .await
+            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
+    }
+    #[cfg(not(feature = "ssr"))]
+    {
+        unreachable!("Server function called on client side")
+    }
+}
+
+#[server(UpdateOrderStatus, "/api")]
+pub async fn update_order_status(id: String, status: OrderStatus) -> Result<Order, ServerFnError> {
+    #[cfg(feature = "ssr")]
+    {
+        let db = database::get_db_connection()
+            .await
+            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+        
+        let request = UpdateOrderRequest {
+            status: Some(status),
+        };
         
         database::orders::update_order(&db, &id, request)
             .await

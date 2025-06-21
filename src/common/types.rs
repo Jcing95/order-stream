@@ -64,7 +64,7 @@ impl CreateCategoryRequest {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum OrderStatus {
     Draft,      // Being built, not yet ordered
     Ordered,    // Paid and submitted  

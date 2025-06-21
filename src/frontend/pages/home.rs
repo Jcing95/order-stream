@@ -15,15 +15,82 @@ pub fn Home() -> impl IntoView {
                         "Streamlining food and drink logistics at small events"
                     </p>
                     
-                    <div class="flex flex-col space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-4xl">
+                        // Admin and Management
                         <A href="/admin">
-                            <div class="bg-white text-blue-800 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
-                                "Admin Panel"
+                            <div class="bg-white text-blue-800 px-6 py-4 rounded-lg font-semibold hover:bg-gray-100 transition-colors text-center">
+                                <div class="text-lg">"🔧"</div>
+                                <div>"Admin Panel"</div>
+                                <div class="text-sm opacity-70">"Manage items & settings"</div>
                             </div>
                         </A>
-                        
-                        // Theme test section
-                        <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6 space-y-4">
+
+                        // Cashier Station
+                        <A href="/cashier">
+                            <div class="bg-green-500 text-white px-6 py-4 rounded-lg font-semibold hover:bg-green-600 transition-colors text-center">
+                                <div class="text-lg">"💰"</div>
+                                <div>"Cashier Station"</div>
+                                <div class="text-sm opacity-90">"Take orders & payments"</div>
+                            </div>
+                        </A>
+
+                        // Bar Station
+                        <A href="/bar">
+                            <div class="bg-purple-500 text-white px-6 py-4 rounded-lg font-semibold hover:bg-purple-600 transition-colors text-center">
+                                <div class="text-lg">"🍸"</div>
+                                <div>"Bar Station"</div>
+                                <div class="text-sm opacity-90">"Alcoholic drinks & cocktails"</div>
+                            </div>
+                        </A>
+
+                        // Kitchen Station
+                        <A href="/kitchen">
+                            <div class="bg-orange-500 text-white px-6 py-4 rounded-lg font-semibold hover:bg-orange-600 transition-colors text-center">
+                                <div class="text-lg">"🍳"</div>
+                                <div>"Kitchen Station"</div>
+                                <div class="text-sm opacity-90">"Hot food & prepared meals"</div>
+                            </div>
+                        </A>
+
+                        // Drinks Station
+                        <A href="/drinks">
+                            <div class="bg-cyan-500 text-white px-6 py-4 rounded-lg font-semibold hover:bg-cyan-600 transition-colors text-center">
+                                <div class="text-lg">"🥤"</div>
+                                <div>"Drinks Station"</div>
+                                <div class="text-sm opacity-90">"Beverages & soft drinks"</div>
+                            </div>
+                        </A>
+
+                        // Food Station
+                        <A href="/food">
+                            <div class="bg-yellow-500 text-white px-6 py-4 rounded-lg font-semibold hover:bg-yellow-600 transition-colors text-center">
+                                <div class="text-lg">"🍿"</div>
+                                <div>"Food Station"</div>
+                                <div class="text-sm opacity-90">"Snacks & cold food"</div>
+                            </div>
+                        </A>
+
+                        // All Items Station
+                        <A href="/station">
+                            <div class="bg-gray-600 text-white px-6 py-4 rounded-lg font-semibold hover:bg-gray-700 transition-colors text-center">
+                                <div class="text-lg">"📋"</div>
+                                <div>"All Orders"</div>
+                                <div class="text-sm opacity-90">"View all order types"</div>
+                            </div>
+                        </A>
+
+                        // Design System
+                        <A href="/design-system">
+                            <div class="bg-indigo-500 text-white px-6 py-4 rounded-lg font-semibold hover:bg-indigo-600 transition-colors text-center">
+                                <div class="text-lg">"🎨"</div>
+                                <div>"Design System"</div>
+                                <div class="text-sm opacity-90">"UI components & theming"</div>
+                            </div>
+                        </A>
+                    </div>
+                    
+                    // Theme test section
+                    <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6 space-y-4">
                             <h3 class="text-lg font-semibold">"Design System Test"</h3>
                             
                             <div class="flex space-x-2">
@@ -71,7 +138,6 @@ pub fn Home() -> impl IntoView {
                                 </div>
                             </div>
                         </div>
-                    </div>
                 </div>
             </div>
         </main>
