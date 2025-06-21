@@ -97,7 +97,11 @@ src/
 ├── common/           # Shared types and error definitions
 ├── frontend/
 │   ├── pages/        # Route components (/cashier, /bar, /admin, etc.)
-│   ├── components/   # Reusable UI components
+│   ├── components/   # Business logic UI components
+│   ├── design_system/ # Design system components (atoms, molecules, theme)
+│   │   ├── atoms/    # Basic building blocks (Button, Input, Text, etc.)
+│   │   ├── molecules/ # Compound components (FormField, ThemeSwitcher, etc.)
+│   │   └── theme/    # Theming system with tokens and variants
 │   └── state/        # Frontend state management and hydration
 └── backend/
     ├── services/     # Leptos server functions (available to client & server)
@@ -146,6 +150,15 @@ The application uses Leptos's SSR (Server-Side Rendering) with hydration, where 
 - **SurrealDB Thing IDs**: Automatic ID generation with schema inference from Rust types
 - **Simplified Common Types**: Frontend types exclude database-specific fields like timestamps and SurrealDB Thing IDs
 - **Database Record Conversion**: Clean separation between database records and common types via `From` traits
+- **Atomic Design System**: Comprehensive design system with atoms, molecules, and theming
+- **Token-based Theming**: Light/dark mode support with variant system for consistent styling
+
+**Design System Architecture:**
+- **Atoms** (`frontend/design_system/atoms/`): Basic building blocks (Button, Input, Card, etc.)
+- **Molecules** (`frontend/design_system/molecules/`): Compound components (FormField, ThemeSwitcher, etc.)
+- **Theme System** (`frontend/design_system/theme/`): Design tokens, variants, and theme context
+- **Business Components** (`frontend/components/`): Application-specific UI using design system
+- **Tailwind 4 Integration**: Utility-first CSS with design token mapping
 
 This layered architecture ensures clean separation of concerns and makes the codebase maintainable and testable.
 
@@ -197,6 +210,16 @@ cargo add serde --features derive
 cargo add tokio --optional --features full
 cargo remove old-dependency
 ```
+
+### Development Rules
+
+**Frontend Development:**
+- **ABSOLUTELY** stay Leptos idiomatic - use proper component patterns, signals, and reactivity
+- **ALWAYS** use the design system (`frontend/design_system/`) for all UI components
+- **NEVER** create inline components or styling - use existing atoms and molecules
+- **ONLY** use Tailwind 4 classes within the design system components
+- **NEVER** use Tailwind classes directly in business logic components (`frontend/components/`)
+- **ALWAYS** compose UI using design system components with proper theming and variants
 
 ## Development Commands
 
