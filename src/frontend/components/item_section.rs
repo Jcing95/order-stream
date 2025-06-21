@@ -9,7 +9,7 @@ pub fn ItemSection<F>(
     on_submit: F,
 ) -> impl IntoView
 where
-    F: Fn(CreateItemRequest) + 'static + Clone,
+    F: Fn(CreateItemRequest) + 'static + Clone + Send,
 {
     view! {
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">

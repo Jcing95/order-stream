@@ -1,7 +1,11 @@
 use leptos::prelude::*;
 use crate::common::types::Order;
 use crate::frontend::components::order_list::OrderList;
-use crate::frontend::state::theme::{text_primary, button_primary};
+use crate::frontend::design_system::{
+    Button, Text,
+    theme::{Size, Intent},
+    atoms::{TextVariant, FontWeight},
+};
 
 #[component]
 pub fn OrderSection<F1, F2>(
@@ -10,19 +14,26 @@ pub fn OrderSection<F1, F2>(
     on_delete: F2,
 ) -> impl IntoView
 where
-    F1: Fn(()) + 'static + Clone,
-    F2: Fn(String) + 'static + Clone + Send,
+    F1: Fn(()) + 'static + Clone + Send + Sync,
+    F2: Fn(String) + 'static + Clone + Send + Sync,
 {
     view! {
         <div class="space-y-6">
             <div class="flex justify-between items-center">
-                <h2 class=format!("text-xl font-semibold {}", text_primary())>"Order Management"</h2>
-                <button
-                    class=button_primary()
-                    on:click=move |_| on_create(())
+                <Text 
+                    variant=TextVariant::Heading 
+                    size=Size::Xl 
+                    weight=FontWeight::Semibold
+                >
+                    "Order Management"
+                </Text>
+                <Button
+                    size=Size::Md
+                    intent=Intent::Primary
+                    on_click=Callback::new(move |_| on_create(()))
                 >
                     "Create New Order"
-                </button>
+                </Button>
             </div>
             <OrderList orders=orders on_delete=on_delete />
         </div>

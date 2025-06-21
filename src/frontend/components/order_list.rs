@@ -1,6 +1,10 @@
 use leptos::prelude::*;
 use crate::common::types::{Order, OrderStatus};
-use crate::frontend::state::theme::{card_surface, text_primary, text_secondary, text_muted, button_danger, button_small};
+use crate::frontend::design_system::{
+    Card, CardVariant, Button, Text, Alert,
+    theme::{Size, Intent},
+    atoms::{TextVariant, FontWeight},
+};
 
 #[component]
 pub fn OrderList<F>(
@@ -8,17 +12,17 @@ pub fn OrderList<F>(
     on_delete: F,
 ) -> impl IntoView 
 where
-    F: Fn(String) + 'static + Clone + Send,
+    F: Fn(String) + 'static + Clone + Send + Sync,
 {
     let on_delete_clone = on_delete.clone();
 
-    let status_badge_class = |status: &OrderStatus| -> &'static str {
+    let status_intent = |status: &OrderStatus| -> Intent {
         match status {
-            OrderStatus::Draft => "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300",
-            OrderStatus::Ordered => "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300", 
-            OrderStatus::Ready => "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
-            OrderStatus::Completed => "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
-            OrderStatus::Cancelled => "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+            OrderStatus::Draft => Intent::Secondary,
+            OrderStatus::Ordered => Intent::Primary,
+            OrderStatus::Ready => Intent::Warning,
+            OrderStatus::Completed => Intent::Success,
+            OrderStatus::Cancelled => Intent::Danger,
         }
     };
 
@@ -34,46 +38,77 @@ where
 
     view! {
         <div class="space-y-4">
-            <h3 class=format!("text-lg font-semibold {}", text_primary())>"Orders"</h3>
+            <Text 
+                variant=TextVariant::Heading 
+                size=Size::Lg 
+                weight=FontWeight::Semibold
+            >
+                "Orders"
+            </Text>
             
             {move || {
                 let orders_list = orders.get();
                 if orders_list.is_empty() {
                     view! {
-                        <div class=format!("italic p-4 {} {}", text_muted(), card_surface())>
+                        <Alert intent=Intent::Info size=Size::Md>
                             "No orders yet. Create one to get started."
-                        </div>
+                        </Alert>
                     }.into_any()
                 } else {
                     orders_list.into_iter().map(|order| {
                         let order_id = order.id.clone();
                         let on_delete_inner = on_delete_clone.clone();
-                        let status_class = status_badge_class(&order.status);
+                        let status_intent_value = status_intent(&order.status);
                         let status_label = status_text(&order.status);
                         
                         view! {
-                            <div class=format!("flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600")>
-                                <div class="flex-1">
-                                    <div class="flex items-center gap-3">
-                                        <h4 class=format!("font-medium {}", text_primary())>
-                                            "Order #" {move || format!("{:03}", order.sequential_id)}
-                                        </h4>
-                                        <span class={move || format!("px-2 py-1 text-xs font-medium rounded-full {}", status_class)}>
-                                            {move || status_label}
-                                        </span>
+                            <Card variant=CardVariant::Default>
+                                <div class="flex items-center justify-between">
+                                    <div class="flex-1 space-y-2">
+                                        <div class="flex items-center gap-3">
+                                            <Text 
+                                                variant=TextVariant::Body 
+                                                size=Size::Md 
+                                                weight=FontWeight::Medium
+                                            >
+                                                "Order #" {move || format!("{:03}", order.sequential_id)}
+                                            </Text>
+                                            <Text 
+                                                variant=TextVariant::Caption 
+                                                size=Size::Xs 
+                                                weight=FontWeight::Medium
+                                                intent=status_intent_value
+                                                class="px-2 py-1 rounded-full bg-opacity-20"
+                                            >
+                                                {move || status_label}
+                                            </Text>
+                                        </div>
+                                        <div class="space-y-1">
+                                            <Text 
+                                                variant=TextVariant::Body 
+                                                size=Size::Sm 
+                                                weight=FontWeight::Normal
+                                            >
+                                                "Total: $" {move || format!("{:.2}", order.total_price)}
+                                            </Text>
+                                            <Text 
+                                                variant=TextVariant::Caption 
+                                                size=Size::Xs 
+                                                weight=FontWeight::Normal
+                                            >
+                                                "ID: " {move || order.id.clone()}
+                                            </Text>
+                                        </div>
                                     </div>
-                                    <div class=format!("text-sm mt-1 {}", text_secondary())>
-                                        <p>"Total: $" {move || format!("{:.2}", order.total_price)}</p>
-                                        <p class=format!("text-xs {}", text_muted())>"ID: " {move || order.id.clone()}</p>
-                                    </div>
+                                    <Button
+                                        size=Size::Sm
+                                        intent=Intent::Danger
+                                        on_click=Callback::new(move |_| on_delete_inner(order_id.clone()))
+                                    >
+                                        "Delete"
+                                    </Button>
                                 </div>
-                                <button
-                                    class=format!("{} {}", button_danger(), button_small())
-                                    on:click=move |_| on_delete_inner(order_id.clone())
-                                >
-                                    "Delete"
-                                </button>
-                            </div>
+                            </Card>
                         }
                     }).collect_view().into_any()
                 }

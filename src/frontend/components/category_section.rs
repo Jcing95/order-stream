@@ -9,8 +9,8 @@ pub fn CategorySection<F1, F2>(
     on_delete: F2,
 ) -> impl IntoView
 where
-    F1: Fn(CreateCategoryRequest) + 'static + Clone,
-    F2: Fn(String) + 'static + Clone + Send,
+    F1: Fn(CreateCategoryRequest) + 'static + Clone + Send,
+    F2: Fn(String) + 'static + Clone + Send + Sync,
 {
     view! {
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -1,7 +1,11 @@
 use leptos::prelude::*;
 use leptos::web_sys;
 use crate::common::types::{CreateItemRequest, Category};
-use crate::frontend::state::theme::{card_elevated, input_field, label_text, button_primary, text_gradient, alert_base, alert_error};
+use crate::frontend::design_system::{
+    Card, CardVariant, Input, Button, Text, Alert,
+    theme::{Size, Intent},
+    atoms::{InputType, TextVariant, FontWeight},
+};
 
 #[component]
 pub fn ItemForm<F>(
@@ -9,11 +13,11 @@ pub fn ItemForm<F>(
     on_submit: F,
 ) -> impl IntoView 
 where
-    F: Fn(CreateItemRequest) + 'static + Clone,
+    F: Fn(CreateItemRequest) + 'static + Clone + Send,
 {
-    let (name, set_name) = signal(String::new());
-    let (category, set_category) = signal(String::new());
-    let (price, set_price) = signal(String::new());
+    let name = RwSignal::new(String::new());
+    let category = RwSignal::new(String::new());
+    let price = RwSignal::new(String::new());
     let (error, set_error) = signal(Option::<String>::None);
 
     let on_submit_clone = on_submit.clone();
@@ -52,78 +56,105 @@ where
         on_submit_clone(request);
         
         // Clear form
-        set_name.set(String::new());
-        set_category.set(String::new());
-        set_price.set(String::new());
+        name.set(String::new());
+        category.set(String::new());
+        price.set(String::new());
     };
 
     view! {
-        <form on:submit=submit_form class=format!("space-y-6 p-6 {}", card_elevated())>
-            <h3 class=format!("text-xl font-bold {}", text_gradient())>"Add New Item"</h3>
-            
-            {move || error.get().map(|err| view! {
-                <div class=format!("{} {}", alert_base(), alert_error())>
-                    {err}
-                </div>
-            })}
-            
-            <div class="space-y-2">
-                <label class=label_text()>
-                    "Name"
-                </label>
-                <input
-                    type="text"
-                    class=input_field()
-                    prop:value=move || name.get()
-                    on:input=move |ev| set_name.set(event_target_value(&ev))
-                    required
-                    placeholder="Enter item name"
-                />
-            </div>
-            
-            <div class="space-y-2">
-                <label class=label_text()>
-                    "Category"
-                </label>
-                <select
-                    class=input_field()
-                    prop:value=move || category.get()
-                    on:change=move |ev| set_category.set(event_target_value(&ev))
-                    required
+        <Card variant=CardVariant::Default>
+            <form on:submit=submit_form class="space-y-4">
+                <Text 
+                    variant=TextVariant::Heading 
+                    size=Size::Lg 
+                    weight=FontWeight::Semibold
                 >
-                    <option value="">"Select a category..."</option>
-                    {move || {
-                        categories.get().into_iter().map(|cat| {
-                            view! {
-                                <option value={cat.id.clone()}>{move || cat.name.clone()}</option>
-                            }
-                        }).collect_view()
-                    }}
-                </select>
-            </div>
-            
-            <div class="space-y-2">
-                <label class=label_text()>
-                    "Price"
-                </label>
-                <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    class=input_field()
-                    prop:value=move || price.get()
-                    on:input=move |ev| set_price.set(event_target_value(&ev))
-                    required
-                    placeholder="0.00"
-                />
-            </div>
-            
-            <button
-                type="submit"
-                class=format!("w-full {}", button_primary())
-            >
-                "Add Item"
-            </button>
-        </form>
+                    "Add New Item"
+                </Text>
+                
+                {move || error.get().map(|err| view! {
+                    <Alert intent=Intent::Danger size=Size::Sm>
+                        {err}
+                    </Alert>
+                })}
+                
+                <div class="space-y-2">
+                    <Text 
+                        variant=TextVariant::Label 
+                        size=Size::Sm 
+                        weight=FontWeight::Medium
+                        as_element="label"
+                    >
+                        "Item Name"
+                    </Text>
+                    <Input
+                        input_type=InputType::Text
+                        size=Size::Md
+                        intent=Intent::Primary
+                        value=name
+                        placeholder="e.g., Coffee, Sandwich, Pizza"
+                        required=true
+                        on_input=Callback::new(move |ev| name.set(event_target_value(&ev)))
+                    />
+                </div>
+                
+                <div class="space-y-2">
+                    <Text 
+                        variant=TextVariant::Label 
+                        size=Size::Sm 
+                        weight=FontWeight::Medium
+                        as_element="label"
+                    >
+                        "Category"
+                    </Text>
+                    // Use a regular HTML select for now due to reactivity constraints
+                    <select
+                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        prop:value=move || category.get()
+                        on:change=move |ev| category.set(event_target_value(&ev))
+                        required
+                    >
+                        <option value="">"Select a category..."</option>
+                        {move || {
+                            categories.get().into_iter().map(|cat| {
+                                view! {
+                                    <option value={cat.id.clone()}>{cat.name.clone()}</option>
+                                }
+                            }).collect_view()
+                        }}
+                    </select>
+                </div>
+                
+                <div class="space-y-2">
+                    <Text 
+                        variant=TextVariant::Label 
+                        size=Size::Sm 
+                        weight=FontWeight::Medium
+                        as_element="label"
+                    >
+                        "Price"
+                    </Text>
+                    <Input
+                        input_type=InputType::Number
+                        size=Size::Md
+                        intent=Intent::Primary
+                        value=price
+                        placeholder="0.00"
+                        required=true
+                        on_input=Callback::new(move |ev| price.set(event_target_value(&ev)))
+                    />
+                </div>
+                
+                <Button
+                    size=Size::Md
+                    intent=Intent::Primary
+                    on_click=Callback::new(move |_| {
+                        // The form submit will handle this
+                    })
+                >
+                    "Add Item"
+                </Button>
+            </form>
+        </Card>
     }
 }

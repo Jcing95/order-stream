@@ -13,7 +13,7 @@ use crate::frontend::state::{admin::AdminState, theme::{ThemeState, text_gradien
 pub fn AdminPage() -> impl IntoView {
     let state = AdminState::new();
     let (active_tab, set_active_tab) = signal("categories".to_string());
-    let theme_state = expect_context::<ThemeState>();
+    let _theme_state = expect_context::<ThemeState>();
 
     // Load data when component mounts
     Effect::new({
@@ -31,7 +31,7 @@ pub fn AdminPage() -> impl IntoView {
         <div class="container mx-auto p-6">
             <div class="flex justify-between items-center mb-8">
                 <h1 class=format!("text-3xl font-bold {}", text_gradient())>"Admin Panel"</h1>
-                <ThemeToggle theme_state />
+                <ThemeToggle />
             </div>
             
             {move || state.error.get().map(|err| view! {
