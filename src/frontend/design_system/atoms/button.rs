@@ -80,16 +80,17 @@ pub fn Button(
         };
         
         let border = match intent {
-            Intent::Secondary => format!("{} border-gray-300", theme.borders.width.thin),
+            Intent::Secondary => format!("{} {}", theme.borders.width.thin, theme.colors.border.default),
             _ => String::new(),
         };
         
         let focus_ring = match intent {
-            Intent::Primary | Intent::Info => "focus:ring-blue-500",
-            Intent::Secondary => "focus:ring-gray-500", 
-            Intent::Success => "focus:ring-green-500",
-            Intent::Danger => "focus:ring-red-500",
-            Intent::Warning => "focus:ring-yellow-500",
+            Intent::Primary => theme.colors.focus_ring.primary,
+            Intent::Secondary => theme.colors.focus_ring.secondary, 
+            Intent::Success => theme.colors.focus_ring.success,
+            Intent::Danger => theme.colors.focus_ring.danger,
+            Intent::Warning => theme.colors.focus_ring.warning,
+            Intent::Info => theme.colors.focus_ring.info,
         };
         
         let state_classes = state.get_modifier_classes();

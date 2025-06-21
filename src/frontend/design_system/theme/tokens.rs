@@ -18,6 +18,7 @@ pub struct ColorTokens {
     pub text: TextColors,
     pub background: BackgroundColors,
     pub border: BorderColors,
+    pub focus_ring: FocusRingColors,
 }
 
 #[derive(Clone, Debug)]
@@ -58,6 +59,16 @@ pub struct BorderColors {
     pub default: &'static str,
     pub muted: &'static str,
     pub focus: &'static str,
+    pub success: &'static str,
+    pub danger: &'static str,
+    pub warning: &'static str,
+    pub info: &'static str,
+}
+
+#[derive(Clone, Debug)]
+pub struct FocusRingColors {
+    pub primary: &'static str,
+    pub secondary: &'static str,
     pub success: &'static str,
     pub danger: &'static str,
     pub warning: &'static str,
@@ -125,6 +136,20 @@ impl Default for ColorTokens {
             text: TextColors::default(),
             background: BackgroundColors::default(),
             border: BorderColors::default(),
+            focus_ring: FocusRingColors::default(),
+        }
+    }
+}
+
+impl Default for FocusRingColors {
+    fn default() -> Self {
+        Self {
+            primary: "focus:ring-blue-500",
+            secondary: "focus:ring-gray-500",
+            success: "focus:ring-green-500",
+            danger: "focus:ring-red-500",
+            warning: "focus:ring-yellow-500",
+            info: "focus:ring-blue-500",
         }
     }
 }

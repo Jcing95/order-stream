@@ -5,9 +5,6 @@ use crate::frontend::design_system::{Button, ThemeContext, Theme, Size, Intent};
 
 #[component]
 pub fn Home() -> impl IntoView {
-    // Get themes from context
-    let (light_theme, dark_theme) = use_context::<(Theme, Theme)>()
-        .expect("Themes not found in context");
     view! {
         <Title text="Order Stream Demo"/>
         <main>
@@ -34,20 +31,20 @@ pub fn Home() -> impl IntoView {
                                     size=Size::Md
                                     intent=Intent::Primary
                                     on_click=Callback::new(move |_| {
-                                        ThemeContext::set_theme(light_theme.clone());
+                                        ThemeContext::set_theme(Theme::light());
                                     })
                                 >
-                                    "Light"
+                                    "Light Theme"
                                 </Button>
                                 
                                 <Button 
                                     size=Size::Md
                                     intent=Intent::Secondary
                                     on_click=Callback::new(move |_| {
-                                        ThemeContext::set_theme(dark_theme.clone());
+                                        ThemeContext::set_theme(Theme::dark());
                                     })
                                 >
-                                    "Dark"
+                                    "Dark Theme"
                                 </Button>
                             </div>
                             

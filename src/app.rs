@@ -7,7 +7,7 @@ use leptos_router::{
 use crate::frontend::pages::admin::AdminPage;
 use crate::frontend::pages::home::Home;
 use crate::frontend::state::theme::{ThemeState, page_background};
-use crate::frontend::design_system::{Theme, ThemeContext, ColorTokensOverride, TextColors, BackgroundColors, BorderColors};
+use crate::frontend::design_system::{Theme, ThemeContext};
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -36,55 +36,8 @@ pub fn App() -> impl IntoView {
     let theme_state = ThemeState::new();
     provide_context(theme_state);
 
-    // Define custom themes
-    let light_theme = Theme::default();
-    
-    let dark_theme = Theme::builder()
-        .name("dark")
-        .colors(ColorTokensOverride {
-            text: Some(TextColors {
-                primary: "text-gray-100",
-                secondary: "text-gray-300",
-                muted: "text-gray-400",
-                success: "text-green-300",
-                danger: "text-red-300",
-                warning: "text-yellow-300",
-                info: "text-blue-300",
-            }),
-            background: Some(BackgroundColors {
-                primary: "bg-blue-500",
-                primary_hover: "hover:bg-blue-600",
-                secondary: "bg-gray-700",
-                secondary_hover: "hover:bg-gray-600",
-                success: "bg-green-500",
-                success_hover: "hover:bg-green-600",
-                danger: "bg-red-500",
-                danger_hover: "hover:bg-red-600",
-                warning: "bg-yellow-500",
-                warning_hover: "hover:bg-yellow-600",
-                info: "bg-blue-500",
-                info_hover: "hover:bg-blue-600",
-                page: "bg-gray-900",
-                surface: "bg-gray-800",
-                elevated: "bg-gray-700",
-            }),
-            border: Some(BorderColors {
-                default: "border-gray-600",
-                muted: "border-gray-700",
-                focus: "focus:border-blue-400",
-                success: "border-green-600",
-                danger: "border-red-600",
-                warning: "border-yellow-600",
-                info: "border-blue-600",
-            }),
-        })
-        .build();
-
-    // Provide design system theme context
-    ThemeContext::provide(light_theme.clone());
-    
-    // Store themes in context for components to use
-    provide_context((light_theme, dark_theme));
+    // Provide design system theme context with light theme as default
+    ThemeContext::provide(Theme::light());
 
     view! {
         <div class=page_background()>

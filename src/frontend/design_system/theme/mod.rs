@@ -1,5 +1,6 @@
 pub mod tokens;
 pub mod variants;
+pub mod presets;
 
 pub use tokens::*;
 pub use variants::*;
@@ -19,14 +20,7 @@ pub struct Theme {
 
 impl Default for Theme {
     fn default() -> Self {
-        Self {
-            name: "default",
-            colors: ColorTokens::default(),
-            spacing: SpacingTokens::default(),
-            typography: TypographyTokens::default(),
-            borders: BorderTokens::default(),
-            shadows: ShadowTokens::default(),
-        }
+        Self::light()
     }
 }
 

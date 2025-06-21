@@ -1,5 +1,4 @@
 use leptos::prelude::*;
-use crate::frontend::state::theme::{tab_nav, tab_active, tab_inactive};
 
 #[component]
 pub fn TabNav(
