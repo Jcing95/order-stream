@@ -6,6 +6,7 @@ use leptos_router::{
 };
 use crate::frontend::pages::admin::AdminPage;
 use crate::frontend::pages::home::Home;
+use crate::frontend::pages::design_system::DesignSystemPage;
 use crate::frontend::state::theme::{ThemeState, page_background};
 use crate::frontend::design_system::{Theme, ThemeContext};
 
@@ -45,6 +46,7 @@ pub fn App() -> impl IntoView {
                 <FlatRoutes fallback=|| "Page not found.">
                     <Route path=StaticSegment("") view=Home/>
                     <Route path=StaticSegment("admin") view=AdminPage/>
+                    <Route path=StaticSegment("design-system") view=DesignSystemPage/>
                 </FlatRoutes>
             </Router>
         </div>
