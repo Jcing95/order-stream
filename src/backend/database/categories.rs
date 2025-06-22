@@ -15,7 +15,7 @@ pub struct CategoryRecord {
 impl From<CategoryRecord> for types::Category {
     fn from(record: CategoryRecord) -> Self {
         Self {
-            id: record.id.to_string(),
+            id: record.id.id.to_string(), // Extract just the UUID part
             name: record.name,
         }
     }

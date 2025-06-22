@@ -18,7 +18,7 @@ pub struct OrderItemRecord {
 impl From<OrderItemRecord> for types::OrderItem {
     fn from(record: OrderItemRecord) -> Self {
         Self {
-            id: record.id.to_string(),
+            id: record.id.id.to_string(), // Extract just the UUID part
             order_id: record.order_id,
             item_id: record.item_id,
             quantity: record.quantity,
@@ -40,6 +40,7 @@ pub struct ItemRecord {
 
 pub async fn create_order_item(db: &Database, request: types::CreateOrderItemRequest) -> AppResult<types::OrderItem> {
     // Get current item price for price snapshotting
+    // Use item ID directly since it's now a clean UUID
     let item: Option<ItemRecord> = db
         .select(("items", &request.item_id))
         .await
@@ -124,6 +125,7 @@ pub async fn update_order_item(
     // Update fields if provided
     if let Some(item_id) = request.item_id {
         // Get new item price for price snapshotting
+        // Use item ID directly since it's now a clean UUID
         let item: Option<ItemRecord> = db
             .select(("items", &item_id))
             .await

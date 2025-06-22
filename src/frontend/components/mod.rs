@@ -10,3 +10,7 @@ pub mod item_section;
 pub mod order_section;
 pub mod theme_toggle;
 pub mod loading;
+pub mod order_creation_panel;
+pub mod item_selector;
+pub mod cart_display;
+pub mod recent_orders_panel;

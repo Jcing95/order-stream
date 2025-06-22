@@ -18,7 +18,7 @@ pub struct OrderRecord {
 impl From<OrderRecord> for types::Order {
     fn from(record: OrderRecord) -> Self {
         Self {
-            id: record.id.to_string(),
+            id: record.id.id.to_string(), // Extract just the UUID part
             sequential_id: record.sequential_id,
             total_price: record.total_price,
             status: record.status,

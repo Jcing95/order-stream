@@ -18,7 +18,7 @@ pub struct ItemRecord {
 impl From<ItemRecord> for types::Item {
     fn from(record: ItemRecord) -> Self {
         Self {
-            id: record.id.to_string(),
+            id: record.id.id.to_string(), // Extract just the UUID part
             name: record.name,
             category_id: record.category_id,
             price: record.price,
