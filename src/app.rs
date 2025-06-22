@@ -12,7 +12,8 @@ use crate::frontend::pages::design_system::DesignSystemPage;
 use crate::frontend::pages::cashier::CashierPage;
 use crate::frontend::pages::station::{DynamicStationPage, StationsOverviewPage};
 use crate::frontend::state::theme::ThemeState;
-use crate::frontend::design_system::{Theme, ThemeContext};
+use crate::frontend::design_system::{Theme, ThemeContext, ThemeSwitcher};
+use crate::frontend::design_system::theme::Size;
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -42,8 +43,8 @@ pub fn App() -> impl IntoView {
     let theme_state = ThemeState::new();
     provide_context(theme_state);
 
-    // Initialize design system theme based on old theme state (reactive)
-    let initial_theme = if theme_state.is_dark().get() {
+    // Initialize design system theme based on old theme state (untracked for initialization)
+    let initial_theme = if theme_state.is_dark().get_untracked() {
         Theme::dark()
     } else {
         Theme::light()
@@ -69,6 +70,11 @@ pub fn App() -> impl IntoView {
 
     view! {
         <div class=move || page_bg_class.get()>
+            // Floating theme toggle widget
+            <div class="fixed top-4 right-4 z-50">
+                <ThemeSwitcher size=Size::Md />
+            </div>
+            
             <Router>
                 <FlatRoutes fallback=|| "Page not found.">
                     <Route path=StaticSegment("") view=Home/>

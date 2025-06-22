@@ -93,7 +93,8 @@ pub fn StationsOverviewPage() -> impl IntoView {
                     <Text 
                         variant=TextVariant::Body 
                         size=Size::Lg 
-                        class="mt-4 text-gray-600 dark:text-gray-400"
+                        intent=Intent::Secondary
+                        class="mt-4"
                     >
                         "Select your station to view and manage orders"
                     </Text>
@@ -203,7 +204,7 @@ fn DatabaseStationCard(
         <Card variant=CardVariant::Default>
             <a 
                 href=station_url
-                class="block p-6 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors duration-200"
+                class="block p-6 transition-colors duration-200"
             >
                 <div class="flex items-center mb-4">
                     <span class="text-3xl mr-3">"🏪"</span>
@@ -218,7 +219,8 @@ fn DatabaseStationCard(
                 <Text 
                     variant=TextVariant::Body 
                     size=Size::Md 
-                    class="text-gray-600 dark:text-gray-400 mb-3"
+                    intent=Intent::Secondary
+                    class="mb-3"
                 >
                     {description}
                 </Text>
@@ -226,11 +228,18 @@ fn DatabaseStationCard(
                     <Text 
                         variant=TextVariant::Caption 
                         size=Size::Sm 
-                        class="text-gray-500 dark:text-gray-500"
+                        intent=Intent::Secondary
                     >
                         "Click to open station"
                     </Text>
-                    <span class="text-blue-600 dark:text-blue-400">"→"</span>
+                    <Text 
+                        variant=TextVariant::Body 
+                        size=Size::Md 
+                        intent=Intent::Info
+                        as_element="span"
+                    >
+                        "→"
+                    </Text>
                 </div>
             </a>
         </Card>

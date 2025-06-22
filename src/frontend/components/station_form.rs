@@ -215,7 +215,7 @@ where
                         options=all_statuses.iter().map(|status| {
                             SelectOption::new(format!("{:?}", status), status_text(status))
                         }).collect()
-                        value=RwSignal::new(format!("{:?}", output_status.get()))
+                        value=RwSignal::new(format!("{:?}", output_status.get_untracked()))
                         on_change=Callback::new(move |ev| {
                             let value = event_target_value(&ev);
                             let status = match value.as_str() {

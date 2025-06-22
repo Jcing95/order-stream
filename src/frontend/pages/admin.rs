@@ -8,7 +8,7 @@ use crate::frontend::components::{
     station_section::StationSection,
 };
 use crate::frontend::design_system::{
-    Text, Alert, Spinner, ThemeSwitcher, Icon,
+    Text, Alert, Spinner, Icon,
     TextVariant, FontWeight, SpinnerVariant,
     theme::{Size, Intent},
     atoms::IconVariant,
@@ -35,7 +35,7 @@ pub fn AdminPage() -> impl IntoView {
 
     view! {
         <div class="container mx-auto p-6">
-            <div class="flex justify-between items-center mb-8">
+            <div class="mb-8">
                 <Text 
                     variant=TextVariant::Heading 
                     size=Size::Xl 
@@ -44,7 +44,6 @@ pub fn AdminPage() -> impl IntoView {
                 >
                     "Admin Panel"
                 </Text>
-                <ThemeSwitcher />
             </div>
             
             {move || state.error.get().map(|err| view! {

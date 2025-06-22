@@ -8,7 +8,6 @@ pub mod tab_nav;
 pub mod category_section;
 pub mod item_section;
 pub mod order_section;
-pub mod theme_toggle;
 pub mod loading;
 pub mod order_creation_panel;
 pub mod item_selector;
