@@ -5,9 +5,14 @@ use crate::frontend::components::{
     category_section::CategorySection,
     item_section::ItemSection,
     order_section::OrderSection,
-    theme_toggle::ThemeToggle,
 };
-use crate::frontend::state::{admin::AdminState, theme::{ThemeState, text_gradient, alert_base, alert_error, alert_info, spinner}};
+use crate::frontend::design_system::{
+    Text, Alert, Spinner, ThemeSwitcher, Icon,
+    TextVariant, FontWeight, SpinnerVariant,
+    theme::{Size, Intent},
+    atoms::IconVariant,
+};
+use crate::frontend::state::{admin::AdminState, theme::{ThemeState}};
 
 #[component]
 pub fn AdminPage() -> impl IntoView {
@@ -30,29 +35,38 @@ pub fn AdminPage() -> impl IntoView {
     view! {
         <div class="container mx-auto p-6">
             <div class="flex justify-between items-center mb-8">
-                <h1 class=format!("text-3xl font-bold {}", text_gradient())>"Admin Panel"</h1>
-                <ThemeToggle />
+                <Text 
+                    variant=TextVariant::Heading 
+                    size=Size::Xl 
+                    weight=FontWeight::Bold
+                    as_element="h1"
+                >
+                    "Admin Panel"
+                </Text>
+                <ThemeSwitcher />
             </div>
             
             {move || state.error.get().map(|err| view! {
-                <div class=format!("mb-6 {} {}", alert_base(), alert_error())>
-                    <div class="flex items-center space-x-2">
-                        <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
-                        </svg>
-                        <span class="font-medium">{err}</span>
-                    </div>
+                <div class="mb-6">
+                    <Alert intent=Intent::Danger>
+                        <div class="flex items-center space-x-2">
+                            <Icon name="x-circle" intent=Intent::Danger size=Size::Sm variant=IconVariant::Outline />
+                            <span class="font-medium">{err}</span>
+                        </div>
+                    </Alert>
                 </div>
             })}
             
             {move || {
                 if state.loading.get() {
                     view! {
-                        <div class=format!("mb-6 {} {}", alert_base(), alert_info())>
-                            <div class="flex items-center space-x-3">
-                                <div class=spinner()></div>
-                                <span class="font-medium">"Loading admin data..."</span>
-                            </div>
+                        <div class="mb-6">
+                            <Alert intent=Intent::Info>
+                                <div class="flex items-center space-x-3">
+                                    <Spinner size=Size::Sm variant=SpinnerVariant::Circle />
+                                    <span class="font-medium">"Loading admin data..."</span>
+                                </div>
+                            </Alert>
                         </div>
                     }.into_any()
                 } else {
