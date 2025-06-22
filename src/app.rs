@@ -10,7 +10,7 @@ use crate::frontend::pages::admin::AdminPage;
 use crate::frontend::pages::home::Home;
 use crate::frontend::pages::design_system::DesignSystemPage;
 use crate::frontend::pages::cashier::CashierPage;
-use crate::frontend::pages::station::{StationPage, DynamicStationPage, StationType, StationsOverviewPage};
+use crate::frontend::pages::station::{DynamicStationPage, StationsOverviewPage};
 use crate::frontend::state::theme::ThemeState;
 use crate::frontend::design_system::{Theme, ThemeContext};
 
@@ -42,8 +42,8 @@ pub fn App() -> impl IntoView {
     let theme_state = ThemeState::new();
     provide_context(theme_state);
 
-    // Initialize design system theme based on old theme state
-    let initial_theme = if theme_state.is_dark().get_untracked() {
+    // Initialize design system theme based on old theme state (reactive)
+    let initial_theme = if theme_state.is_dark().get() {
         Theme::dark()
     } else {
         Theme::light()
@@ -75,15 +75,7 @@ pub fn App() -> impl IntoView {
                     <Route path=StaticSegment("admin") view=AdminPage/>
                     <Route path=StaticSegment("design-system") view=DesignSystemPage/>
                     <Route path=StaticSegment("cashier") view=CashierPage/>
-                    <Route path=StaticSegment("stations") view=StationsOverviewPage/>
-                    
-                    // Legacy static station routes (backward compatibility)
-                    <Route path=StaticSegment("bar") view=move || view! { <StationPage station_type=StationType::Bar /> }/>
-                    <Route path=StaticSegment("kitchen") view=move || view! { <StationPage station_type=StationType::Kitchen /> }/>
-                    <Route path=StaticSegment("drinks") view=move || view! { <StationPage station_type=StationType::Drinks /> }/>
-                    <Route path=StaticSegment("food") view=move || view! { <StationPage station_type=StationType::Food /> }/>
-                    <Route path=StaticSegment("station") view=move || view! { <StationPage station_type=StationType::All /> }/>
-                    
+                    <Route path=StaticSegment("stations") view=StationsOverviewPage/>                    
                     // Dynamic station routes (database-driven)
                     <Route path=(StaticSegment("stations"), ParamSegment("name")) view=DynamicStationRoute/>
                 </FlatRoutes>

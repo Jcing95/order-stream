@@ -89,20 +89,25 @@ pub fn Text(
         let font_weight = weight.as_class();
         
         // Variant-specific styles
-        let variant_classes = match variant {
-            TextVariant::Body => "",
-            TextVariant::Heading => "leading-tight tracking-tight",
-            TextVariant::Label => "leading-none",
-            TextVariant::Caption => "leading-relaxed",
-            TextVariant::Code => "font-mono bg-gray-100 px-1 py-0.5 rounded text-gray-800",
+        let (variant_classes, code_bg, code_text) = match variant {
+            TextVariant::Body => ("", "", ""),
+            TextVariant::Heading => ("leading-tight tracking-tight", "", ""),
+            TextVariant::Label => ("leading-none", "", ""),
+            TextVariant::Caption => ("leading-relaxed", "", ""),
+            TextVariant::Code => ("font-mono px-1 py-0.5 rounded", theme.colors.background.code, theme.colors.text.code),
         };
         
         let mut classes = vec![
             text_size,
-            text_color,
+            if variant == TextVariant::Code { code_text } else { text_color },
             font_weight,
             variant_classes,
         ];
+        
+        // Add code background for code variant
+        if variant == TextVariant::Code {
+            classes.push(code_bg);
+        }
         
         if let Some(additional_class) = class {
             classes.push(additional_class);

@@ -31,6 +31,9 @@ pub struct TextColors {
     pub warning: &'static str,
     pub info: &'static str,
     
+    // Code/inline elements
+    pub code: &'static str,
+    
     // Alert text colors (for use on alert backgrounds)
     pub alert_success: &'static str,
     pub alert_danger: &'static str,
@@ -58,6 +61,9 @@ pub struct BackgroundColors {
     pub page: &'static str,
     pub surface: &'static str,
     pub elevated: &'static str,
+    
+    // Code/inline elements
+    pub code: &'static str,
     
     // Alert backgrounds
     pub alert_success: &'static str,
@@ -338,6 +344,9 @@ impl Default for TextColors {
             warning: "text-yellow-700",
             info: "text-blue-700",
             
+            // Code/inline elements
+            code: "text-gray-800",
+            
             // Default alert text colors
             alert_success: "text-green-800",
             alert_danger: "text-red-800",
@@ -379,6 +388,9 @@ impl Default for BackgroundColors {
             page: "bg-gray-50",
             surface: "bg-white",
             elevated: "bg-white",
+            
+            // Code/inline elements
+            code: "bg-gray-100",
             
             // Default alert backgrounds
             alert_success: "bg-green-50",

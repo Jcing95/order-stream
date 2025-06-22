@@ -17,7 +17,7 @@ pub fn Home() -> impl IntoView {
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-4xl">
                         // Admin and Management
-                        <A href="/admin">
+                        <A href="/admin/">
                             <Card variant=CardVariant::Default>
                                     <div class="text-lg">"🔧"</div>
                                     <div>"Admin Panel"</div>
@@ -26,61 +26,25 @@ pub fn Home() -> impl IntoView {
                         </A>
 
                         // Cashier Station
-                        <A href="/cashier">
+                        <A href="/cashier/">
                             <Card variant=CardVariant::Default>
                                 <div class="text-lg">"💰"</div>
-                                <div>"Cashier Station"</div>
+                                <div>"Cashier"</div>
                                 <div class="text-sm opacity-90">"Take orders & payments"</div>
                             </Card>
                         </A>
 
-                        // Bar Station
-                        <A href="/bar">
-                            <Card variant=CardVariant::Default>
-                                <div class="text-lg">"🍸"</div>
-                                <div>"Bar Station"</div>
-                                <div class="text-sm opacity-90">"Alcoholic drinks & cocktails"</div>
-                            </Card>
-                        </A>
-
-                        // Kitchen Station
-                        <A href="/kitchen">
-                            <Card variant=CardVariant::Default>
-                                <div class="text-lg">"🍳"</div>
-                                <div>"Kitchen Station"</div>
-                                <div class="text-sm opacity-90">"Hot food & prepared meals"</div>
-                            </Card>
-                        </A>
-
-                        // Drinks Station
-                        <A href="/drinks">
-                            <Card variant=CardVariant::Default>
-                                <div class="text-lg">"🥤"</div>
-                                <div>"Drinks Station"</div>
-                                <div class="text-sm opacity-90">"Beverages & soft drinks"</div>
-                            </Card>
-                        </A>
-
-                        // Food Station
-                        <A href="/food">
-                            <Card variant=CardVariant::Default>
-                                <div class="text-lg">"🍿"</div>
-                                <div>"Food Station"</div>
-                                <div class="text-sm opacity-90">"Snacks & cold food"</div>
-                            </Card>
-                        </A>
-
                         // All Items Station
-                        <A href="/station">
+                        <A href="/stations/">
                             <Card variant=CardVariant::Default>
                                 <div class="text-lg">"📋"</div>
-                                <div>"All Orders"</div>
+                                <div>"Select Station"</div>
                                 <div class="text-sm opacity-90">"View all order types"</div>
                             </Card>
                         </A>
 
                         // Design System
-                        <A href="/design-system">
+                        <A href="/design-system/">
                             <Card variant=CardVariant::Default>
                                 <div class="text-lg">"🎨"</div>
                                 <div>"Design System"</div>

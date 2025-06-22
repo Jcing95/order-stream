@@ -42,6 +42,9 @@ fn light_color_tokens() -> ColorTokens {
             warning: "text-amber-700",      // Rich amber
             info: "text-sky-700",           // Clear sky blue
             
+            // Code/inline elements
+            code: "text-slate-800",         // Slightly darker for code
+            
             // Alert text colors for light theme
             alert_success: "text-emerald-800",
             alert_danger: "text-rose-800", 
@@ -65,6 +68,9 @@ fn light_color_tokens() -> ColorTokens {
             page: "bg-slate-50",                // Warm neutral background
             surface: "bg-white",                // Pure white surfaces
             elevated: "bg-white",               // Clean elevated surfaces
+            
+            // Code/inline elements
+            code: "bg-slate-100",               // Light code background
             
             // Alert backgrounds for light theme
             alert_success: "bg-emerald-50",
@@ -104,6 +110,9 @@ fn dark_color_tokens() -> ColorTokens {
             warning: "text-amber-400",      // Warm amber for dark mode
             info: "text-sky-400",           // Gentle sky blue
             
+            // Code/inline elements
+            code: "text-slate-200",         // Light code text for dark theme
+            
             // Alert text colors for dark theme
             alert_success: "text-emerald-200",
             alert_danger: "text-rose-200",
@@ -127,6 +136,9 @@ fn dark_color_tokens() -> ColorTokens {
             page: "bg-slate-950",               // Deep, comfortable dark background
             surface: "bg-slate-900",            // Card surfaces with subtle warmth
             elevated: "bg-slate-800",           // Elevated elements like modals
+            
+            // Code/inline elements
+            code: "bg-slate-800",               // Dark code background
             
             // Alert backgrounds for dark theme
             alert_success: "bg-emerald-900/30",
