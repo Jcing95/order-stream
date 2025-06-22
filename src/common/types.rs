@@ -93,6 +93,7 @@ pub struct OrderItem {
     pub item_id: String,       // Reference to Item
     pub quantity: u32,
     pub price: f64,           // Unit price when ordered (historical snapshot)
+    pub status: OrderStatus,   // Individual item status
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -106,6 +107,13 @@ pub struct CreateOrderItemRequest {
 pub struct UpdateOrderItemRequest {
     pub item_id: Option<String>,  // Allow changing the item (for corrections)
     pub quantity: Option<u32>,
+    pub status: Option<OrderStatus>, // Allow updating status
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BulkOrderItemUpdate {
+    pub order_item_ids: Vec<String>,
+    pub new_status: OrderStatus,
 }
 
 impl CreateOrderItemRequest {
@@ -118,6 +126,64 @@ impl CreateOrderItemRequest {
         }
         if self.quantity == 0 {
             return Err("Quantity must be greater than 0".to_string());
+        }
+        Ok(())
+    }
+}
+
+impl BulkOrderItemUpdate {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.order_item_ids.is_empty() {
+            return Err("At least one order item ID must be provided".to_string());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub enum StationType {
+    Preparation, // Kitchen/Bar - Ordered → Ready
+    Serving,     // Pickup - Ready → Completed
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Station {
+    pub id: String,
+    pub name: String,                    // "Bar", "Kitchen", "Pickup"
+    pub category_ids: Vec<String>,       // Filter: show only these categories
+    pub input_statuses: Vec<OrderStatus>, // Show orders with items in these statuses
+    pub output_status: OrderStatus,      // What status to update items to
+    pub station_type: StationType,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateStationRequest {
+    pub name: String,
+    pub category_ids: Vec<String>,
+    pub input_statuses: Vec<OrderStatus>,
+    pub output_status: OrderStatus,
+    pub station_type: StationType,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateStationRequest {
+    pub name: Option<String>,
+    pub category_ids: Option<Vec<String>>,
+    pub input_statuses: Option<Vec<OrderStatus>>,
+    pub output_status: Option<OrderStatus>,
+    pub station_type: Option<StationType>,
+}
+
+impl CreateStationRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.name.trim().is_empty() {
+            return Err("Station name cannot be empty".to_string());
+        }
+        if self.category_ids.is_empty() {
+            return Err("At least one category must be selected".to_string());
+        }
+        if self.input_statuses.is_empty() {
+            return Err("At least one input status must be selected".to_string());
         }
         Ok(())
     }

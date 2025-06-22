@@ -1,20 +1,20 @@
 use leptos::prelude::*;
-use crate::common::types::{CreateOrderItemRequest, OrderItem, UpdateOrderItemRequest, BulkOrderItemUpdate};
+use crate::common::types::{Station, CreateStationRequest, UpdateStationRequest};
 
 #[cfg(feature = "ssr")]
 use crate::backend::errors::AppError;
 #[cfg(feature = "ssr")]
 use crate::backend::database;
 
-#[server(GetOrderItems, "/api")]
-pub async fn get_order_items(order_id: String) -> Result<Vec<OrderItem>, ServerFnError> {
+#[server(GetStations, "/api")]
+pub async fn get_stations() -> Result<Vec<Station>, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
         let db = database::get_db_connection()
             .await
             .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
         
-        database::order_items::get_order_items(&db, &order_id)
+        database::stations::get_stations(&db)
             .await
             .map_err(|e: AppError| ServerFnError::new(e.to_string()))
     }
@@ -24,26 +24,8 @@ pub async fn get_order_items(order_id: String) -> Result<Vec<OrderItem>, ServerF
     }
 }
 
-#[server(GetAllOrderItems, "/api")]
-pub async fn get_all_order_items() -> Result<Vec<OrderItem>, ServerFnError> {
-    #[cfg(feature = "ssr")]
-    {
-        let db = database::get_db_connection()
-            .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
-        
-        database::order_items::get_all_order_items(&db)
-            .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
-    }
-    #[cfg(not(feature = "ssr"))]
-    {
-        unreachable!("Server function called on client side")
-    }
-}
-
-#[server(CreateOrderItem, "/api")]
-pub async fn create_order_item(request: CreateOrderItemRequest) -> Result<OrderItem, ServerFnError> {
+#[server(CreateStation, "/api")]
+pub async fn create_station(request: CreateStationRequest) -> Result<Station, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
         // Validation happens in service layer
@@ -55,7 +37,7 @@ pub async fn create_order_item(request: CreateOrderItemRequest) -> Result<OrderI
             .await
             .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
         
-        database::order_items::create_order_item(&db, request)
+        database::stations::create_station(&db, request)
             .await
             .map_err(|e: AppError| ServerFnError::new(e.to_string()))
     }
@@ -65,20 +47,20 @@ pub async fn create_order_item(request: CreateOrderItemRequest) -> Result<OrderI
     }
 }
 
-#[server(GetOrderItem, "/api")]
-pub async fn get_order_item(id: String) -> Result<OrderItem, ServerFnError> {
+#[server(GetStation, "/api")]
+pub async fn get_station(id: String) -> Result<Station, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
         let db = database::get_db_connection()
             .await
             .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
         
-        match database::order_items::get_order_item(&db, &id)
+        match database::stations::get_station(&db, &id)
             .await
             .map_err(|e: AppError| ServerFnError::new(e.to_string()))?
         {
-            Some(order_item) => Ok(order_item),
-            None => Err(ServerFnError::new(format!("Order item with id {} not found", id))),
+            Some(station) => Ok(station),
+            None => Err(ServerFnError::new(format!("Station with id {} not found", id))),
         }
     }
     #[cfg(not(feature = "ssr"))]
@@ -87,15 +69,37 @@ pub async fn get_order_item(id: String) -> Result<OrderItem, ServerFnError> {
     }
 }
 
-#[server(UpdateOrderItem, "/api")]
-pub async fn update_order_item(id: String, request: UpdateOrderItemRequest) -> Result<OrderItem, ServerFnError> {
+#[server(GetStationByName, "/api")]
+pub async fn get_station_by_name(name: String) -> Result<Station, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
         let db = database::get_db_connection()
             .await
             .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
         
-        database::order_items::update_order_item(&db, &id, request)
+        match database::stations::get_station_by_name(&db, &name)
+            .await
+            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?
+        {
+            Some(station) => Ok(station),
+            None => Err(ServerFnError::new(format!("Station with name '{}' not found", name))),
+        }
+    }
+    #[cfg(not(feature = "ssr"))]
+    {
+        unreachable!("Server function called on client side")
+    }
+}
+
+#[server(UpdateStation, "/api")]
+pub async fn update_station(id: String, request: UpdateStationRequest) -> Result<Station, ServerFnError> {
+    #[cfg(feature = "ssr")]
+    {
+        let db = database::get_db_connection()
+            .await
+            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+        
+        database::stations::update_station(&db, &id, request)
             .await
             .map_err(|e: AppError| ServerFnError::new(e.to_string()))
     }
@@ -105,38 +109,15 @@ pub async fn update_order_item(id: String, request: UpdateOrderItemRequest) -> R
     }
 }
 
-#[server(DeleteOrderItem, "/api")]
-pub async fn delete_order_item(id: String) -> Result<(), ServerFnError> {
+#[server(DeleteStation, "/api")]
+pub async fn delete_station(id: String) -> Result<(), ServerFnError> {
     #[cfg(feature = "ssr")]
     {
         let db = database::get_db_connection()
             .await
             .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
         
-        database::order_items::delete_order_item(&db, &id)
-            .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
-    }
-    #[cfg(not(feature = "ssr"))]
-    {
-        unreachable!("Server function called on client side")
-    }
-}
-
-#[server(BulkUpdateOrderItems, "/api")]
-pub async fn bulk_update_order_items(update: BulkOrderItemUpdate) -> Result<Vec<OrderItem>, ServerFnError> {
-    #[cfg(feature = "ssr")]
-    {
-        // Validation happens in service layer
-        update
-            .validate()
-            .map_err(|e| ServerFnError::new(e))?;
-
-        let db = database::get_db_connection()
-            .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
-        
-        database::order_items::bulk_update_order_items(&db, update)
+        database::stations::delete_station(&db, &id)
             .await
             .map_err(|e: AppError| ServerFnError::new(e.to_string()))
     }
