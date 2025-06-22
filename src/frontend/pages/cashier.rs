@@ -217,7 +217,7 @@ pub fn CashierPage() -> impl IntoView {
                                     pending_item=pending_item.read_only()
                                     error_message=error_message.read_only()
                                     total=total
-                                    on_create_order=Callback::new(move |_| { create_new_order.dispatch(()); })
+                                    on_create_order=Callback::new(move |_| { /* Moved to cart */ })
                                 />
                             }.into_any()
                         }
@@ -254,37 +254,35 @@ pub fn CashierPage() -> impl IntoView {
                     }}
                 </Suspense>
 
-                // Cart sidebar (right side)
-                <Suspense fallback=|| view! { <div></div> }>
-                    {move || {
-                        if let Some(order) = current_order.get() {
+                // Cart sidebar (right side) - Always visible
+                <div class="w-80 bg-gray-50 dark:bg-slate-800 border-l border-gray-200 dark:border-slate-700 flex flex-col">
+                    <Suspense fallback=|| view! { <div class="p-4">"Loading cart..."</div> }>
+                        {move || {
                             match (order_items.get(), items.get()) {
                                 (Some(Ok(all_order_items)), Some(Ok(items_list))) => {
-                                    let cart_items = get_cart_items(Some(order.clone()), all_order_items, items_list);
+                                    let cart_items = get_cart_items(current_order.get(), all_order_items, items_list);
                                     view! {
-                                        <div class="w-80 bg-gray-50 dark:bg-slate-800 border-l border-gray-200 dark:border-slate-700 flex flex-col">
-                                            <CartSidebar 
-                                                cart_items=cart_items
-                                                on_remove_item=Callback::new(remove_from_cart)
-                                                on_add_to_cart=Callback::new(add_to_cart)
-                                                on_process_payment=Callback::new(move |_| { process_payment.dispatch(()); })
-                                                on_cancel_order=Callback::new(cancel_order)
-                                                is_processing=is_creating_order.get()
-                                            />
-                                        </div>
+                                        <CartSidebar 
+                                            cart_items=cart_items
+                                            current_order=current_order.read_only()
+                                            is_creating_order=is_creating_order.read_only()
+                                            pending_item=pending_item.read_only()
+                                            on_create_order=Callback::new(move |_| { create_new_order.dispatch(()); })
+                                            on_remove_item=Callback::new(remove_from_cart)
+                                            on_add_to_cart=Callback::new(add_to_cart)
+                                            on_process_payment=Callback::new(move |_| { process_payment.dispatch(()); })
+                                            on_cancel_order=Callback::new(cancel_order)
+                                            is_processing=is_creating_order.get()
+                                        />
                                     }.into_any()
                                 }
                                 _ => view! {
-                                    <div class="w-80 bg-gray-50 dark:bg-slate-800 border-l border-gray-200 dark:border-slate-700 flex flex-col">
-                                        <div class="p-4">"Loading cart..."</div>
-                                    </div>
+                                    <div class="p-4">"Loading cart..."</div>
                                 }.into_any()
                             }
-                        } else {
-                            view! { <div></div> }.into_any()
-                        }
-                    }}
-                </Suspense>
+                        }}
+                    </Suspense>
+                </div>
             </div>
         </div>
     }

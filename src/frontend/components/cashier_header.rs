@@ -3,7 +3,7 @@ use crate::common::types::Order;
 use crate::frontend::design_system::{
     atoms::{FontWeight, TextVariant},
     theme::{Intent, Size},
-    Text, Button, Alert,
+    Text, Alert,
 };
 
 #[component]
@@ -39,19 +39,19 @@ pub fn CashierHeader(
                         }.into_any()
                     } else if is_creating_order.get() || pending_item.get().is_some() {
                         view! {
-                            <Text variant=TextVariant::Body size=Size::Md intent=Intent::Secondary>
-                                "Creating order..."
-                            </Text>
+                            <div class="text-right">
+                                <Text variant=TextVariant::Body size=Size::Md intent=Intent::Secondary>
+                                    "Creating order..."
+                                </Text>
+                            </div>
                         }.into_any()
                     } else {
                         view! {
-                            <Button
-                                size=Size::Lg
-                                intent=Intent::Primary
-                                on_click=on_create_order
-                            >
-                                "Start New Order"
-                            </Button>
+                            <div class="text-right">
+                                <Text variant=TextVariant::Body size=Size::Md intent=Intent::Secondary>
+                                    "No active order"
+                                </Text>
+                            </div>
                         }.into_any()
                     }
                 }}

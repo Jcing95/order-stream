@@ -107,7 +107,7 @@ pub fn Spinner(
                     <div class=format!("{} rounded-full animate-bounce {}", dot_size, color_class.replace("border", "bg"))></div>
                     <span class="sr-only">{label.unwrap_or("Loading...")}</span>
                 </div>
-            }
+            }.into()
         },
     };
     
