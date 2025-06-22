@@ -20,3 +20,9 @@ pub mod station_view;
 pub mod station_section;
 pub mod station_form;
 pub mod station_list;
+
+// Cashier-specific components
+pub mod cashier_header;
+pub mod category_grid;
+pub mod category_pane;
+pub mod cart_sidebar;
