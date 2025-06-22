@@ -5,6 +5,7 @@ use crate::frontend::components::{
     category_section::CategorySection,
     item_section::ItemSection,
     order_section::OrderSection,
+    station_section::StationSection,
 };
 use crate::frontend::design_system::{
     Text, Alert, Spinner, ThemeSwitcher, Icon,
@@ -81,6 +82,7 @@ pub fn AdminPage() -> impl IntoView {
                     ("categories", "Categories"),
                     ("items", "Items"),
                     ("orders", "Orders"),
+                    ("stations", "Stations"),
                 ]
             />
             
@@ -112,6 +114,16 @@ pub fn AdminPage() -> impl IntoView {
                                 orders=state.orders.read_only() 
                                 on_create=move |_| state.create_order() 
                                 on_delete=move |order_id| state.delete_order(order_id) 
+                            />
+                        }.into_any()
+                    },
+                    "stations" => {
+                        view! {
+                            <StationSection 
+                                stations=state.stations.read_only()
+                                categories=state.categories.read_only()
+                                on_submit=move |request| state.create_station(request) 
+                                on_delete=move |station_id| state.delete_station(station_id) 
                             />
                         }.into_any()
                     },

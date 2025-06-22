@@ -1,19 +1,19 @@
 use leptos::prelude::*;
-use leptos::task::spawn_local;
-use crate::common::types::{Order, OrderStatus};
-use crate::frontend::components::order_card::OrderCard;
+use leptos_router::hooks::use_navigate;
+// Station type is used in StationView component prop
+use crate::frontend::components::{
+    station_view::{StationView, StationViewMode},
+    loading::LoadingSpinner
+};
 use crate::frontend::design_system::{
-    Card, CardVariant, Button, Text, Alert,
+    Text, Alert, Card, CardVariant, Button,
     theme::{Size, Intent},
     atoms::{TextVariant, FontWeight},
 };
-use crate::backend::services::{
-    orders::{get_orders, update_order_status},
-    order_items::get_all_order_items,
-    items::get_items,
-    categories::get_categories,
-};
+use crate::backend::services::stations::{get_station_by_name, get_stations};
+use crate::common::types::Station;
 
+// Legacy station types for backward compatibility
 #[derive(Clone, PartialEq, Default)]
 pub enum StationType {
     #[default]
@@ -34,14 +34,15 @@ impl StationType {
             StationType::All => "All Items Station",
         }
     }
-
-    pub fn category_filter(&self) -> Option<Vec<String>> {
+    
+    // Convert legacy enum to station name for database lookup
+    pub fn station_name(&self) -> &'static str {
         match self {
-            StationType::Bar => Some(vec!["Alcoholic Drinks".to_string(), "Cocktails".to_string()]),
-            StationType::Kitchen => Some(vec!["Hot Food".to_string(), "Prepared Food".to_string()]),
-            StationType::Drinks => Some(vec!["Beverages".to_string(), "Soft Drinks".to_string(), "Coffee".to_string()]),
-            StationType::Food => Some(vec!["Snacks".to_string(), "Cold Food".to_string()]),
-            StationType::All => None,
+            StationType::Bar => "Bar",
+            StationType::Kitchen => "Kitchen",
+            StationType::Drinks => "Drinks",
+            StationType::Food => "Food",
+            StationType::All => "All",
         }
     }
 }
@@ -50,309 +51,278 @@ impl StationType {
 pub fn StationPage(
     #[prop(optional)] station_type: StationType,
 ) -> impl IntoView {
-    let station_type = StoredValue::new(station_type);
+    let station_name = station_type.station_name().to_string();
     
-    // Data signals
-    let orders = Resource::new(|| (), |_| get_orders());
-    let order_items = Resource::new(|| (), |_| get_all_order_items());
-    let items = Resource::new(|| (), |_| get_items());
-    let categories = Resource::new(|| (), |_| get_categories());
-    
-    // UI state
-    let selected_category_filter = RwSignal::new(String::new());
-    let error_message = RwSignal::new(None::<String>);
-    let status_filter = RwSignal::new(vec![OrderStatus::Ordered, OrderStatus::Ready]);
-
-    // Update order status
-    let update_status = move |order_id: String, new_status: OrderStatus| {
-        spawn_local(async move {
-            match update_order_status(order_id, new_status).await {
-                Ok(_) => {
-                    orders.refetch();
-                    error_message.set(None);
-                }
-                Err(e) => {
-                    error_message.set(Some(format!("Failed to update order: {}", e)));
-                }
-            }
-        });
-    };
-
-    // Filter orders based on station type and status
-    let filtered_orders = Signal::derive(move || {
-        let station = station_type.with_value(|s| s.clone());
-        match (orders.get(), order_items.get(), items.get(), categories.get()) {
-            (Some(Ok(orders_list)), Some(Ok(order_items_list)), Some(Ok(items_list)), Some(Ok(categories_list))) => {
-                let status_filters = status_filter.get();
-                let category_filter = selected_category_filter.get();
-                
-                // Filter orders by status
-                let mut filtered: Vec<Order> = orders_list
-                    .into_iter()
-                    .filter(|order| status_filters.contains(&order.status))
-                    .collect();
-
-                // Filter by station type if not All
-                if let Some(station_categories) = station.category_filter() {
-                    filtered.retain(|order| {
-                        // Check if this order has any items that belong to this station's categories
-                        let order_has_station_items = order_items_list
-                            .iter()
-                            .filter(|oi| oi.order_id == order.id)
-                            .any(|oi| {
-                                if let Some(item) = items_list.iter().find(|i| i.id == oi.item_id) {
-                                    if let Some(category) = categories_list.iter().find(|c| c.id == item.category_id) {
-                                        station_categories.contains(&category.name)
-                                    } else {
-                                        false
-                                    }
-                                } else {
-                                    false
-                                }
-                            });
-                        order_has_station_items
-                    });
-                }
-
-                // Filter by specific category if selected
-                if !category_filter.is_empty() {
-                    filtered.retain(|order| {
-                        order_items_list
-                            .iter()
-                            .filter(|oi| oi.order_id == order.id)
-                            .any(|oi| {
-                                if let Some(item) = items_list.iter().find(|i| i.id == oi.item_id) {
-                                    item.category_id == category_filter
-                                } else {
-                                    false
-                                }
-                            })
-                    });
-                }
-
-                // Sort by order priority: Ordered first, then Ready
-                filtered.sort_by(|a, b| {
-                    match (&a.status, &b.status) {
-                        (OrderStatus::Ordered, OrderStatus::Ready) => std::cmp::Ordering::Less,
-                        (OrderStatus::Ready, OrderStatus::Ordered) => std::cmp::Ordering::Greater,
-                        _ => a.sequential_id.cmp(&b.sequential_id),
-                    }
-                });
-
-                filtered
-            }
-            _ => Vec::new()
-        }
-    });
-
-    // Get available categories for this station
-    let available_categories = Signal::derive(move || {
-        let station = station_type.with_value(|s| s.clone());
-        if let Some(Ok(categories_list)) = categories.get() {
-            if let Some(station_categories) = station.category_filter() {
-                categories_list
-                    .into_iter()
-                    .filter(|cat| station_categories.contains(&cat.name))
-                    .collect::<Vec<_>>()
-            } else {
-                categories_list
-            }
-        } else {
-            Vec::new()
-        }
-    });
+    // Load station configuration from database
+    let station_resource = Resource::new(
+        move || station_name.clone(), 
+        |name| get_station_by_name(name)
+    );
 
     view! {
-        <div class="container mx-auto p-6 space-y-6">
-            <div class="flex justify-between items-center">
-                <Text 
-                    variant=TextVariant::Heading 
-                    size=Size::Xl 
-                    weight=FontWeight::Bold
-                >
-                    {station_type.with_value(|s| s.display_name())}
-                </Text>
-                
-                // Auto-refresh indicator
-                <div class="flex items-center gap-2">
-                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <Text variant=TextVariant::Caption size=Size::Sm>
-                        "Live updates"
-                    </Text>
-                </div>
-            </div>
-
-            // Error display
+        <Suspense fallback=move || view! { <LoadingSpinner /> }>
             {move || {
-                error_message.get().map(|msg| {
-                    view! {
-                        <Alert intent=Intent::Danger size=Size::Md>
-                            {msg}
-                        </Alert>
+                match station_resource.get() {
+                    Some(Ok(station)) => {
+                        view! {
+                            <StationView 
+                                station=station
+                                view_mode=StationViewMode::OrderCards
+                            />
+                        }.into_any()
+                    },
+                    Some(Err(e)) => {
+                        view! {
+                            <div class="container mx-auto p-6">
+                                <Alert intent=Intent::Danger size=Size::Lg>
+                                    <div class="space-y-2">
+                                        <Text 
+                                            variant=TextVariant::Heading 
+                                            size=Size::Lg 
+                                            weight=FontWeight::Bold
+                                        >
+                                            "Station Not Found"
+                                        </Text>
+                                        <Text variant=TextVariant::Body size=Size::Md>
+                                            "Could not load station configuration: " {e.to_string()}
+                                        </Text>
+                                        <Text variant=TextVariant::Body size=Size::Sm>
+                                            "Please contact an administrator to set up this station."
+                                        </Text>
+                                    </div>
+                                </Alert>
+                            </div>
+                        }.into_any()
+                    },
+                    None => {
+                        view! { <LoadingSpinner /> }.into_any()
                     }
-                })
+                }
             }}
+        </Suspense>
+    }
+}
 
-            // Filters
-            <Card variant=CardVariant::Default>
-                <div class="space-y-4">
+// New component for database-driven station routing
+#[component]
+pub fn DynamicStationPage(
+    station_name: String,
+) -> impl IntoView {
+    let station_name_clone = station_name.clone();
+    
+    // Load station configuration from database
+    let station_resource = Resource::new(
+        move || station_name.clone(), 
+        |name| get_station_by_name(name)
+    );
+
+    view! {
+        <Suspense fallback=move || view! { <LoadingSpinner /> }>
+            {move || {
+                match station_resource.get() {
+                    Some(Ok(station)) => {
+                        view! {
+                            <StationView 
+                                station=station
+                                view_mode=StationViewMode::OrderCards
+                            />
+                        }.into_any()
+                    },
+                    Some(Err(e)) => {
+                        let error_name = station_name_clone.clone();
+                        view! {
+                            <div class="container mx-auto p-6">
+                                <Alert intent=Intent::Danger size=Size::Lg>
+                                    <div class="space-y-2">
+                                        <Text 
+                                            variant=TextVariant::Heading 
+                                            size=Size::Lg 
+                                            weight=FontWeight::Bold
+                                        >
+                                            "Station Not Found"
+                                        </Text>
+                                        <Text variant=TextVariant::Body size=Size::Md>
+                                            "Could not load station '" {error_name} "': " {e.to_string()}
+                                        </Text>
+                                        <Text variant=TextVariant::Body size=Size::Sm>
+                                            "Please contact an administrator to set up this station."
+                                        </Text>
+                                    </div>
+                                </Alert>
+                            </div>
+                        }.into_any()
+                    },
+                    None => {
+                        view! { <LoadingSpinner /> }.into_any()
+                    }
+                }
+            }}
+        </Suspense>
+    }
+}
+#[component]
+pub fn StationsOverviewPage() -> impl IntoView {
+    // Load all stations from database
+    let stations_resource = Resource::new(
+        || (), 
+        |_| get_stations()
+    );
+
+    view! {
+        <div class="container mx-auto p-6">
+            <div class="max-w-4xl mx-auto">
+                <div class="text-center mb-8">
+                    <Text 
+                        variant=TextVariant::Heading 
+                        size=Size::Xl 
+                        weight=FontWeight::Bold
+                        as_element="h1"
+                    >
+                        "Order Stations"
+                    </Text>
                     <Text 
                         variant=TextVariant::Body 
-                        size=Size::Md 
-                        weight=FontWeight::Medium
+                        size=Size::Lg 
+                        class="mt-4 text-gray-600 dark:text-gray-400"
                     >
-                        "Filters"
+                        "Select your station to view and manage orders"
                     </Text>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        // Status filter
-                        <div class="space-y-2">
-                            <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
-                                "Show Orders"
-                            </Text>
-                            <div class="space-y-2">
-                                <label class="flex items-center gap-2">
-                                    <input 
-                                        type="checkbox" 
-                                        checked=move || status_filter.get().contains(&OrderStatus::Ordered)
-                                        on:change=move |ev| {
-                                            let checked = event_target_checked(&ev);
-                                            let mut filters = status_filter.get();
-                                            if checked {
-                                                if !filters.contains(&OrderStatus::Ordered) {
-                                                    filters.push(OrderStatus::Ordered);
-                                                }
-                                            } else {
-                                                filters.retain(|s| *s != OrderStatus::Ordered);
-                                            }
-                                            status_filter.set(filters);
-                                        }
-                                    />
-                                    <Text variant=TextVariant::Body size=Size::Sm>
-                                        "New Orders"
-                                    </Text>
-                                </label>
-                                <label class="flex items-center gap-2">
-                                    <input 
-                                        type="checkbox" 
-                                        checked=move || status_filter.get().contains(&OrderStatus::Ready)
-                                        on:change=move |ev| {
-                                            let checked = event_target_checked(&ev);
-                                            let mut filters = status_filter.get();
-                                            if checked {
-                                                if !filters.contains(&OrderStatus::Ready) {
-                                                    filters.push(OrderStatus::Ready);
-                                                }
-                                            } else {
-                                                filters.retain(|s| *s != OrderStatus::Ready);
-                                            }
-                                            status_filter.set(filters);
-                                        }
-                                    />
-                                    <Text variant=TextVariant::Body size=Size::Sm>
-                                        "Ready Orders"
-                                    </Text>
-                                </label>
-                            </div>
-                        </div>
+                </div>
 
-                        // Category filter (if applicable)
-                        {move || {
-                            let categories = available_categories.get();
-                            if categories.len() > 1 {
-                                view! {
-                                    <div class="space-y-2">
-                                        <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
-                                            "Category"
-                                        </Text>
-                                        <select 
-                                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            on:change=move |ev| selected_category_filter.set(event_target_value(&ev))
-                                        >
-                                            <option value="">"All Categories"</option>
-                                            {categories.into_iter().map(|category| {
+                <Suspense fallback=move || view! { <LoadingSpinner /> }>
+                    {move || {
+                        match stations_resource.get() {
+                            Some(Ok(stations)) => {
+                                if stations.is_empty() {
+                                    view! {
+                                        <div class="text-center">
+                                            <Alert intent=Intent::Info size=Size::Lg>
+                                                <div class="space-y-4">
+                                                    <Text 
+                                                        variant=TextVariant::Heading 
+                                                        size=Size::Lg 
+                                                        weight=FontWeight::Bold
+                                                    >
+                                                        "No Stations Configured"
+                                                    </Text>
+                                                    <Text 
+                                                        variant=TextVariant::Body 
+                                                        size=Size::Md
+                                                    >
+                                                        "No stations have been set up yet. Contact an administrator to configure stations."
+                                                    </Text>
+                                                    <Button
+                                                        size=Size::Md
+                                                        intent=Intent::Primary
+                                                        on_click=Callback::new(|_| {
+                                                            let navigate = use_navigate();
+                                                            navigate("/admin", Default::default());
+                                                        })
+                                                    >
+                                                        "Go to Admin Panel"
+                                                    </Button>
+                                                </div>
+                                            </Alert>
+                                        </div>
+                                    }.into_any()
+                                } else {
+                                    view! {
+                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {stations.into_iter().map(|station| {
                                                 view! {
-                                                    <option value=&category.id>
-                                                        {category.name}
-                                                    </option>
+                                                    <DatabaseStationCard station=station />
                                                 }
                                             }).collect_view()}
-                                        </select>
+                                        </div>
+                                    }.into_any()
+                                }
+                            },
+                            Some(Err(_)) => {
+                                view! {
+                                    <div class="text-center">
+                                        <Alert intent=Intent::Danger size=Size::Lg>
+                                            <div class="space-y-2">
+                                                <Text 
+                                                    variant=TextVariant::Heading 
+                                                    size=Size::Lg 
+                                                    weight=FontWeight::Bold
+                                                >
+                                                    "Error Loading Stations"
+                                                </Text>
+                                                <Text 
+                                                    variant=TextVariant::Body 
+                                                    size=Size::Md
+                                                >
+                                                    "Unable to load station configuration. Please try again or contact an administrator."
+                                                </Text>
+                                            </div>
+                                        </Alert>
                                     </div>
                                 }.into_any()
-                            } else {
-                                view! {}.into_any()
+                            },
+                            None => {
+                                view! { <LoadingSpinner /> }.into_any()
                             }
-                        }}
-
-                        // Quick refresh button
-                        <div class="flex items-end">
-                            <Button
-                                size=Size::Md
-                                intent=Intent::Secondary
-                                on_click=Callback::new(move |_| {
-                                    orders.refetch();
-                                    order_items.refetch();
-                                })
-                            >
-                                "Refresh"
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </Card>
-
-            // Orders display
-            <div class="space-y-4">
-                {move || {
-                    let filtered = filtered_orders.get();
-                    if filtered.is_empty() {
-                        view! {
-                            <Alert intent=Intent::Info size=Size::Lg>
-                                "No orders to display. Check your filters or wait for new orders."
-                            </Alert>
-                        }.into_any()
-                    } else {
-                        view! {
-                            <div class="space-y-2">
-                                <Text 
-                                    variant=TextVariant::Body 
-                                    size=Size::Md 
-                                    weight=FontWeight::Medium
-                                >
-                                    {format!("{} orders", filtered.len())}
-                                </Text>
-                                
-                                <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-                                    {filtered.into_iter().map(|order| {
-                                        // Determine allowed status transitions for this station
-                                        let allowed_statuses = match order.status {
-                                            OrderStatus::Ordered => vec![OrderStatus::Ready, OrderStatus::Cancelled],
-                                            OrderStatus::Ready => vec![OrderStatus::Completed, OrderStatus::Cancelled],
-                                            _ => vec![],
-                                        };
-                                        
-                                        view! {
-                                            <OrderCard
-                                                order=order
-                                                order_items=Signal::derive(move || {
-                                                    order_items.get().unwrap_or_else(|| Ok(Vec::new())).unwrap_or_default()
-                                                })
-                                                items=Signal::derive(move || {
-                                                    items.get().unwrap_or_else(|| Ok(Vec::new())).unwrap_or_default()
-                                                })
-                                                on_status_update=update_status
-                                                show_status_controls=true
-                                                allowed_statuses=allowed_statuses
-                                            />
-                                        }
-                                    }).collect_view()}
-                                </div>
-                            </div>
-                        }.into_any()
-                    }
-                }}
+                        }
+                    }}
+                </Suspense>
             </div>
         </div>
+    }
+}
+
+#[component]
+fn DatabaseStationCard(
+    station: Station,
+) -> impl IntoView {
+    let station_url = format!("/stations/{}", station.name.to_lowercase().replace(" ", "-"));
+    let station_name = station.name.clone();
+    
+    // Create a description based on the station configuration
+    let description = format!(
+        "Handles {} • Shows {} orders",
+        if station.category_ids.is_empty() { 
+            "all categories".to_string() 
+        } else { 
+            format!("{} categories", station.category_ids.len()) 
+        },
+        station.input_statuses.len()
+    );
+
+    view! {
+        <Card variant=CardVariant::Default>
+            <a 
+                href=station_url
+                class="block p-6 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors duration-200"
+            >
+                <div class="flex items-center mb-4">
+                    <span class="text-3xl mr-3">"🏪"</span>
+                    <Text 
+                        variant=TextVariant::Heading 
+                        size=Size::Lg 
+                        weight=FontWeight::Semibold
+                    >
+                        {station_name}
+                    </Text>
+                </div>
+                <Text 
+                    variant=TextVariant::Body 
+                    size=Size::Md 
+                    class="text-gray-600 dark:text-gray-400 mb-3"
+                >
+                    {description}
+                </Text>
+                <div class="flex items-center justify-between">
+                    <Text 
+                        variant=TextVariant::Caption 
+                        size=Size::Sm 
+                        class="text-gray-500 dark:text-gray-500"
+                    >
+                        "Click to open station"
+                    </Text>
+                    <span class="text-blue-600 dark:text-blue-400">"→"</span>
+                </div>
+            </a>
+        </Card>
     }
 }

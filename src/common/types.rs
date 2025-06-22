@@ -140,12 +140,6 @@ impl BulkOrderItemUpdate {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
-pub enum StationType {
-    Preparation, // Kitchen/Bar - Ordered → Ready
-    Serving,     // Pickup - Ready → Completed
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Station {
     pub id: String,
@@ -153,7 +147,6 @@ pub struct Station {
     pub category_ids: Vec<String>,       // Filter: show only these categories
     pub input_statuses: Vec<OrderStatus>, // Show orders with items in these statuses
     pub output_status: OrderStatus,      // What status to update items to
-    pub station_type: StationType,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -162,7 +155,6 @@ pub struct CreateStationRequest {
     pub category_ids: Vec<String>,
     pub input_statuses: Vec<OrderStatus>,
     pub output_status: OrderStatus,
-    pub station_type: StationType,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -171,7 +163,6 @@ pub struct UpdateStationRequest {
     pub category_ids: Option<Vec<String>>,
     pub input_statuses: Option<Vec<OrderStatus>>,
     pub output_status: Option<OrderStatus>,
-    pub station_type: Option<StationType>,
 }
 
 impl CreateStationRequest {

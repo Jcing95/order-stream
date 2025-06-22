@@ -22,7 +22,7 @@ pub fn TabNav(
                         view! {
                             <Button
                                 size=Size::Sm
-                                intent=if is_active.get() { Intent::Primary } else { Intent::Secondary }
+                                intent=if is_active.get_untracked() { Intent::Primary } else { Intent::Secondary }
                                 on_click=Callback::new({
                                     let tab_id = tab_id.clone();
                                     move |_| set_active_tab.set(tab_id.clone())

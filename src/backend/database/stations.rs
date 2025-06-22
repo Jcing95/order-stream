@@ -9,9 +9,8 @@ pub struct StationRecord {
     pub id: Thing,
     pub name: String,
     pub category_ids: Vec<String>,       // JSON array in database
-    pub input_statuses: Vec<types::OrderStatus>, // JSON array in database
+    pub input_statuses: Vec<types::OrderStatus>, // JSON array in database  
     pub output_status: types::OrderStatus,
-    pub station_type: types::StationType,
     pub created_at: Datetime,
     pub updated_at: Datetime,
 }
@@ -24,7 +23,6 @@ impl From<StationRecord> for types::Station {
             category_ids: record.category_ids,
             input_statuses: record.input_statuses,
             output_status: record.output_status,
-            station_type: record.station_type,
         }
     }
 }
@@ -36,7 +34,6 @@ pub async fn create_station(db: &Database, request: types::CreateStationRequest)
         category_ids: Vec<String>,
         input_statuses: Vec<types::OrderStatus>,
         output_status: types::OrderStatus,
-        station_type: types::StationType,
         created_at: Datetime,
         updated_at: Datetime,
     }
@@ -48,7 +45,6 @@ pub async fn create_station(db: &Database, request: types::CreateStationRequest)
             category_ids: request.category_ids,
             input_statuses: request.input_statuses,
             output_status: request.output_status,
-            station_type: request.station_type,
             created_at: Datetime::default(),
             updated_at: Datetime::default(),
         })
@@ -123,9 +119,6 @@ pub async fn update_station(
         existing.output_status = output_status;
     }
 
-    if let Some(station_type) = request.station_type {
-        existing.station_type = station_type;
-    }
 
     existing.updated_at = Datetime::default();
 

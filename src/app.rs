@@ -2,13 +2,15 @@ use leptos::prelude::*;
 use leptos_meta::*;
 use leptos_router::{
     components::{FlatRoutes, Route, Router},
-    StaticSegment,
+    StaticSegment, ParamSegment,
+    params::Params,
+    hooks::use_params,
 };
 use crate::frontend::pages::admin::AdminPage;
 use crate::frontend::pages::home::Home;
 use crate::frontend::pages::design_system::DesignSystemPage;
 use crate::frontend::pages::cashier::CashierPage;
-use crate::frontend::pages::station::{StationPage, StationType};
+use crate::frontend::pages::station::{StationPage, DynamicStationPage, StationType, StationsOverviewPage};
 use crate::frontend::state::theme::ThemeState;
 use crate::frontend::design_system::{Theme, ThemeContext};
 
@@ -73,13 +75,56 @@ pub fn App() -> impl IntoView {
                     <Route path=StaticSegment("admin") view=AdminPage/>
                     <Route path=StaticSegment("design-system") view=DesignSystemPage/>
                     <Route path=StaticSegment("cashier") view=CashierPage/>
+                    <Route path=StaticSegment("stations") view=StationsOverviewPage/>
+                    
+                    // Legacy static station routes (backward compatibility)
                     <Route path=StaticSegment("bar") view=move || view! { <StationPage station_type=StationType::Bar /> }/>
                     <Route path=StaticSegment("kitchen") view=move || view! { <StationPage station_type=StationType::Kitchen /> }/>
                     <Route path=StaticSegment("drinks") view=move || view! { <StationPage station_type=StationType::Drinks /> }/>
                     <Route path=StaticSegment("food") view=move || view! { <StationPage station_type=StationType::Food /> }/>
                     <Route path=StaticSegment("station") view=move || view! { <StationPage station_type=StationType::All /> }/>
+                    
+                    // Dynamic station routes (database-driven)
+                    <Route path=(StaticSegment("stations"), ParamSegment("name")) view=DynamicStationRoute/>
                 </FlatRoutes>
             </Router>
         </div>
+    }
+}
+
+// Route handler for dynamic station URLs /stations/:name
+#[derive(Params, PartialEq, Clone)]
+struct StationParams {
+    name: String,
+}
+
+#[component]
+fn DynamicStationRoute() -> impl IntoView {
+    let params = use_params::<StationParams>();
+    
+    view! {
+        {move || {
+            match params.with(|params| params.clone()) {
+                Ok(StationParams { name }) => {
+                    view! {
+                        <DynamicStationPage station_name=name />
+                    }.into_any()
+                },
+                Err(_) => {
+                    view! {
+                        <div class="container mx-auto p-6">
+                            <div class="text-center">
+                                <h1 class="text-2xl font-bold text-red-600 mb-4">
+                                    "Invalid Station Route"
+                                </h1>
+                                <p class="text-gray-600">
+                                    "Station name is required in the URL."
+                                </p>
+                            </div>
+                        </div>
+                    }.into_any()
+                }
+            }
+        }}
     }
 }

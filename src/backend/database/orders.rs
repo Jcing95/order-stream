@@ -95,6 +95,23 @@ pub async fn update_order(
     id: &str,
     request: types::UpdateOrderRequest,
 ) -> AppResult<types::Order> {
+    update_order_internal(db, id, request, true).await
+}
+
+pub async fn update_order_without_cascade(
+    db: &Database,
+    id: &str,
+    request: types::UpdateOrderRequest,
+) -> AppResult<types::Order> {
+    update_order_internal(db, id, request, false).await
+}
+
+async fn update_order_internal(
+    db: &Database,
+    id: &str,
+    request: types::UpdateOrderRequest,
+    cascade_to_items: bool,
+) -> AppResult<types::Order> {
     // First check if order exists
     let existing: Option<OrderRecord> = db
         .select(("orders", id))
@@ -106,7 +123,24 @@ pub async fn update_order(
 
     // Update fields if provided
     if let Some(status) = request.status {
+        let old_status = existing.status;
         existing.status = status;
+        
+        // When moving to ordered status, update all order items to ordered as well
+        // But only if this isn't being called from recalculation to avoid infinite loop
+        if cascade_to_items && status == types::OrderStatus::Ordered && old_status != types::OrderStatus::Ordered {
+            // The order_id in order_items is stored as just the UUID, not "orders:uuid"
+            let update_query = "UPDATE order_items SET status = $new_status, updated_at = time::now() WHERE order_id = $order_id";
+            
+            let result = db.query(update_query)
+                .bind(("new_status", types::OrderStatus::Ordered))
+                .bind(("order_id", id.to_string()))
+                .await
+                .map_err(|e| AppError::DatabaseError(format!("Failed to update order items status: {}", e)))?;
+                
+            // Log how many items were updated for debugging
+            leptos::logging::log!("Updated order items for order {}: {:?}", id, result);
+        }
     }
 
     existing.updated_at = Datetime::default();

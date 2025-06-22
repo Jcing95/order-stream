@@ -1,10 +1,11 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
-use crate::common::types::{Category, Item, Order, CreateCategoryRequest, CreateItemRequest};
+use crate::common::types::{Category, Item, Order, Station, CreateCategoryRequest, CreateItemRequest, CreateStationRequest};
 use crate::backend::services::{
     categories::{get_categories, create_category, delete_category},
     items::{get_items, create_item},
     orders::{get_orders, create_order, delete_order},
+    stations::{get_stations, create_station, delete_station},
 };
 
 #[derive(Clone, Copy)]
@@ -12,6 +13,7 @@ pub struct AdminState {
     pub categories: RwSignal<Vec<Category>>,
     pub items: RwSignal<Vec<Item>>,
     pub orders: RwSignal<Vec<Order>>,
+    pub stations: RwSignal<Vec<Station>>,
     pub loading: RwSignal<bool>,
     pub error: RwSignal<Option<String>>,
 }
@@ -22,6 +24,7 @@ impl AdminState {
             categories: RwSignal::new(Vec::new()),
             items: RwSignal::new(Vec::new()),
             orders: RwSignal::new(Vec::new()),
+            stations: RwSignal::new(Vec::new()),
             loading: RwSignal::new(false),
             error: RwSignal::new(None),
         }
@@ -60,6 +63,16 @@ impl AdminState {
             }
             Err(err) => {
                 self.error.set(Some(format!("Failed to load orders: {}", err)));
+            }
+        }
+        
+        // Load stations
+        match get_stations().await {
+            Ok(fetched_stations) => {
+                self.stations.set(fetched_stations);
+            }
+            Err(err) => {
+                self.error.set(Some(format!("Failed to load stations: {}", err)));
             }
         }
         
@@ -161,6 +174,47 @@ impl AdminState {
                 }
                 Err(err) => {
                     state.error.set(Some(format!("Failed to delete order: {}", err)));
+                }
+            }
+            
+            state.loading.set(false);
+        });
+    }
+
+    // Station operations with backend calls
+    pub fn create_station(&self, request: CreateStationRequest) {
+        let state = self.clone();
+        spawn_local(async move {
+            state.loading.set(true);
+            state.error.set(None);
+            
+            match create_station(request).await {
+                Ok(new_station) => {
+                    state.stations.update(|stations| stations.push(new_station));
+                }
+                Err(err) => {
+                    state.error.set(Some(format!("Failed to create station: {}", err)));
+                }
+            }
+            
+            state.loading.set(false);
+        });
+    }
+
+    pub fn delete_station(&self, station_id: String) {
+        let state = self.clone();
+        spawn_local(async move {
+            state.loading.set(true);
+            state.error.set(None);
+            
+            match delete_station(station_id.clone()).await {
+                Ok(_) => {
+                    state.stations.update(|stations| {
+                        stations.retain(|s| s.id != station_id);
+                    });
+                }
+                Err(err) => {
+                    state.error.set(Some(format!("Failed to delete station: {}", err)));
                 }
             }
             

@@ -233,12 +233,12 @@ async fn recalculate_order_status(db: &Database, order_id: &str) -> AppResult<()
         .cloned()
         .unwrap_or(types::OrderStatus::Draft);
 
-    // Update the order status
+    // Update the order status without cascading to avoid infinite loop
     let order_update_request = types::UpdateOrderRequest {
         status: Some(new_order_status),
     };
 
-    super::orders::update_order(db, order_id, order_update_request).await?;
+    super::orders::update_order_without_cascade(db, order_id, order_update_request).await?;
     
     Ok(())
 }
