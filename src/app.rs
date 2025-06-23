@@ -104,8 +104,13 @@ fn DynamicStationRoute() -> impl IntoView {
         {move || {
             match params.with(|params| params.clone()) {
                 Ok(StationParams { name }) => {
+                    // Convert URL-friendly name back to potential station names
+                    // URLs are generated as lowercase with spaces replaced by hyphens
+                    // So we need to try both the URL format and converting back
+                    let converted_name = name.replace("-", " ");
+                    
                     view! {
-                        <DynamicStationPage station_name=name />
+                        <DynamicStationPage station_name=converted_name />
                     }.into_any()
                 },
                 Err(_) => {

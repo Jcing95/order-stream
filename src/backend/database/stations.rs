@@ -74,6 +74,7 @@ pub async fn get_station(db: &Database, id: &str) -> AppResult<Option<types::Sta
 }
 
 pub async fn get_station_by_name(db: &Database, name: &str) -> AppResult<Option<types::Station>> {
+    // Try exact match first (for backward compatibility)
     let query = "SELECT * FROM stations WHERE name = $name LIMIT 1";
     let mut response = db
         .query(query)
@@ -84,6 +85,23 @@ pub async fn get_station_by_name(db: &Database, name: &str) -> AppResult<Option<
     let stations: Vec<StationRecord> = response
         .take(0)
         .map_err(|e| AppError::DatabaseError(format!("Failed to parse station query result: {}", e)))?;
+
+    // If exact match found, return it
+    if let Some(station) = stations.into_iter().next() {
+        return Ok(Some(station.into()));
+    }
+
+    // If no exact match, try case-insensitive match
+    let query = "SELECT * FROM stations WHERE string::lowercase(name) = string::lowercase($name) LIMIT 1";
+    let mut response = db
+        .query(query)
+        .bind(("name", name.to_string()))
+        .await
+        .map_err(|e| AppError::DatabaseError(format!("Failed to get station by name (case-insensitive): {}", e)))?;
+
+    let stations: Vec<StationRecord> = response
+        .take(0)
+        .map_err(|e| AppError::DatabaseError(format!("Failed to parse station query result (case-insensitive): {}", e)))?;
 
     Ok(stations.into_iter().next().map(|record| record.into()))
 }
