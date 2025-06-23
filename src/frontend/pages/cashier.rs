@@ -12,14 +12,12 @@ use crate::frontend::components::{
     category_grid::CategoryGrid,
     cart_sidebar::CartSidebar,
 };
+use crate::frontend::design_system::{Card, atoms::CardVariant, theme::Size};
 
 #[component]
 pub fn CashierPage() -> impl IntoView {
     // State for current draft order
     let current_order = RwSignal::new(None::<Order>);
-    
-    // State for pending item to add after order creation
-    let pending_item = RwSignal::new(None::<(String, u32)>);
 
     // Error and loading state
     let error_message = RwSignal::new(None::<String>);
@@ -38,67 +36,64 @@ pub fn CashierPage() -> impl IntoView {
 
         match create_order().await {
             Ok(order) => {
-                current_order.set(Some(order.clone()));
+                current_order.set(Some(order));
                 error_message.set(None);
-                
-                // If there's a pending item, add it now
-                if let Some((item_id, quantity)) = pending_item.get_untracked() {
-                    pending_item.set(None);
-                    
-                    let request = CreateOrderItemRequest {
-                        order_id: order.id,
-                        item_id,
-                        quantity,
-                    };
-
-                    match create_order_item(request).await {
-                        Ok(_) => {
-                            order_items.refetch();
-                        }
-                        Err(e) => {
-                            error_message.set(Some(format!("Failed to add item: {}", e)));
-                        }
-                    }
-                }
             }
             Err(e) => {
                 error_message.set(Some(format!("Failed to create order: {}", e)));
-                pending_item.set(None); // Clear pending item on error
             }
         }
 
         is_creating_order.set(false);
     });
 
-    // Add item to cart (immediately to database)
+    // Add item to cart - creates order if none exists
     let add_to_cart = move |(item_id, quantity): (String, u32)| {
         if item_id.is_empty() || quantity == 0 {
             error_message.set(Some("Please select an item and quantity".to_string()));
             return;
         }
 
-        if let Some(order) = current_order.get() {
-            let order_id = order.id.clone();
-            spawn_local(async move {
-                let request = CreateOrderItemRequest {
-                    order_id,
-                    item_id,
-                    quantity,
-                };
-
-                match create_order_item(request).await {
-                    Ok(_) => {
-                        order_items.refetch();
-                        error_message.set(None);
+        spawn_local(async move {
+            error_message.set(None);
+            
+            // Get or create order
+            let order = if let Some(existing_order) = current_order.get_untracked() {
+                existing_order
+            } else {
+                // Create new order first
+                is_creating_order.set(true);
+                match create_order().await {
+                    Ok(new_order) => {
+                        current_order.set(Some(new_order.clone()));
+                        is_creating_order.set(false);
+                        new_order
                     }
                     Err(e) => {
-                        error_message.set(Some(format!("Failed to add item: {}", e)));
+                        error_message.set(Some(format!("Failed to create order: {}", e)));
+                        is_creating_order.set(false);
+                        return;
                     }
                 }
-            });
-        } else {
-            error_message.set(Some("No active order to add items to".to_string()));
-        }
+            };
+
+            // Add item to order
+            let request = CreateOrderItemRequest {
+                order_id: order.id,
+                item_id,
+                quantity,
+            };
+
+            match create_order_item(request).await {
+                Ok(_) => {
+                    order_items.refetch();
+                    error_message.set(None);
+                }
+                Err(e) => {
+                    error_message.set(Some(format!("Failed to add item: {}", e)));
+                }
+            }
+        });
     };
 
     // Process payment (just change status from Draft to Ordered)
@@ -214,10 +209,8 @@ pub fn CashierPage() -> impl IntoView {
                                 <CashierHeader
                                     current_order=current_order.read_only()
                                     is_creating_order=is_creating_order.read_only()
-                                    pending_item=pending_item.read_only()
                                     error_message=error_message.read_only()
                                     total=total
-                                    on_create_order=Callback::new(move |_| { /* Moved to cart */ })
                                 />
                             }.into_any()
                         }
@@ -240,10 +233,8 @@ pub fn CashierPage() -> impl IntoView {
                                         categories=cats
                                         items=items_list
                                         current_order=current_order.read_only()
-                                        pending_item=pending_item
                                         is_creating_order=is_creating_order.read_only()
                                         on_item_click=Callback::new(add_to_cart)
-                                        create_new_order=create_new_order.clone()
                                     />
                                 }.into_any()
                             }
@@ -255,33 +246,34 @@ pub fn CashierPage() -> impl IntoView {
                 </Suspense>
 
                 // Cart sidebar (right side) - Always visible
-                <div class="w-80 bg-gray-50 dark:bg-slate-800 border-l border-gray-200 dark:border-slate-700 flex flex-col">
-                    <Suspense fallback=|| view! { <div class="p-4">"Loading cart..."</div> }>
-                        {move || {
-                            match (order_items.get(), items.get()) {
-                                (Some(Ok(all_order_items)), Some(Ok(items_list))) => {
-                                    let cart_items = get_cart_items(current_order.get(), all_order_items, items_list);
-                                    view! {
-                                        <CartSidebar 
-                                            cart_items=cart_items
-                                            current_order=current_order.read_only()
-                                            is_creating_order=is_creating_order.read_only()
-                                            pending_item=pending_item.read_only()
-                                            on_create_order=Callback::new(move |_| { create_new_order.dispatch(()); })
-                                            on_remove_item=Callback::new(remove_from_cart)
-                                            on_add_to_cart=Callback::new(add_to_cart)
-                                            on_process_payment=Callback::new(move |_| { process_payment.dispatch(()); })
-                                            on_cancel_order=Callback::new(cancel_order)
-                                            is_processing=is_creating_order.get()
-                                        />
+                <div class="w-80">
+                    <Card variant=CardVariant::Elevated padding=Size::Sm class="h-full border-l">
+                        <Suspense fallback=|| view! { <div class="p-4">"Loading cart..."</div> }>
+                            {move || {
+                                match (order_items.get(), items.get()) {
+                                    (Some(Ok(all_order_items)), Some(Ok(items_list))) => {
+                                        let cart_items = get_cart_items(current_order.get(), all_order_items, items_list);
+                                        view! {
+                                            <CartSidebar 
+                                                cart_items=cart_items
+                                                current_order=current_order.read_only()
+                                                is_creating_order=is_creating_order.read_only()
+                                                on_create_order=Callback::new(move |_| { create_new_order.dispatch(()); })
+                                                on_remove_item=Callback::new(remove_from_cart)
+                                                on_add_to_cart=Callback::new(add_to_cart)
+                                                on_process_payment=Callback::new(move |_| { process_payment.dispatch(()); })
+                                                on_cancel_order=Callback::new(cancel_order)
+                                                is_processing=is_creating_order.get()
+                                            />
+                                        }.into_any()
+                                    }
+                                    _ => view! {
+                                        <div class="p-4">"Loading cart..."</div>
                                     }.into_any()
                                 }
-                                _ => view! {
-                                    <div class="p-4">"Loading cart..."</div>
-                                }.into_any()
-                            }
-                        }}
-                    </Suspense>
+                            }}
+                        </Suspense>
+                    </Card>
                 </div>
             </div>
         </div>

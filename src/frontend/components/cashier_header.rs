@@ -1,22 +1,20 @@
 use leptos::prelude::*;
 use crate::common::types::Order;
 use crate::frontend::design_system::{
-    atoms::{FontWeight, TextVariant},
+    atoms::{FontWeight, TextVariant, CardVariant},
     theme::{Intent, Size},
-    Text, Alert,
+    Text, Alert, Card,
 };
 
 #[component]
 pub fn CashierHeader(
     current_order: ReadSignal<Option<Order>>,
     is_creating_order: ReadSignal<bool>,
-    pending_item: ReadSignal<Option<(String, u32)>>,
     error_message: ReadSignal<Option<String>>,
     total: f64,
-    on_create_order: Callback<leptos::ev::MouseEvent>,
 ) -> impl IntoView {
     view! {
-        <div class="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700 p-4">
+        <Card variant=CardVariant::Default padding=Size::Md class="border-b">
             <div class="flex justify-between items-center">
                 <Text
                     variant=TextVariant::Heading
@@ -37,7 +35,7 @@ pub fn CashierHeader(
                                 </Text>
                             </div>
                         }.into_any()
-                    } else if is_creating_order.get() || pending_item.get().is_some() {
+                    } else if is_creating_order.get() {
                         view! {
                             <div class="text-right">
                                 <Text variant=TextVariant::Body size=Size::Md intent=Intent::Secondary>
@@ -69,6 +67,6 @@ pub fn CashierHeader(
                     }
                 })
             }}
-        </div>
+        </Card>
     }
 }

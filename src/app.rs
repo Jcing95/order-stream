@@ -12,8 +12,7 @@ use crate::frontend::pages::design_system::DesignSystemPage;
 use crate::frontend::pages::cashier::CashierPage;
 use crate::frontend::pages::station::{DynamicStationPage, StationsOverviewPage};
 use crate::frontend::state::theme::ThemeState;
-use crate::frontend::design_system::{Theme, ThemeContext, ThemeSwitcher};
-use crate::frontend::design_system::theme::Size;
+use crate::frontend::design_system::{Theme, ThemeContext, Navbar};
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -70,12 +69,8 @@ pub fn App() -> impl IntoView {
 
     view! {
         <div class=move || page_bg_class.get()>
-            // Floating theme toggle widget
-            <div class="fixed top-4 right-4 z-50">
-                <ThemeSwitcher size=Size::Md />
-            </div>
-            
             <Router>
+                <Navbar />
                 <FlatRoutes fallback=|| "Page not found.">
                     <Route path=StaticSegment("") view=Home/>
                     <Route path=StaticSegment("admin") view=AdminPage/>

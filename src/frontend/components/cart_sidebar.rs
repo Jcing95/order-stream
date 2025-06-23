@@ -11,7 +11,6 @@ pub fn CartSidebar(
     cart_items: Vec<(Item, u32, Vec<String>)>,
     current_order: ReadSignal<Option<crate::common::types::Order>>,
     is_creating_order: ReadSignal<bool>,
-    pending_item: ReadSignal<Option<(String, u32)>>,
     on_create_order: Callback<leptos::ev::MouseEvent>,
     on_remove_item: Callback<String>,
     on_add_to_cart: Callback<(String, u32)>,
@@ -34,7 +33,7 @@ pub fn CartSidebar(
                                 "Current Order"
                             </Text>
                         }.into_any()
-                    } else if is_creating_order.get() || pending_item.get().is_some() {
+                    } else if is_creating_order.get() {
                         view! {
                             <Text 
                                 variant=TextVariant::Heading 
@@ -71,7 +70,8 @@ pub fn CartSidebar(
             // Cart items
             <div class="flex-1 overflow-y-auto p-4">
                 {
-                    if current_order.get().is_none() {
+                    // Use untracked access to avoid reactive warnings since cart_items isn't reactive
+                    if current_order.get_untracked().is_none() {
                         view! {
                             <div class="text-center py-8">
                                 <Text variant=TextVariant::Body intent=Intent::Secondary>
@@ -121,19 +121,19 @@ pub fn CartSidebar(
                                                 
                                                 <div class="flex items-center justify-between">
                                                     <div class="flex items-center gap-2">
-                                                        <button
-                                                            class="w-6 h-6 flex items-center justify-center bg-gray-200 hover:bg-gray-300 dark:bg-slate-600 dark:hover:bg-slate-500 rounded text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                                            on:click=move |_| {
+                                                        <Button
+                                                            size=Size::Xs
+                                                            intent=Intent::Secondary
+                                                            state=if quantity <= 1 { ComponentState::Disabled } else { ComponentState::Enabled }
+                                                            on_click=Callback::new(move |_| {
                                                                 if quantity > 1 {
                                                                     // Remove one item using the first order item ID
                                                                     on_remove_item.run(first_order_item_id.clone());
                                                                 }
-                                                            }
-                                                            disabled=move || quantity <= 1
-                                                            title="Remove one"
+                                                            })
                                                         >
                                                             "−"
-                                                        </button>
+                                                        </Button>
                                                         
                                                         <Text 
                                                             variant=TextVariant::Body 
@@ -144,16 +144,16 @@ pub fn CartSidebar(
                                                             {quantity.to_string()}
                                                         </Text>
                                                         
-                                                        <button
-                                                            class="w-6 h-6 flex items-center justify-center bg-green-200 hover:bg-green-300 dark:bg-green-700 dark:hover:bg-green-600 rounded text-sm font-semibold transition-colors"
-                                                            on:click=move |_| {
+                                                        <Button
+                                                            size=Size::Xs
+                                                            intent=Intent::Success
+                                                            on_click=Callback::new(move |_| {
                                                                 // Add one more of this item
                                                                 on_add_to_cart.run((item_id_add.clone(), 1));
-                                                            }
-                                                            title="Add one more"
+                                                            })
                                                         >
                                                             "+"
-                                                        </button>
+                                                        </Button>
                                                     </div>
                                                     
                                                     <div class="flex items-center gap-1">
@@ -164,18 +164,18 @@ pub fn CartSidebar(
                                                         >
                                                             "$" {format!("{:.2}", item_price)} " each"
                                                         </Text>
-                                                        <button
-                                                            class="ml-2 px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-                                                            on:click=move |_| {
+                                                        <Button
+                                                            size=Size::Xs
+                                                            intent=Intent::Danger
+                                                            on_click=Callback::new(move |_| {
                                                                 // Remove all of this item type using all order item IDs
                                                                 for order_item_id in order_item_ids.iter() {
                                                                     on_remove_item.run(order_item_id.clone());
                                                                 }
-                                                            }
-                                                            title="Remove all"
+                                                            })
                                                         >
                                                             "×"
-                                                        </button>
+                                                        </Button>
                                                     </div>
                                                 </div>
                                             </div>

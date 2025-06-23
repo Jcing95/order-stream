@@ -3,6 +3,7 @@
 /// This module provides a comprehensive design system following Atomic Design principles:
 /// - **Atoms**: Basic building blocks (Button, Input, Text, etc.)
 /// - **Molecules**: Combinations of atoms (FormField, SearchBar, Card, etc.)
+/// - **Organisms**: Complex components combining atoms and molecules (Navbar, etc.)
 /// - **Theme**: Theming system with design tokens and variants
 /// 
 /// The design system is built with:
@@ -46,8 +47,10 @@
 pub mod theme;
 pub mod atoms;
 pub mod molecules;
+pub mod organisms;
 
 // Re-export everything for convenience
 pub use theme::*;
 pub use atoms::*;
 pub use molecules::*;
+pub use organisms::*;

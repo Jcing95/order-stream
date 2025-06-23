@@ -12,10 +12,8 @@ pub fn CategoryGrid(
     categories: Vec<Category>,
     items: Vec<Item>,
     current_order: ReadSignal<Option<Order>>,
-    pending_item: RwSignal<Option<(String, u32)>>,
     is_creating_order: ReadSignal<bool>,
     on_item_click: Callback<(String, u32)>,
-    create_new_order: Action<(), ()>,
 ) -> impl IntoView {
     view! {
         <div class="flex-1 p-4 overflow-y-auto">
@@ -43,9 +41,7 @@ pub fn CategoryGrid(
                                         items=category_items
                                         on_item_click=on_item_click
                                         current_order=current_order
-                                        pending_item=pending_item
                                         is_creating_order=is_creating_order
-                                        create_new_order=create_new_order.clone()
                                     />
                                 }
                             }).collect_view()}
