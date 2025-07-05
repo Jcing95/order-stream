@@ -10,6 +10,7 @@ pub mod items;
 pub mod orders;
 pub mod order_items;
 pub mod stations;
+pub mod users;
 
 pub type Database = Surreal<Client>;
 

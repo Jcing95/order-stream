@@ -26,11 +26,11 @@ pub fn StationView(
     view_mode: StationViewMode,
 ) -> impl IntoView {
     
-    // Data signals
-    let orders = Resource::new(|| (), |_| get_orders());
-    let order_items = Resource::new(|| (), |_| get_all_order_items());
-    let items = Resource::new(|| (), |_| get_items());
-    let categories = Resource::new(|| (), |_| get_categories());
+    // Data signals - using LocalResource to avoid SSR issues
+    let orders = LocalResource::new(|| get_orders());
+    let order_items = LocalResource::new(|| get_all_order_items());
+    let items = LocalResource::new(|| get_items());
+    let categories = LocalResource::new(|| get_categories());
     
     // Clone station data for use in closures
     let station_category_ids = station.category_ids.clone();

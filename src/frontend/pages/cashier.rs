@@ -23,11 +23,11 @@ pub fn CashierPage() -> impl IntoView {
     let error_message = RwSignal::new(None::<String>);
     let is_creating_order = RwSignal::new(false);
 
-    // Data resources
-    let orders = Resource::new(|| (), |_| get_orders());
-    let order_items = Resource::new(|| (), |_| get_all_order_items());
-    let items = Resource::new(|| (), |_| get_items());
-    let categories = Resource::new(|| (), |_| get_categories());
+    // Data resources - using LocalResource to avoid SSR issues
+    let orders = LocalResource::new(|| get_orders());
+    let order_items = LocalResource::new(|| get_all_order_items());
+    let items = LocalResource::new(|| get_items());
+    let categories = LocalResource::new(|| get_categories());
 
     // Create new draft order
     let create_new_order = Action::new(move |_: &()| async move {

@@ -11,7 +11,7 @@ pub fn CategoryPane(
     category: Category,
     items: Vec<Item>,
     on_item_click: Callback<(String, u32)>,
-    current_order: ReadSignal<Option<Order>>,
+    _current_order: ReadSignal<Option<Order>>,
     is_creating_order: ReadSignal<bool>,
 ) -> impl IntoView {
     view! {

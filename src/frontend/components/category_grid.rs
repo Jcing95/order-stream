@@ -40,7 +40,7 @@ pub fn CategoryGrid(
                                         category=category
                                         items=category_items
                                         on_item_click=on_item_click
-                                        current_order=current_order
+                                        _current_order=current_order
                                         is_creating_order=is_creating_order
                                     />
                                 }

@@ -5,11 +5,29 @@ use crate::common::types::{CreateItemRequest, Item, UpdateItemRequest};
 use crate::backend::errors::AppError;
 #[cfg(feature = "ssr")]
 use crate::backend::database;
+#[cfg(feature = "ssr")]
+use crate::backend::services::auth::{get_authenticated_user_from_request, require_auth, require_role};
+#[cfg(feature = "ssr")]
+use crate::common::types::UserRole;
+#[cfg(feature = "ssr")]
+use leptos_axum::extract;
+#[cfg(feature = "ssr")]
+use tower_cookies::Cookies;
 
 #[server(GetItems, "/api")]
 pub async fn get_items() -> Result<Vec<Item>, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
+        // Require staff level access or higher
+        let cookies = extract::<Cookies>().await
+            .map_err(|e| ServerFnError::new(format!("Failed to get cookies: {}", e)))?;
+        
+        let user = get_authenticated_user_from_request(&cookies).await
+            .map_err(|e| ServerFnError::new(format!("Authentication failed: {}", e)))?;
+        
+        let user = require_auth(user)?;
+        require_role(&user, UserRole::Staff)?;
+
         let db = database::get_db_connection()
             .await
             .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
@@ -28,6 +46,16 @@ pub async fn get_items() -> Result<Vec<Item>, ServerFnError> {
 pub async fn create_item(request: CreateItemRequest) -> Result<Item, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
+        // Require admin access for creating items
+        let cookies = extract::<Cookies>().await
+            .map_err(|e| ServerFnError::new(format!("Failed to get cookies: {}", e)))?;
+        
+        let user = get_authenticated_user_from_request(&cookies).await
+            .map_err(|e| ServerFnError::new(format!("Authentication failed: {}", e)))?;
+        
+        let user = require_auth(user)?;
+        require_role(&user, UserRole::Admin)?;
+
         // Validation happens in service layer
         request
             .validate()

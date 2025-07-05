@@ -75,7 +75,7 @@ pub fn Spinner(
                 >
                     <span class="sr-only">{label.unwrap_or("Loading...")}</span>
                 </div>
-            }
+            }.into_any()
         },
         SpinnerVariant::Pulse => {
             let (base_classes, color_class) = final_classes.get();
@@ -86,7 +86,7 @@ pub fn Spinner(
                 >
                     <span class="sr-only">{label.unwrap_or("Loading...")}</span>
                 </div>
-            }
+            }.into_any()
         },
         SpinnerVariant::Dots => {
             let (base_classes, color_class) = final_classes.get();
@@ -107,7 +107,7 @@ pub fn Spinner(
                     <div class=format!("{} rounded-full animate-bounce {}", dot_size, color_class.replace("border", "bg"))></div>
                     <span class="sr-only">{label.unwrap_or("Loading...")}</span>
                 </div>
-            }
+            }.into_any()
         },
     };
     

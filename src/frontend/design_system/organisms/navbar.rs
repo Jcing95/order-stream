@@ -6,6 +6,8 @@ use crate::frontend::design_system::{
     theme::{Size, Intent, ThemeContext},
     atoms::{TextVariant, FontWeight},
 };
+use crate::frontend::state::auth::use_auth_context;
+use crate::common::types::UserRole;
 
 /// Navigation bar organism component
 /// 
@@ -24,6 +26,10 @@ use crate::frontend::design_system::{
 pub fn Navbar() -> impl IntoView {
     let theme_signal = ThemeContext::use_theme();
     let location = use_location();
+    let auth = use_auth_context();
+    
+    let user = auth.user();
+    let is_authenticated = auth.is_authenticated();
     
     // Navigation button component
     let nav_button = move |href: &'static str, label: &'static str| {
@@ -58,6 +64,20 @@ pub fn Navbar() -> impl IntoView {
         }
     };
 
+    // Logout handler - create a new one each time to avoid FnOnce issues
+    let create_logout_handler = {
+        let auth = auth.clone();
+        move || {
+            let auth = auth.clone();
+            move |_| {
+                let auth = auth.clone();
+                leptos::task::spawn_local(async move {
+                    auth.logout().await;
+                });
+            }
+        }
+    };
+
     view! {
         <nav class=move || {
             let theme = theme_signal.get();
@@ -69,15 +89,129 @@ pub fn Navbar() -> impl IntoView {
         }>
             <div class="container mx-auto px-4">
                 <div class="flex items-center justify-between h-16">
-                    // Left side - Main navigation
-                    <div class="flex items-center space-x-1">
-                        {nav_button("/admin", "Admin")}
-                        {nav_button("/cashier", "Cashier")}
-                        {nav_button("/stations", "Stations")}
+                    // Left side - App brand and main navigation
+                    <div class="flex items-center space-x-4">
+                        // App brand
+                        <A href="/">
+                            <Text 
+                                variant=TextVariant::Heading 
+                                size=Size::Lg
+                                weight=FontWeight::Bold
+                            >
+                                "Order Stream"
+                            </Text>
+                        </A>
+                        
+                        // Role-based navigation
+                        {move || {
+                            if is_authenticated.get() {
+                                if let Some(user) = user.get() {
+                                    view! {
+                                        <div class="flex items-center space-x-1">
+                                            // Admin can see everything
+                                            {move || {
+                                                if matches!(user.role, UserRole::Admin) {
+                                                    view! {
+                                                        <div class="flex items-center space-x-1">
+                                                            {nav_button("/admin", "Admin")}
+                                                            {nav_button("/cashier", "Cashier")}
+                                                            {nav_button("/stations", "Stations")}
+                                                        </div>
+                                                    }.into_any()
+                                                } else if matches!(user.role, UserRole::Cashier) {
+                                                    // Cashier can see cashier and stations
+                                                    view! {
+                                                        <div class="flex items-center space-x-1">
+                                                            {nav_button("/cashier", "Cashier")}
+                                                            {nav_button("/stations", "Stations")}
+                                                        </div>
+                                                    }.into_any()
+                                                } else {
+                                                    // Staff can only see stations
+                                                    view! {
+                                                        <div class="flex items-center space-x-1">
+                                                            {nav_button("/stations", "Stations")}
+                                                        </div>
+                                                    }.into_any()
+                                                }
+                                            }}
+                                        </div>
+                                    }.into_any()
+                                } else {
+                                    view! { <div></div> }.into_any()
+                                }
+                            } else {
+                                view! { <div></div> }.into_any()
+                            }
+                        }}
                     </div>
                     
-                    // Right side - Theme switcher
-                    <div class="flex items-center">
+                    // Right side - User info, logout, and theme switcher
+                    <div class="flex items-center space-x-2">
+                        {move || {
+                            if is_authenticated.get() {
+                                if let Some(user) = user.get() {
+                                    view! {
+                                        <div class="flex items-center space-x-2">
+                                            // User info
+                                            <div class="text-right">
+                                                <Text 
+                                                    variant=TextVariant::Body 
+                                                    size=Size::Sm
+                                                    weight=FontWeight::Medium
+                                                >
+                                                    {user.email.clone()}
+                                                </Text>
+                                                <Text 
+                                                    variant=TextVariant::Body 
+                                                    size=Size::Xs
+                                                    intent=Intent::Secondary
+                                                >
+                                                    {format!("{:?}", user.role)}
+                                                </Text>
+                                            </div>
+                                            
+                                            // Logout button
+                                            <Button
+                                                size=Size::Sm
+                                                intent=Intent::Secondary
+                                                on:click=create_logout_handler()
+                                            >
+                                                <Text 
+                                                    variant=TextVariant::Body 
+                                                    size=Size::Sm
+                                                    weight=FontWeight::Medium
+                                                >
+                                                    "Logout"
+                                                </Text>
+                                            </Button>
+                                        </div>
+                                    }.into_any()
+                                } else {
+                                    view! { <div></div> }.into_any()
+                                }
+                            } else {
+                                // Show login button for unauthenticated users
+                                view! {
+                                    <A href="/signin">
+                                        <Button
+                                            size=Size::Sm
+                                            intent=Intent::Primary
+                                        >
+                                            <Text 
+                                                variant=TextVariant::Body 
+                                                size=Size::Sm
+                                                weight=FontWeight::Medium
+                                            >
+                                                "Sign In"
+                                            </Text>
+                                        </Button>
+                                    </A>
+                                }.into_any()
+                            }
+                        }}
+                        
+                        // Theme switcher
                         <ThemeSwitcher size=Size::Sm />
                     </div>
                 </div>
