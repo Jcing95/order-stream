@@ -214,6 +214,17 @@ pub struct AuthResponse {
     pub session_token: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserSecurityInfo {
+    pub email: String,
+    pub active: bool,
+    pub failed_login_attempts: u32,
+    pub locked_until: Option<String>,
+    pub active_sessions_count: usize,
+    pub recent_failed_attempts_count: u32,
+    pub last_login: Option<String>,
+}
+
 impl RegisterRequest {
     pub fn validate(&self) -> Result<(), String> {
         if self.email.trim().is_empty() {

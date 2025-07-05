@@ -1,11 +1,16 @@
 use leptos::prelude::*;
+use leptos::task::spawn_local;
 use crate::frontend::design_system::{
-    Text, Button,
+    Text, Button, Card,
     TextVariant, FontWeight,
-    theme::{Size, Intent},
+    theme::{Size, Intent, ComponentState},
 };
 use crate::frontend::state::{admin::AdminState, theme::{ThemeState}};
 use crate::frontend::state::auth::use_auth_context;
+use crate::common::types::UserSecurityInfo;
+use crate::backend::services::auth::{
+    get_user_security_info, admin_lock_user_account, unlock_user_account, revoke_user_sessions
+};
 
 #[component]
 pub fn AdminPage() -> impl IntoView {
@@ -13,6 +18,14 @@ pub fn AdminPage() -> impl IntoView {
     let _theme_state = expect_context::<ThemeState>();
     let auth = use_auth_context();
     let user = auth.user();
+    
+    // User management state
+    let (show_user_management, set_show_user_management) = signal(false);
+    let (selected_user_email, set_selected_user_email) = signal(String::new());
+    let (user_info, set_user_info) = signal(Option::<UserSecurityInfo>::None);
+    let (loading_user_info, set_loading_user_info) = signal(false);
+    let (user_action_loading, set_user_action_loading) = signal(false);
+    let (action_message, set_action_message) = signal(Option::<String>::None);
 
     // Since we're now protected by route guards, we can assume the user is authenticated and has admin access
     view! {
@@ -57,8 +70,15 @@ pub fn AdminPage() -> impl IntoView {
                         <Text variant=TextVariant::Body intent=Intent::Secondary class="mb-4">
                             "Manage staff accounts and permissions"
                         </Text>
-                        <Button intent=Intent::Secondary size=Size::Sm>
-                            "Manage Users"
+                        <Button 
+                            intent=Intent::Secondary 
+                            size=Size::Sm
+                            on:click=move |_| {
+                                set_show_user_management.set(!show_user_management.get());
+                                set_action_message.set(None);
+                            }
+                        >
+                            {move || if show_user_management.get() { "Close User Management" } else { "Manage Users" }}
                         </Button>
                     </div>
 
@@ -98,6 +118,269 @@ pub fn AdminPage() -> impl IntoView {
                         </Button>
                     </div>
                 </div>
+
+                // User Management Interface (conditionally shown)
+                {move || {
+                    if show_user_management.get() {
+                        view! {
+                            <Card class="p-6">
+                                <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold class="mb-4">
+                                    "User Management"
+                                </Text>
+                                
+                                // User lookup section
+                                <div class="space-y-4 mb-6">
+                                    <div class="space-y-2">
+                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                                            "User Email"
+                                        </label>
+                                        <Text variant=TextVariant::Body size=Size::Xs intent=Intent::Secondary>
+                                            "Enter the email address of the user to manage"
+                                        </Text>
+                                        <input
+                                            type="email"
+                                            class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                                            placeholder="user@example.com"
+                                            prop:value=move || selected_user_email.get()
+                                            on:input=move |e| set_selected_user_email.set(event_target_value(&e))
+                                            prop:disabled=move || loading_user_info.get() || user_action_loading.get()
+                                        />
+                                    </div>
+                                    
+                                    <Button 
+                                        intent=Intent::Primary 
+                                        size=Size::Md
+                                        state=ComponentState::Enabled
+                                        on:click=move |_| {
+                                            let email = selected_user_email.get().trim().to_string();
+                                            if !email.is_empty() {
+                                                set_loading_user_info.set(true);
+                                                set_action_message.set(None);
+                                                spawn_local(async move {
+                                                    match get_user_security_info(email).await {
+                                                        Ok(info) => {
+                                                            set_user_info.set(Some(info));
+                                                        },
+                                                        Err(e) => {
+                                                            set_action_message.set(Some(format!("Error: {}", e)));
+                                                        }
+                                                    }
+                                                    set_loading_user_info.set(false);
+                                                });
+                                            }
+                                        }
+                                    >
+                                        {move || if loading_user_info.get() { "Searching..." } else { "Lookup User" }}
+                                    </Button>
+                                </div>
+                                
+                                // Action message display
+                                {move || {
+                                    action_message.get().map(|msg| {
+                                        let is_error = msg.starts_with("Error:");
+                                        let intent = if is_error { Intent::Danger } else { Intent::Success };
+                                        view! {
+                                            <div class="mb-4 p-3 rounded-md border" class:bg-red-50=is_error class:border-red-200=is_error class:bg-green-50=!is_error class:border-green-200=!is_error>
+                                                <Text variant=TextVariant::Body intent=intent size=Size::Sm>
+                                                    {msg}
+                                                </Text>
+                                            </div>
+                                        }
+                                    })
+                                }}
+                                
+                                // User info display and controls
+                                {move || {
+                                    user_info.get().map(|info| {
+                                        let email = info.email.clone();
+                                        let email_unlock = info.email.clone();
+                                        let email_lock = info.email.clone();
+                                        let email_revoke = info.email.clone();
+                                        let is_locked = info.locked_until.is_some();
+                                        let is_active = info.active;
+                                        let sessions_count = info.active_sessions_count;
+                                        let failed_attempts = info.recent_failed_attempts_count;
+                                        
+                                        view! {
+                                            <div class="space-y-6">
+                                                // User information
+                                                <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                                    <Text variant=TextVariant::Heading size=Size::Md weight=FontWeight::Semibold class="mb-3">
+                                                        "User Information"
+                                                    </Text>
+                                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div>
+                                                            <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
+                                                                "Email"
+                                                            </Text>
+                                                            <Text variant=TextVariant::Body size=Size::Sm intent=Intent::Secondary>
+                                                                {email}
+                                                            </Text>
+                                                        </div>
+                                                        <div>
+                                                            <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
+                                                                "Account Status"
+                                                            </Text>
+                                                            <Text variant=TextVariant::Body size=Size::Sm intent=if is_active { Intent::Success } else { Intent::Danger }>
+                                                                {if is_active { "Active" } else { "Inactive" }}
+                                                            </Text>
+                                                        </div>
+                                                        <div>
+                                                            <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
+                                                                "Active Sessions"
+                                                            </Text>
+                                                            <Text variant=TextVariant::Body size=Size::Sm intent=Intent::Secondary>
+                                                                {sessions_count.to_string()}
+                                                            </Text>
+                                                        </div>
+                                                        <div>
+                                                            <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
+                                                                "Recent Failed Attempts (24h)"
+                                                            </Text>
+                                                            <Text variant=TextVariant::Body size=Size::Sm intent=Intent::Secondary>
+                                                                {failed_attempts.to_string()}
+                                                            </Text>
+                                                        </div>
+                                                    </div>
+                                                    {move || {
+                                                        if is_locked {
+                                                            view! {
+                                                                <div class="mt-3 p-2 bg-red-100 dark:bg-red-900/20 rounded border border-red-200 dark:border-red-800">
+                                                                    <Text variant=TextVariant::Body size=Size::Sm intent=Intent::Danger weight=FontWeight::Medium>
+                                                                        "⚠️ Account is currently locked"
+                                                                    </Text>
+                                                                </div>
+                                                            }.into_any()
+                                                        } else {
+                                                            view! { <div></div> }.into_any()
+                                                        }
+                                                    }}
+                                                </div>
+                                                
+                                                // Admin actions
+                                                <div class="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                                                    <Text variant=TextVariant::Heading size=Size::Md weight=FontWeight::Semibold class="mb-3">
+                                                        "Admin Actions"
+                                                    </Text>
+                                                    <div class="flex flex-wrap gap-3">
+                                                        // Lock/Unlock account
+                                                        {move || {
+                                                            if is_locked {
+                                                                view! {
+                                                                    <Button 
+                                                                        intent=Intent::Success 
+                                                                        size=Size::Sm
+                                                                        state=ComponentState::Enabled
+                                                                        on:click={
+                                                                            let email = email_unlock.clone();
+                                                                            move |_| {
+                                                                                let email = email.clone();
+                                                                                set_user_action_loading.set(true);
+                                                                                set_action_message.set(None);
+                                                                                spawn_local(async move {
+                                                                                    match unlock_user_account(email.clone()).await {
+                                                                                        Ok(_) => {
+                                                                                            set_action_message.set(Some("Account unlocked successfully".to_string()));
+                                                                                            // Refresh user info
+                                                                                            if let Ok(updated_info) = get_user_security_info(email).await {
+                                                                                                set_user_info.set(Some(updated_info));
+                                                                                            }
+                                                                                        },
+                                                                                        Err(e) => {
+                                                                                            set_action_message.set(Some(format!("Error unlocking account: {}", e)));
+                                                                                        }
+                                                                                    }
+                                                                                    set_user_action_loading.set(false);
+                                                                                });
+                                                                            }
+                                                                        }
+                                                                    >
+                                                                        "🔓 Unlock Account"
+                                                                    </Button>
+                                                                }.into_any()
+                                                            } else {
+                                                                view! {
+                                                                    <Button 
+                                                                        intent=Intent::Warning 
+                                                                        size=Size::Sm
+                                                                        state=ComponentState::Enabled
+                                                                        on:click={
+                                                                            let email = email_lock.clone();
+                                                                            move |_| {
+                                                                                let email = email.clone();
+                                                                                set_user_action_loading.set(true);
+                                                                                set_action_message.set(None);
+                                                                                spawn_local(async move {
+                                                                                    match admin_lock_user_account(email.clone(), 24).await { // Lock for 24 hours
+                                                                                        Ok(_) => {
+                                                                                            set_action_message.set(Some("Account locked for 24 hours".to_string()));
+                                                                                            // Refresh user info
+                                                                                            if let Ok(updated_info) = get_user_security_info(email).await {
+                                                                                                set_user_info.set(Some(updated_info));
+                                                                                            }
+                                                                                        },
+                                                                                        Err(e) => {
+                                                                                            set_action_message.set(Some(format!("Error locking account: {}", e)));
+                                                                                        }
+                                                                                    }
+                                                                                    set_user_action_loading.set(false);
+                                                                                });
+                                                                            }
+                                                                        }
+                                                                    >
+                                                                        "🔒 Lock Account (24h)"
+                                                                    </Button>
+                                                                }.into_any()
+                                                            }
+                                                        }}
+                                                        
+                                                        // Revoke sessions
+                                                        <Button 
+                                                            intent=Intent::Danger 
+                                                            size=Size::Sm
+                                                            state=ComponentState::Enabled
+                                                            on:click={
+                                                                let email = email_revoke.clone();
+                                                                move |_| {
+                                                                    let email = email.clone();
+                                                                    set_user_action_loading.set(true);
+                                                                    set_action_message.set(None);
+                                                                    spawn_local(async move {
+                                                                        match revoke_user_sessions(email.clone()).await {
+                                                                            Ok(_) => {
+                                                                                set_action_message.set(Some("All user sessions revoked".to_string()));
+                                                                                // Refresh user info
+                                                                                if let Ok(updated_info) = get_user_security_info(email).await {
+                                                                                    set_user_info.set(Some(updated_info));
+                                                                                }
+                                                                            },
+                                                                            Err(e) => {
+                                                                                set_action_message.set(Some(format!("Error revoking sessions: {}", e)));
+                                                                            }
+                                                                        }
+                                                                        set_user_action_loading.set(false);
+                                                                    });
+                                                                }
+                                                            }
+                                                        >
+                                                            "🚪 Revoke All Sessions"
+                                                        </Button>
+                                                    </div>
+                                                    
+                                                    <Text variant=TextVariant::Body size=Size::Xs intent=Intent::Secondary class="mt-3">
+                                                        "⚠️ Use these actions carefully. Account locks last 24 hours and session revocation will force immediate logout."
+                                                    </Text>
+                                                </div>
+                                            </div>
+                                        }
+                                    })
+                                }}
+                            </Card>
+                        }.into_any()
+                    } else {
+                        view! { <div></div> }.into_any()
+                    }
+                }}
 
                 // Status Overview
                 <div class="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-lg border border-blue-200 dark:border-blue-800">

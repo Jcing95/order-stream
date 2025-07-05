@@ -15,6 +15,38 @@ enum AuthMode {
     Register,
 }
 
+// Categorize auth errors for better user experience
+fn categorize_auth_error(error_msg: &str, attempts: u32) -> String {
+    match error_msg {
+        msg if msg.contains("Service temporarily unavailable") => {
+            "Service is temporarily unavailable. Please try again in a moment.".to_string()
+        },
+        msg if msg.contains("Too many failed attempts") => {
+            "Too many failed attempts. Please wait a few minutes before trying again.".to_string()
+        },
+        msg if msg.contains("Invalid email or password") => {
+            if attempts >= 2 {
+                "Invalid credentials. Please check your email and password carefully.".to_string()
+            } else {
+                "Invalid email or password. Please try again.".to_string()
+            }
+        },
+        msg if msg.contains("Email already registered") => {
+            "An account with this email already exists. Try signing in instead.".to_string()
+        },
+        msg if msg.contains("Account is disabled") => {
+            "Your account has been disabled. Please contact an administrator.".to_string()
+        },
+        msg if msg.contains("Invalid request") => {
+            "Please fill out all required fields correctly.".to_string()
+        },
+        _ => {
+            // Generic fallback for unknown errors
+            "An error occurred. Please try again or contact support if the problem persists.".to_string()
+        }
+    }
+}
+
 #[component]
 pub fn LoginPage() -> impl IntoView {
     let auth_context = use_auth_context();
@@ -24,6 +56,7 @@ pub fn LoginPage() -> impl IntoView {
     let (role, set_role) = signal(UserRole::Staff);
     let (error_message, set_error_message) = signal(Option::<String>::None);
     let (is_loading, set_is_loading) = signal(false);
+    let (login_attempts, set_login_attempts) = signal(0u32);
 
     let navigate = leptos_router::hooks::use_navigate();
     
@@ -63,10 +96,11 @@ pub fn LoginPage() -> impl IntoView {
 
                 match result {
                     Ok(auth_response) => {
-                        // Update auth context with the authenticated user
+                        // Success! Reset attempts counter and update auth context
+                        set_login_attempts.set(0);
                         auth_ctx.set_authenticated_user(auth_response.user.clone());
                         
-                        // Success! Redirect to appropriate page based on role
+                        // Redirect to appropriate page based on role
                         let redirect_path = match auth_response.user.role {
                             UserRole::Admin => "/admin",
                             UserRole::Cashier => "/cashier", 
@@ -75,7 +109,15 @@ pub fn LoginPage() -> impl IntoView {
                         nav(redirect_path, Default::default());
                     },
                     Err(e) => {
-                        set_error_message.set(Some(e.to_string()));
+                        // For login mode, track attempts for better feedback
+                        if mode == AuthMode::Login {
+                            let current_attempts = login_attempts.get();
+                            set_login_attempts.set(current_attempts + 1);
+                        }
+                        
+                        // Categorize and improve error messages
+                        let error_msg = categorize_auth_error(&e.to_string(), login_attempts.get());
+                        set_error_message.set(Some(error_msg));
                     }
                 }
                 
@@ -90,6 +132,7 @@ pub fn LoginPage() -> impl IntoView {
             AuthMode::Register => set_auth_mode.set(AuthMode::Login),
         }
         set_error_message.set(None);
+        set_login_attempts.set(0); // Reset attempts when switching modes
     };
 
     view! {
@@ -111,11 +154,28 @@ pub fn LoginPage() -> impl IntoView {
                     <form on:submit=handle_submit class="space-y-6">
                         {move || {
                             error_message.get().map(|msg| {
+                                let is_rate_limit = msg.contains("Too many failed attempts");
+                                let icon = if is_rate_limit { "⏰" } else { "⚠️" };
+                                
                                 view! {
                                     <div class="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-md p-4">
-                                        <Text variant=TextVariant::Body intent=Intent::Danger class="text-sm">
-                                            {msg}
-                                        </Text>
+                                        <div class="flex items-start space-x-2">
+                                            <span class="text-lg">{icon}</span>
+                                            <Text variant=TextVariant::Body intent=Intent::Danger class="text-sm flex-1">
+                                                {msg}
+                                            </Text>
+                                        </div>
+                                        {move || {
+                                            if auth_mode.get() == AuthMode::Login && login_attempts.get() >= 2 {
+                                                view! {
+                                                    <Text variant=TextVariant::Body intent=Intent::Secondary class="text-xs mt-2">
+                                                        "Having trouble? Make sure your email and password are correct."
+                                                    </Text>
+                                                }.into_any()
+                                            } else {
+                                                view! { <div></div> }.into_any()
+                                            }
+                                        }}
                                     </div>
                                 }
                             })
