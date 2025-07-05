@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="100px" height="100px" fill="#F5f5f5" viewBox="0 0 24 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- 
+        Minimalist Stream Icon from the Order Stream concept collection.
+        This icon combines a minimalist cloche with two lines representing a stream.
+        It's designed to be clean, modern, and scalable.
+    -->
+    <g stroke="none" stroke-width="2" fill="none" fill-rule="evenodd">
+        <g stroke="#3b82f6" stroke-width="2" stroke-linecap="round">
+            <!-- Handle of the cloche -->
+            <path d="M12 4V7"></path>
+            <!-- Dome of the cloche -->
+            <path d="M5 14C5 9.58172 8.13401 6 12 6C15.866 6 19 9.58172 19 14"></path>
+            <!-- Top stream line -->
+            <path d="M2 17H22"></path>
+            <!-- Bottom stream line -->
+            <path d="M4 20H20"></path>
+        </g>
+    </g>
+</svg>

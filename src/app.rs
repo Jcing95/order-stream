@@ -27,7 +27,7 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                 <AutoReload options=options.clone() />
                 <HydrationScripts options/>
                 <link rel="stylesheet" id="leptos" href="/pkg/order-stream.css"/>
-                <link rel="shortcut icon" type="image/ico" href="/favicon.ico"/>
+                <link rel="icon" type="image/svg+xml" href="/icon.svg"/>
                 <MetaTags/>
             </head>
             <body>

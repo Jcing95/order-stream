@@ -1,23 +1,23 @@
 use leptos::prelude::*;
 use leptos_router::{components::A, hooks::use_location};
 
+use crate::common::types::UserRole;
 use crate::frontend::design_system::{
+    atoms::{FontWeight, TextVariant},
+    theme::{Intent, Size, ThemeContext},
     Button, Text, ThemeSwitcher,
-    theme::{Size, Intent, ThemeContext},
-    atoms::{TextVariant, FontWeight},
 };
 use crate::frontend::state::auth::use_auth_context;
-use crate::common::types::UserRole;
 
 /// Navigation bar organism component
-/// 
+///
 /// Provides primary navigation across the application with integrated theme switching.
 /// Designed for tablet/station interfaces with clear, accessible navigation.
-/// 
+///
 /// # Example
 /// ```rust
 /// use crate::frontend::design_system::organisms::Navbar;
-/// 
+///
 /// view! {
 ///     <Navbar />
 /// }
@@ -27,10 +27,10 @@ pub fn Navbar() -> impl IntoView {
     let theme_signal = ThemeContext::use_theme();
     let location = use_location();
     let auth = use_auth_context();
-    
+
     let user = auth.user();
     let is_authenticated = auth.is_authenticated();
-    
+
     // Navigation button component
     let nav_button = move |href: &'static str, label: &'static str| {
         let href_str = href.to_string();
@@ -44,14 +44,14 @@ pub fn Navbar() -> impl IntoView {
                         current_path.starts_with(&href_str)
                     };
                     let intent = if is_active { Intent::Primary } else { Intent::Secondary };
-                    
+
                     view! {
                         <Button
                             size=Size::Md
                             intent=intent
                         >
-                            <Text 
-                                variant=TextVariant::Body 
+                            <Text
+                                variant=TextVariant::Body
                                 size=Size::Sm
                                 weight=FontWeight::Medium
                             >
@@ -93,15 +93,18 @@ pub fn Navbar() -> impl IntoView {
                     <div class="flex items-center space-x-4">
                         // App brand
                         <A href="/">
-                            <Text 
-                                variant=TextVariant::Heading 
-                                size=Size::Lg
-                                weight=FontWeight::Bold
-                            >
-                                "Order Stream"
-                            </Text>
+                            <span class="flex flex-row">
+                                <img src="/icon.svg" width=32 height=32 class="mr-2"></img>
+                                <Text
+                                    variant=TextVariant::Heading
+                                    size=Size::Lg
+                                    weight=FontWeight::Bold
+                                >
+                                    "Order Stream"
+                                </Text>
+                            </span>
                         </A>
-                        
+
                         // Role-based navigation
                         {move || {
                             if is_authenticated.get() {
@@ -145,7 +148,7 @@ pub fn Navbar() -> impl IntoView {
                             }
                         }}
                     </div>
-                    
+
                     // Right side - User info, logout, and theme switcher
                     <div class="flex items-center space-x-2">
                         {move || {
@@ -155,30 +158,30 @@ pub fn Navbar() -> impl IntoView {
                                         <div class="flex items-center space-x-2">
                                             // User info
                                             <div class="text-right">
-                                                <Text 
-                                                    variant=TextVariant::Body 
+                                                <Text
+                                                    variant=TextVariant::Body
                                                     size=Size::Sm
                                                     weight=FontWeight::Medium
                                                 >
                                                     {user.email.clone()}
                                                 </Text>
-                                                <Text 
-                                                    variant=TextVariant::Body 
+                                                <Text
+                                                    variant=TextVariant::Body
                                                     size=Size::Xs
                                                     intent=Intent::Secondary
                                                 >
                                                     {format!("{:?}", user.role)}
                                                 </Text>
                                             </div>
-                                            
+
                                             // Logout button
                                             <Button
                                                 size=Size::Sm
                                                 intent=Intent::Secondary
                                                 on:click=create_logout_handler()
                                             >
-                                                <Text 
-                                                    variant=TextVariant::Body 
+                                                <Text
+                                                    variant=TextVariant::Body
                                                     size=Size::Sm
                                                     weight=FontWeight::Medium
                                                 >
@@ -198,8 +201,8 @@ pub fn Navbar() -> impl IntoView {
                                             size=Size::Sm
                                             intent=Intent::Primary
                                         >
-                                            <Text 
-                                                variant=TextVariant::Body 
+                                            <Text
+                                                variant=TextVariant::Body
                                                 size=Size::Sm
                                                 weight=FontWeight::Medium
                                             >
@@ -210,7 +213,7 @@ pub fn Navbar() -> impl IntoView {
                                 }.into_any()
                             }
                         }}
-                        
+
                         // Theme switcher
                         <ThemeSwitcher size=Size::Sm />
                     </div>

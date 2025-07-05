@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 use crate::common::types::{User, UserRole};
-use crate::backend::services::auth::logout_user;
+use crate::backend::services::auth::{logout_user, get_current_user};
 
 #[derive(Clone, Debug)]
 pub struct AuthState {

@@ -1,13 +1,8 @@
-#[cfg(feature = "ssr")]
 use surrealdb::{Connection, Surreal};
-#[cfg(feature = "ssr")]
 use serde::{Deserialize, Serialize};
-#[cfg(feature = "ssr")]
 use chrono::{DateTime, Utc};
-#[cfg(feature = "ssr")]
 use crate::common::types::{User, UserRole};
 
-#[cfg(feature = "ssr")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserRecord {
     pub id: surrealdb::sql::Thing,
@@ -19,7 +14,6 @@ pub struct UserRecord {
     pub updated_at: DateTime<Utc>,
 }
 
-#[cfg(feature = "ssr")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionRecord {
     pub id: surrealdb::sql::Thing,
@@ -29,7 +23,6 @@ pub struct SessionRecord {
     pub created_at: DateTime<Utc>,
 }
 
-#[cfg(feature = "ssr")]
 impl From<UserRecord> for User {
     fn from(record: UserRecord) -> Self {
         User {
@@ -41,7 +34,6 @@ impl From<UserRecord> for User {
     }
 }
 
-#[cfg(feature = "ssr")]
 pub async fn create_user<C: Connection>(
     db: &Surreal<C>,
     email: String,
@@ -49,7 +41,7 @@ pub async fn create_user<C: Connection>(
     role: UserRole,
 ) -> Result<UserRecord, surrealdb::Error> {
     let now = Utc::now();
-    
+
     let user: Option<UserRecord> = db
         .create("users")
         .content(UserRecord {
@@ -63,10 +55,13 @@ pub async fn create_user<C: Connection>(
         })
         .await?;
 
-    user.ok_or_else(|| surrealdb::Error::Api(surrealdb::error::Api::Query("Failed to create user".to_string())))
+    user.ok_or_else(|| {
+        surrealdb::Error::Api(surrealdb::error::Api::Query(
+            "Failed to create user".to_string(),
+        ))
+    })
 }
 
-#[cfg(feature = "ssr")]
 pub async fn get_user_by_email<C: Connection>(
     db: &Surreal<C>,
     email: &str,
@@ -80,19 +75,15 @@ pub async fn get_user_by_email<C: Connection>(
     Ok(users.into_iter().next())
 }
 
-#[cfg(feature = "ssr")]
 pub async fn get_user_by_id<C: Connection>(
     db: &Surreal<C>,
     user_id: &str,
 ) -> Result<Option<UserRecord>, surrealdb::Error> {
-    let user: Option<UserRecord> = db
-        .select(("users", user_id))
-        .await?;
+    let user: Option<UserRecord> = db.select(("users", user_id)).await?;
 
     Ok(user)
 }
 
-#[cfg(feature = "ssr")]
 pub async fn create_session<C: Connection>(
     db: &Surreal<C>,
     user_id: String,
@@ -110,10 +101,13 @@ pub async fn create_session<C: Connection>(
         })
         .await?;
 
-    session.ok_or_else(|| surrealdb::Error::Api(surrealdb::error::Api::Query("Failed to create session".to_string())))
+    session.ok_or_else(|| {
+        surrealdb::Error::Api(surrealdb::error::Api::Query(
+            "Failed to create session".to_string(),
+        ))
+    })
 }
 
-#[cfg(feature = "ssr")]
 pub async fn get_session_by_token<C: Connection>(
     db: &Surreal<C>,
     token: &str,
@@ -128,7 +122,6 @@ pub async fn get_session_by_token<C: Connection>(
     Ok(sessions.into_iter().next())
 }
 
-#[cfg(feature = "ssr")]
 pub async fn delete_session<C: Connection>(
     db: &Surreal<C>,
     token: &str,
@@ -140,7 +133,6 @@ pub async fn delete_session<C: Connection>(
     Ok(())
 }
 
-#[cfg(feature = "ssr")]
 pub async fn cleanup_expired_sessions<C: Connection>(
     db: &Surreal<C>,
 ) -> Result<(), surrealdb::Error> {
