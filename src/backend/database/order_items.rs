@@ -246,11 +246,6 @@ pub async fn bulk_update_order_items(db: &Database, update: types::BulkOrderItem
     
     // Update each OrderItem individually (safer approach)
     for order_item_id in &update.order_item_ids {
-        let update_request = types::UpdateOrderItemRequest {
-            item_id: None,
-            quantity: None,
-            status: Some(update.new_status),
-        };
         
         // Get the OrderItem first to track which orders are affected
         let existing: Option<OrderItemRecord> = db

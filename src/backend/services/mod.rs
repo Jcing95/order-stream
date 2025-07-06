@@ -5,3 +5,4 @@ pub mod categories;
 pub mod orders;
 pub mod order_items;
 pub mod stations;
+pub mod utils;

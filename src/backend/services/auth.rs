@@ -13,6 +13,7 @@ use {
                 update_session_activity
             }},
             errors::AppError,
+            services::utils::*,
         },
         common::types::UserRole,
     },
@@ -21,6 +22,50 @@ use {
     leptos_axum::extract,
     tower_cookies::{Cookie, Cookies},
 };
+
+// Cookie configuration helper to eliminate redundancy
+#[cfg(feature = "ssr")]
+fn create_session_cookie(token: String, max_age: tower_cookies::cookie::time::Duration) -> Cookie<'static> {
+    let mut cookie = Cookie::new("session_token", token);
+    cookie.set_http_only(true);
+    cookie.set_secure(false); // Set to true in production with HTTPS
+    cookie.set_path("/");
+    cookie.set_max_age(Some(max_age));
+    cookie
+}
+
+// Admin authentication helper to eliminate massive duplication
+#[cfg(feature = "ssr")]
+async fn with_admin_auth_and_db<T, F, Fut>(operation: F) -> Result<T, ServerFnError>
+where
+    F: FnOnce(crate::backend::database::Database, User) -> Fut,
+    Fut: std::future::Future<Output = Result<T, ServerFnError>>,
+{
+    let cookies = extract::<Cookies>().await
+        .map_err(|_| ServerFnError::new(SERVICE_UNAVAILABLE))?;
+
+    let current_user = get_authenticated_user_from_request(&cookies).await
+        .map_err(|_| ServerFnError::new(AUTH_REQUIRED))?
+        .ok_or_else(|| ServerFnError::new(AUTH_REQUIRED))?;
+
+    require_role(&current_user, UserRole::Admin)?;
+
+    let db = get_db_connection().await
+        .map_err(|_| ServerFnError::new(SERVICE_UNAVAILABLE))?;
+
+    operation(db, current_user).await
+}
+
+// User fetching helper to eliminate repeated pattern
+#[cfg(feature = "ssr")]
+async fn get_user_by_email_or_error(
+    db: &crate::backend::database::Database, 
+    email: &str
+) -> Result<crate::backend::database::users::UserRecord, ServerFnError> {
+    get_user_by_email(db, email).await
+        .map_err(|_| ServerFnError::new(SERVICE_UNAVAILABLE))?
+        .ok_or_else(|| ServerFnError::new("User not found"))
+}
 
 #[server(RegisterUser, "/api")]
 pub async fn register_user(request: RegisterRequest) -> Result<AuthResponse, ServerFnError> {
@@ -63,12 +108,7 @@ pub async fn register_user(request: RegisterRequest) -> Result<AuthResponse, Ser
     let cookies = extract::<Cookies>().await
         .map_err(|_| ServerFnError::new("Failed to set session cookie"))?;
 
-    let mut cookie = Cookie::new("session_token", session_token.clone());
-    cookie.set_http_only(true);
-    cookie.set_secure(false); // Set to true in production with HTTPS
-    cookie.set_path("/");
-    cookie.set_max_age(Some(tower_cookies::cookie::time::Duration::weeks(1)));
-    cookies.add(cookie);
+    cookies.add(create_session_cookie(session_token.clone(), tower_cookies::cookie::time::Duration::weeks(1)));
 
     Ok(AuthResponse {
         user: user_record.into(),
@@ -144,12 +184,7 @@ pub async fn login_user(request: LoginRequest) -> Result<AuthResponse, ServerFnE
     let cookies = extract::<Cookies>().await
         .map_err(|_| ServerFnError::new("Failed to set session cookie"))?;
 
-    let mut cookie = Cookie::new("session_token", session_token.clone());
-    cookie.set_http_only(true);
-    cookie.set_secure(false); // Set to true in production with HTTPS
-    cookie.set_path("/");
-    cookie.set_max_age(Some(tower_cookies::cookie::time::Duration::weeks(1)));
-    cookies.add(cookie);
+    cookies.add(create_session_cookie(session_token.clone(), tower_cookies::cookie::time::Duration::weeks(1)));
 
     Ok(AuthResponse {
         user: user_record.into(),
@@ -171,13 +206,8 @@ pub async fn logout_user() -> Result<(), ServerFnError> {
             .map_err(|e| ServerFnError::new(format!("Failed to delete session: {}", e)))?;
     }
 
-    // Remove cookie
-    let mut cookie = Cookie::new("session_token", "");
-    cookie.set_http_only(true);
-    cookie.set_secure(false); // Set to true in production with HTTPS
-    cookie.set_path("/");
-    cookie.set_max_age(Some(tower_cookies::cookie::time::Duration::seconds(-1))); // Expire immediately
-    cookies.add(cookie);
+    // Remove cookie  
+    cookies.add(create_session_cookie("".to_string(), tower_cookies::cookie::time::Duration::seconds(-1)));
 
     Ok(())
 }
@@ -273,135 +303,78 @@ pub fn require_role(user: &User, required_role: UserRole) -> Result<(), ServerFn
 
 // Admin-only security management endpoints
 
+/// Revoke all sessions for a user - requires admin access
 #[server(RevokeUserSessions, "/api")]
 pub async fn revoke_user_sessions(user_email: String) -> Result<(), ServerFnError> {
-    let cookies = extract::<Cookies>().await
-        .map_err(|_| ServerFnError::new("Service temporarily unavailable"))?;
+    with_admin_auth_and_db(|db, _current_user| async move {
+        let user_record = get_user_by_email_or_error(&db, &user_email).await?;
 
-    let current_user = get_authenticated_user_from_request(&cookies).await
-        .map_err(|_| ServerFnError::new("Authentication required"))?
-        .ok_or_else(|| ServerFnError::new("Authentication required"))?;
-
-    // Only admins can revoke user sessions
-    require_role(&current_user, UserRole::Admin)?;
-
-    let db = get_db_connection().await
-        .map_err(|_| ServerFnError::new("Service temporarily unavailable"))?;
-
-    // Get the user whose sessions we want to revoke
-    let user_record = get_user_by_email(&db, &user_email).await
-        .map_err(|_| ServerFnError::new("Service temporarily unavailable"))?
-        .ok_or_else(|| ServerFnError::new("User not found"))?;
-
-    // Revoke all sessions for this user
-    crate::backend::database::users::revoke_all_user_sessions(&db, user_record.id).await
-        .map_err(|_| ServerFnError::new("Failed to revoke sessions"))?;
-
-    Ok(())
+        crate::backend::database::users::revoke_all_user_sessions(&db, user_record.id).await
+            .map_err(|_| ServerFnError::new("Failed to revoke sessions"))
+    }).await
 }
 
+/// Lock a user account for a specified duration - requires admin access
 #[server(LockUserAccount, "/api")]
 pub async fn admin_lock_user_account(user_email: String, duration_hours: u32) -> Result<(), ServerFnError> {
-    let cookies = extract::<Cookies>().await
-        .map_err(|_| ServerFnError::new("Service temporarily unavailable"))?;
+    with_admin_auth_and_db(|db, current_user| async move {
+        // Prevent self-locking
+        if current_user.email == user_email {
+            return Err(ServerFnError::new("Cannot lock your own account"));
+        }
 
-    let current_user = get_authenticated_user_from_request(&cookies).await
-        .map_err(|_| ServerFnError::new("Authentication required"))?
-        .ok_or_else(|| ServerFnError::new("Authentication required"))?;
+        let user_record = get_user_by_email_or_error(&db, &user_email).await?;
 
-    // Only admins can lock user accounts
-    require_role(&current_user, UserRole::Admin)?;
+        // Convert hours to seconds
+        let duration_seconds = (duration_hours as u64) * 3600;
 
-    // Prevent self-locking
-    if current_user.email == user_email {
-        return Err(ServerFnError::new("Cannot lock your own account"));
-    }
+        // Lock the account
+        crate::backend::database::users::lock_user_account(&db, user_record.id.clone(), duration_seconds).await
+            .map_err(|_| ServerFnError::new("Failed to lock account"))?;
 
-    let db = get_db_connection().await
-        .map_err(|_| ServerFnError::new("Service temporarily unavailable"))?;
+        // Also revoke all existing sessions
+        let _ = crate::backend::database::users::revoke_all_user_sessions(&db, user_record.id).await;
 
-    // Get the user to lock
-    let user_record = get_user_by_email(&db, &user_email).await
-        .map_err(|_| ServerFnError::new("Service temporarily unavailable"))?
-        .ok_or_else(|| ServerFnError::new("User not found"))?;
-
-    // Convert hours to seconds
-    let duration_seconds = (duration_hours as u64) * 3600;
-
-    // Lock the account
-    crate::backend::database::users::lock_user_account(&db, user_record.id.clone(), duration_seconds).await
-        .map_err(|_| ServerFnError::new("Failed to lock account"))?;
-
-    // Also revoke all existing sessions
-    let _ = crate::backend::database::users::revoke_all_user_sessions(&db, user_record.id).await;
-
-    Ok(())
+        Ok(())
+    }).await
 }
 
+/// Unlock a user account - requires admin access
 #[server(UnlockUserAccount, "/api")]
 pub async fn unlock_user_account(user_email: String) -> Result<(), ServerFnError> {
-    let cookies = extract::<Cookies>().await
-        .map_err(|_| ServerFnError::new("Service temporarily unavailable"))?;
+    with_admin_auth_and_db(|db, _current_user| async move {
+        let user_record = get_user_by_email_or_error(&db, &user_email).await?;
 
-    let current_user = get_authenticated_user_from_request(&cookies).await
-        .map_err(|_| ServerFnError::new("Authentication required"))?
-        .ok_or_else(|| ServerFnError::new("Authentication required"))?;
-
-    // Only admins can unlock user accounts
-    require_role(&current_user, UserRole::Admin)?;
-
-    let db = get_db_connection().await
-        .map_err(|_| ServerFnError::new("Service temporarily unavailable"))?;
-
-    // Get the user to unlock
-    let user_record = get_user_by_email(&db, &user_email).await
-        .map_err(|_| ServerFnError::new("Service temporarily unavailable"))?
-        .ok_or_else(|| ServerFnError::new("User not found"))?;
-
-    // Reset failed login attempts (this also clears the lock)
-    reset_failed_login_attempts(&db, user_record.id).await
-        .map_err(|_| ServerFnError::new("Failed to unlock account"))?;
-
-    Ok(())
+        // Reset failed login attempts (this also clears the lock)
+        reset_failed_login_attempts(&db, user_record.id).await
+            .map_err(|_| ServerFnError::new("Failed to unlock account"))
+    }).await
 }
 
+/// Get security information for a user - requires admin access
 #[server(GetUserSecurityInfo, "/api")]
 pub async fn get_user_security_info(user_email: String) -> Result<UserSecurityInfo, ServerFnError> {
-    let cookies = extract::<Cookies>().await
-        .map_err(|_| ServerFnError::new("Service temporarily unavailable"))?;
+    with_admin_auth_and_db(|db, _current_user| async move {
+        let user_record = get_user_by_email_or_error(&db, &user_email).await?;
 
-    let current_user = get_authenticated_user_from_request(&cookies).await
-        .map_err(|_| ServerFnError::new("Authentication required"))?
-        .ok_or_else(|| ServerFnError::new("Authentication required"))?;
+        // Get active sessions count
+        let active_sessions = crate::backend::database::users::get_active_sessions_count(&db, user_record.id.clone()).await
+            .unwrap_or(0);
 
-    // Only admins can view user security info
-    require_role(&current_user, UserRole::Admin)?;
+        // Get recent failed login attempts (last 24 hours)
+        let failed_attempts = get_failed_login_attempts(&db, &user_email, surrealdb::sql::Duration::from_hours(24).unwrap_or(surrealdb::sql::Duration::from_secs(86400))).await
+            .unwrap_or_else(|_| Vec::new());
 
-    let db = get_db_connection().await
-        .map_err(|_| ServerFnError::new("Service temporarily unavailable"))?;
-
-    // Get the user
-    let user_record = get_user_by_email(&db, &user_email).await
-        .map_err(|_| ServerFnError::new("Service temporarily unavailable"))?
-        .ok_or_else(|| ServerFnError::new("User not found"))?;
-
-    // Get active sessions count
-    let active_sessions = crate::backend::database::users::get_active_sessions_count(&db, user_record.id.clone()).await
-        .unwrap_or(0);
-
-    // Get recent failed login attempts (last 24 hours)
-    let failed_attempts = get_failed_login_attempts(&db, &user_email, surrealdb::sql::Duration::from_hours(24).unwrap_or(surrealdb::sql::Duration::from_secs(86400))).await
-        .unwrap_or_else(|_| Vec::new());
-
-    Ok(UserSecurityInfo {
-        email: user_record.email,
-        active: user_record.active,
-        failed_login_attempts: user_record.failed_login_attempts,
-        locked_until: user_record.locked_until.map(|_| "Account is locked".to_string()),
-        active_sessions_count: active_sessions,
-        recent_failed_attempts_count: failed_attempts.len() as u32,
-        last_login: user_record.last_login_at.map(|_| "Has logged in".to_string()),
-    })
+        Ok(UserSecurityInfo {
+            email: user_record.email,
+            active: user_record.active,
+            failed_login_attempts: user_record.failed_login_attempts,
+            locked_until: user_record.locked_until.map(|_| "Account is locked".to_string()),
+            active_sessions_count: active_sessions,
+            recent_failed_attempts_count: failed_attempts.len() as u32,
+            last_login: user_record.last_login_at.map(|_| "Has logged in".to_string()),
+        })
+    }).await
 }
 
 // Authentication utility functions
@@ -436,36 +409,20 @@ pub async fn require_staff_user(cookies: &Cookies) -> Result<User, ServerFnError
 
 // Session management utilities
 
+/// Cleanup expired sessions - requires admin access
 #[server(CleanupExpiredSessions, "/api")]
 pub async fn cleanup_expired_sessions() -> Result<(), ServerFnError> {
-    let cookies = extract::<Cookies>().await
-        .map_err(|_| ServerFnError::new("Service temporarily unavailable"))?;
-
-    // Only admins can cleanup sessions
-    require_admin_user(&cookies).await?;
-
-    let db = get_db_connection().await
-        .map_err(|_| ServerFnError::new("Service temporarily unavailable"))?;
-
-    crate::backend::database::users::cleanup_expired_sessions(&db).await
-        .map_err(|_| ServerFnError::new("Failed to cleanup sessions"))?;
-
-    Ok(())
+    with_admin_auth_and_db(|db, _current_user| async move {
+        crate::backend::database::users::cleanup_expired_sessions(&db).await
+            .map_err(|_| ServerFnError::new("Failed to cleanup sessions"))
+    }).await
 }
 
+/// Initialize database schema - requires admin access
 #[server(InitializeDatabaseSchema, "/api")]
 pub async fn initialize_database_schema() -> Result<(), ServerFnError> {
-    let cookies = extract::<Cookies>().await
-        .map_err(|_| ServerFnError::new("Service temporarily unavailable"))?;
-
-    // Only admins can initialize schema
-    require_admin_user(&cookies).await?;
-
-    let db = get_db_connection().await
-        .map_err(|_| ServerFnError::new("Service temporarily unavailable"))?;
-
-    crate::backend::database::users::initialize_schema(&db).await
-        .map_err(|_| ServerFnError::new("Failed to initialize schema"))?;
-
-    Ok(())
+    with_admin_auth_and_db(|db, _current_user| async move {
+        crate::backend::database::users::initialize_schema(&db).await
+            .map_err(|_| ServerFnError::new("Failed to initialize schema"))
+    }).await
 }

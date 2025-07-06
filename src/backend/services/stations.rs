@@ -2,127 +2,71 @@ use leptos::prelude::*;
 use crate::common::types::{Station, CreateStationRequest, UpdateStationRequest};
 
 #[cfg(feature = "ssr")]
-use crate::backend::errors::AppError;
-#[cfg(feature = "ssr")]
-use crate::backend::database;
+use crate::backend::{database, services::utils::*};
 
+/// Get all stations - requires staff level access
 #[server(GetStations, "/api")]
 pub async fn get_stations() -> Result<Vec<Station>, ServerFnError> {
-    #[cfg(feature = "ssr")]
-    {
-        let db = database::get_db_connection()
-            .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
-        
+    with_staff_auth(|db, _user| async move {
         database::stations::get_stations(&db)
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
-    }
-    #[cfg(not(feature = "ssr"))]
-    {
-        unreachable!("Server function called on client side")
-    }
+            .map_err(map_db_error)
+    }).await
 }
 
+/// Create a new station - requires admin access
 #[server(CreateStation, "/api")]
 pub async fn create_station(request: CreateStationRequest) -> Result<Station, ServerFnError> {
-    #[cfg(feature = "ssr")]
-    {
-        // Validation happens in service layer
-        request
-            .validate()
-            .map_err(|e| ServerFnError::new(e))?;
-
-        let db = database::get_db_connection()
-            .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
-        
+    // Validate request
+    request.validate().map_err(|e| ServerFnError::new(e))?;
+    
+    with_admin_auth(|db, _user| async move {
         database::stations::create_station(&db, request)
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
-    }
-    #[cfg(not(feature = "ssr"))]
-    {
-        unreachable!("Server function called on client side")
-    }
+            .map_err(map_db_error)
+    }).await
 }
 
+/// Get a specific station by ID - requires staff level access
 #[server(GetStation, "/api")]
 pub async fn get_station(id: String) -> Result<Station, ServerFnError> {
-    #[cfg(feature = "ssr")]
-    {
-        let db = database::get_db_connection()
+    with_staff_auth(|db, _user| async move {
+        let station = database::stations::get_station(&db, &id)
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+            .map_err(map_db_error)?;
         
-        match database::stations::get_station(&db, &id)
-            .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?
-        {
-            Some(station) => Ok(station),
-            None => Err(ServerFnError::new(format!("Station with id {} not found", id))),
-        }
-    }
-    #[cfg(not(feature = "ssr"))]
-    {
-        unreachable!("Server function called on client side")
-    }
+        ok_or_not_found(station)
+    }).await
 }
 
+/// Get a station by name - requires staff level access
 #[server(GetStationByName, "/api")]
 pub async fn get_station_by_name(name: String) -> Result<Station, ServerFnError> {
-    #[cfg(feature = "ssr")]
-    {
-        let db = database::get_db_connection()
+    with_staff_auth(|db, _user| async move {
+        let station = database::stations::get_station_by_name(&db, &name)
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+            .map_err(map_db_error)?;
         
-        match database::stations::get_station_by_name(&db, &name)
-            .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?
-        {
-            Some(station) => Ok(station),
-            None => Err(ServerFnError::new(format!("Station with name '{}' not found", name))),
-        }
-    }
-    #[cfg(not(feature = "ssr"))]
-    {
-        unreachable!("Server function called on client side")
-    }
+        ok_or_not_found(station)
+    }).await
 }
 
+/// Update an existing station - requires admin access
 #[server(UpdateStation, "/api")]
 pub async fn update_station(id: String, request: UpdateStationRequest) -> Result<Station, ServerFnError> {
-    #[cfg(feature = "ssr")]
-    {
-        let db = database::get_db_connection()
-            .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
-        
+    with_admin_auth(|db, _user| async move {
         database::stations::update_station(&db, &id, request)
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
-    }
-    #[cfg(not(feature = "ssr"))]
-    {
-        unreachable!("Server function called on client side")
-    }
+            .map_err(map_db_error)
+    }).await
 }
 
+/// Delete a station - requires admin access
 #[server(DeleteStation, "/api")]
 pub async fn delete_station(id: String) -> Result<(), ServerFnError> {
-    #[cfg(feature = "ssr")]
-    {
-        let db = database::get_db_connection()
-            .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
-        
+    with_admin_auth(|db, _user| async move {
         database::stations::delete_station(&db, &id)
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
-    }
-    #[cfg(not(feature = "ssr"))]
-    {
-        unreachable!("Server function called on client side")
-    }
+            .map_err(map_db_error)
+    }).await
 }
