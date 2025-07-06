@@ -1,8 +1,10 @@
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::{Thing, Datetime};
+
 use crate::backend::errors::{AppError, AppResult};
 use crate::common::types;
-use super::Database;
+
+use super::{Database, validators};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CategoryRecord {
@@ -21,6 +23,7 @@ impl From<CategoryRecord> for types::Category {
     }
 }
 
+/// Creates a new category with the given name
 pub async fn create_category(db: &Database, request: types::CreateCategoryRequest) -> AppResult<types::Category> {
     #[derive(serde::Serialize)]
     struct CreateCategoryData {
@@ -43,6 +46,7 @@ pub async fn create_category(db: &Database, request: types::CreateCategoryReques
         .ok_or_else(|| AppError::InternalError("Failed to create category: no record returned from database".to_string()))
 }
 
+/// Retrieves all categories from the database
 pub async fn get_categories(db: &Database) -> AppResult<Vec<types::Category>> {
     let categories: Vec<CategoryRecord> = db
         .select("categories")
@@ -52,6 +56,7 @@ pub async fn get_categories(db: &Database) -> AppResult<Vec<types::Category>> {
     Ok(categories.into_iter().map(|record| record.into()).collect())
 }
 
+/// Retrieves a single category by ID
 pub async fn get_category(db: &Database, id: &str) -> AppResult<Option<types::Category>> {
     let category: Option<CategoryRecord> = db
         .select(("categories", id))
@@ -61,6 +66,7 @@ pub async fn get_category(db: &Database, id: &str) -> AppResult<Option<types::Ca
     Ok(category.map(|record| record.into()))
 }
 
+/// Updates an existing category with the provided fields
 pub async fn update_category(
     db: &Database,
     id: &str,
@@ -77,9 +83,7 @@ pub async fn update_category(
 
     // Update fields if provided
     if let Some(name) = request.name {
-        if name.trim().is_empty() {
-            return Err(AppError::ValidationError("Name cannot be empty".to_string()));
-        }
+        validators::non_empty_string(&name, "Name")?;
         existing.name = name;
     }
 
@@ -96,7 +100,11 @@ pub async fn update_category(
         .ok_or_else(|| AppError::InternalError("Failed to update category: no record returned from database".to_string()))
 }
 
+/// Deletes a category after checking that no items reference it
 pub async fn delete_category(db: &Database, id: &str) -> AppResult<()> {
+    // Check for referential integrity - ensure no items reference this category
+    validators::no_references(db, "items", "category_id", id, "category").await?;
+
     let deleted: Option<CategoryRecord> = db
         .delete(("categories", id))
         .await

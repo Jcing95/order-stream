@@ -1,8 +1,10 @@
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::{Thing, Datetime};
+
 use crate::backend::errors::{AppError, AppResult};
 use crate::common::types;
-use super::Database;
+
+use super::{Database, validators};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ItemRecord {
@@ -27,6 +29,7 @@ impl From<ItemRecord> for types::Item {
     }
 }
 
+/// Creates a new item with the given properties
 pub async fn create_item(db: &Database, request: types::CreateItemRequest) -> AppResult<types::Item> {
     #[derive(serde::Serialize)]
     struct CreateItemData {
@@ -55,6 +58,7 @@ pub async fn create_item(db: &Database, request: types::CreateItemRequest) -> Ap
         .ok_or_else(|| AppError::InternalError("Failed to create item: no record returned from database".to_string()))
 }
 
+/// Retrieves all items from the database
 pub async fn get_items(db: &Database) -> AppResult<Vec<types::Item>> {
     let items: Vec<ItemRecord> = db
         .select("items")
@@ -89,21 +93,15 @@ pub async fn update_item(
 
     // Update fields if provided
     if let Some(name) = request.name {
-        if name.trim().is_empty() {
-            return Err(AppError::ValidationError("Name cannot be empty".to_string()));
-        }
+        validators::non_empty_string(&name, "Name")?;
         existing.name = name;
     }
     if let Some(category_id) = request.category_id {
-        if category_id.trim().is_empty() {
-            return Err(AppError::ValidationError("Category ID cannot be empty".to_string()));
-        }
+        validators::non_empty_string(&category_id, "Category ID")?;
         existing.category_id = category_id;
     }
     if let Some(price) = request.price {
-        if price < 0.0 {
-            return Err(AppError::ValidationError("Price cannot be negative".to_string()));
-        }
+        validators::non_negative_f64(price, "Price")?;
         existing.price = price;
     }
     if let Some(active) = request.active {
@@ -123,7 +121,11 @@ pub async fn update_item(
         .ok_or_else(|| AppError::InternalError("Failed to update item: no record returned from database".to_string()))
 }
 
+/// Deletes an item after checking that no order items reference it
 pub async fn delete_item(db: &Database, id: &str) -> AppResult<()> {
+    // Check for referential integrity - ensure no order items reference this item
+    validators::no_references(db, "order_items", "item_id", id, "item").await?;
+
     let deleted: Option<ItemRecord> = db
         .delete(("items", id))
         .await
