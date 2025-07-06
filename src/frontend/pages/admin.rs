@@ -1,9 +1,10 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
 use crate::frontend::design_system::{
-    Text, Button, Card,
+    Text, Button, Card, Input, Alert,
     TextVariant, FontWeight,
     theme::{Size, Intent, ComponentState},
+    atoms::InputType,
 };
 use crate::frontend::state::{admin::AdminState, theme::{ThemeState}};
 use crate::frontend::state::auth::use_auth_context;
@@ -21,7 +22,7 @@ pub fn AdminPage() -> impl IntoView {
     
     // User management state
     let (show_user_management, set_show_user_management) = signal(false);
-    let (selected_user_email, set_selected_user_email) = signal(String::new());
+    let selected_user_email = RwSignal::new(String::new());
     let (user_info, set_user_info) = signal(Option::<UserSecurityInfo>::None);
     let (loading_user_info, set_loading_user_info) = signal(false);
     let (user_action_loading, set_user_action_loading) = signal(false);
@@ -32,7 +33,7 @@ pub fn AdminPage() -> impl IntoView {
         <div class="container mx-auto p-6">
             <div class="space-y-8">
                 // Header
-                <div class="border-b border-gray-200 dark:border-gray-700 pb-6">
+                <Card class="p-6 mb-6">
                     <Text variant=TextVariant::Heading size=Size::Xl weight=FontWeight::Bold>
                         "Admin Dashboard"
                     </Text>
@@ -47,23 +48,29 @@ pub fn AdminPage() -> impl IntoView {
                             view! { <div></div> }.into_any()
                         }
                     }}
-                </div>
+                </Card>
 
                 // Quick Actions
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <Card class="p-6">
                         <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold class="mb-4">
                             "Menu Management"
                         </Text>
                         <Text variant=TextVariant::Body intent=Intent::Secondary class="mb-4">
                             "Manage items, categories, and pricing"
                         </Text>
-                        <Button intent=Intent::Primary size=Size::Sm>
+                        <Button 
+                            intent=Intent::Primary 
+                            size=Size::Sm
+                            on_click=Callback::new(move |_| {
+                                leptos::logging::log!("Navigate to menu management - not yet implemented");
+                            })
+                        >
                             "Manage Menu"
                         </Button>
-                    </div>
+                    </Card>
 
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <Card class="p-6">
                         <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold class="mb-4">
                             "User Management"
                         </Text>
@@ -73,50 +80,68 @@ pub fn AdminPage() -> impl IntoView {
                         <Button 
                             intent=Intent::Secondary 
                             size=Size::Sm
-                            on:click=move |_| {
+                            on_click=Callback::new(move |_| {
                                 set_show_user_management.set(!show_user_management.get());
                                 set_action_message.set(None);
-                            }
+                            })
                         >
                             {move || if show_user_management.get() { "Close User Management" } else { "Manage Users" }}
                         </Button>
-                    </div>
+                    </Card>
 
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <Card class="p-6">
                         <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold class="mb-4">
                             "Station Setup"
                         </Text>
                         <Text variant=TextVariant::Body intent=Intent::Secondary class="mb-4">
                             "Configure stations and workflows"
                         </Text>
-                        <Button intent=Intent::Secondary size=Size::Sm>
+                        <Button 
+                            intent=Intent::Secondary 
+                            size=Size::Sm
+                            on_click=Callback::new(move |_| {
+                                leptos::logging::log!("Navigate to station setup - not yet implemented");
+                            })
+                        >
                             "Setup Stations"
                         </Button>
-                    </div>
+                    </Card>
 
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <Card class="p-6">
                         <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold class="mb-4">
                             "Order Analytics"
                         </Text>
                         <Text variant=TextVariant::Body intent=Intent::Secondary class="mb-4">
                             "View sales reports and analytics"
                         </Text>
-                        <Button intent=Intent::Secondary size=Size::Sm>
+                        <Button 
+                            intent=Intent::Secondary 
+                            size=Size::Sm
+                            on_click=Callback::new(move |_| {
+                                leptos::logging::log!("Navigate to analytics - not yet implemented");
+                            })
+                        >
                             "View Reports"
                         </Button>
-                    </div>
+                    </Card>
 
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <Card class="p-6">
                         <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold class="mb-4">
                             "System Settings"
                         </Text>
                         <Text variant=TextVariant::Body intent=Intent::Secondary class="mb-4">
                             "Configure system preferences"
                         </Text>
-                        <Button intent=Intent::Secondary size=Size::Sm>
+                        <Button 
+                            intent=Intent::Secondary 
+                            size=Size::Sm
+                            on_click=Callback::new(move |_| {
+                                leptos::logging::log!("Navigate to system settings - not yet implemented");
+                            })
+                        >
                             "Settings"
                         </Button>
-                    </div>
+                    </Card>
                 </div>
 
                 // User Management Interface (conditionally shown)
@@ -131,27 +156,29 @@ pub fn AdminPage() -> impl IntoView {
                                 // User lookup section
                                 <div class="space-y-4 mb-6">
                                     <div class="space-y-2">
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                                        <Text variant=TextVariant::Label size=Size::Sm weight=FontWeight::Medium class="block">
                                             "User Email"
-                                        </label>
-                                        <Text variant=TextVariant::Body size=Size::Xs intent=Intent::Secondary>
+                                            <span class="text-red-500 ml-1">"*"</span>
+                                        </Text>
+                                        <Text variant=TextVariant::Caption size=Size::Xs intent=Intent::Secondary>
                                             "Enter the email address of the user to manage"
                                         </Text>
-                                        <input
-                                            type="email"
-                                            class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                                        <Input
+                                            input_type=InputType::Email
+                                            value=selected_user_email
                                             placeholder="user@example.com"
-                                            prop:value=move || selected_user_email.get()
-                                            on:input=move |e| set_selected_user_email.set(event_target_value(&e))
-                                            prop:disabled=move || loading_user_info.get() || user_action_loading.get()
+                                            size=Size::Md
+                                            intent=Intent::Primary
+                                            state=if loading_user_info.get() || user_action_loading.get() { ComponentState::Disabled } else { ComponentState::Enabled }
+                                            required=true
                                         />
                                     </div>
                                     
                                     <Button 
                                         intent=Intent::Primary 
                                         size=Size::Md
-                                        state=ComponentState::Enabled
-                                        on:click=move |_| {
+                                        state=if loading_user_info.get() { ComponentState::Loading } else { ComponentState::Enabled }
+                                        on_click=Callback::new(move |_| {
                                             let email = selected_user_email.get().trim().to_string();
                                             if !email.is_empty() {
                                                 set_loading_user_info.set(true);
@@ -168,7 +195,7 @@ pub fn AdminPage() -> impl IntoView {
                                                     set_loading_user_info.set(false);
                                                 });
                                             }
-                                        }
+                                        })
                                     >
                                         {move || if loading_user_info.get() { "Searching..." } else { "Lookup User" }}
                                     </Button>
@@ -180,11 +207,9 @@ pub fn AdminPage() -> impl IntoView {
                                         let is_error = msg.starts_with("Error:");
                                         let intent = if is_error { Intent::Danger } else { Intent::Success };
                                         view! {
-                                            <div class="mb-4 p-3 rounded-md border" class:bg-red-50=is_error class:border-red-200=is_error class:bg-green-50=!is_error class:border-green-200=!is_error>
-                                                <Text variant=TextVariant::Body intent=intent size=Size::Sm>
-                                                    {msg}
-                                                </Text>
-                                            </div>
+                                            <Alert intent=intent size=Size::Md class="mb-4">
+                                                {msg}
+                                            </Alert>
                                         }
                                     })
                                 }}
@@ -204,7 +229,7 @@ pub fn AdminPage() -> impl IntoView {
                                         view! {
                                             <div class="space-y-6">
                                                 // User information
-                                                <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                                <Card class="p-4">
                                                     <Text variant=TextVariant::Heading size=Size::Md weight=FontWeight::Semibold class="mb-3">
                                                         "User Information"
                                                     </Text>
@@ -245,20 +270,21 @@ pub fn AdminPage() -> impl IntoView {
                                                     {move || {
                                                         if is_locked {
                                                             view! {
-                                                                <div class="mt-3 p-2 bg-red-100 dark:bg-red-900/20 rounded border border-red-200 dark:border-red-800">
-                                                                    <Text variant=TextVariant::Body size=Size::Sm intent=Intent::Danger weight=FontWeight::Medium>
-                                                                        "⚠️ Account is currently locked"
-                                                                    </Text>
-                                                                </div>
+                                                                <Alert intent=Intent::Danger size=Size::Sm class="mt-3">
+                                                                    "⚠️ Account is currently locked"
+                                                                </Alert>
                                                             }.into_any()
                                                         } else {
                                                             view! { <div></div> }.into_any()
                                                         }
                                                     }}
-                                                </div>
+                                                </Card>
                                                 
                                                 // Admin actions
-                                                <div class="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                                                <Card class="p-4">
+                                                    <Alert intent=Intent::Warning size=Size::Sm class="mb-4">
+                                                        "⚠️ Use these actions carefully. Account locks last 24 hours and session revocation will force immediate logout."
+                                                    </Alert>
                                                     <Text variant=TextVariant::Heading size=Size::Md weight=FontWeight::Semibold class="mb-3">
                                                         "Admin Actions"
                                                     </Text>
@@ -270,10 +296,10 @@ pub fn AdminPage() -> impl IntoView {
                                                                     <Button 
                                                                         intent=Intent::Success 
                                                                         size=Size::Sm
-                                                                        state=ComponentState::Enabled
-                                                                        on:click={
+                                                                        state=if user_action_loading.get() { ComponentState::Loading } else { ComponentState::Enabled }
+                                                                        on_click={
                                                                             let email = email_unlock.clone();
-                                                                            move |_| {
+                                                                            Callback::new(move |_| {
                                                                                 let email = email.clone();
                                                                                 set_user_action_loading.set(true);
                                                                                 set_action_message.set(None);
@@ -292,7 +318,7 @@ pub fn AdminPage() -> impl IntoView {
                                                                                     }
                                                                                     set_user_action_loading.set(false);
                                                                                 });
-                                                                            }
+                                                                            })
                                                                         }
                                                                     >
                                                                         "🔓 Unlock Account"
@@ -303,10 +329,10 @@ pub fn AdminPage() -> impl IntoView {
                                                                     <Button 
                                                                         intent=Intent::Warning 
                                                                         size=Size::Sm
-                                                                        state=ComponentState::Enabled
-                                                                        on:click={
+                                                                        state=if user_action_loading.get() { ComponentState::Loading } else { ComponentState::Enabled }
+                                                                        on_click={
                                                                             let email = email_lock.clone();
-                                                                            move |_| {
+                                                                            Callback::new(move |_| {
                                                                                 let email = email.clone();
                                                                                 set_user_action_loading.set(true);
                                                                                 set_action_message.set(None);
@@ -325,7 +351,7 @@ pub fn AdminPage() -> impl IntoView {
                                                                                     }
                                                                                     set_user_action_loading.set(false);
                                                                                 });
-                                                                            }
+                                                                            })
                                                                         }
                                                                     >
                                                                         "🔒 Lock Account (24h)"
@@ -338,10 +364,10 @@ pub fn AdminPage() -> impl IntoView {
                                                         <Button 
                                                             intent=Intent::Danger 
                                                             size=Size::Sm
-                                                            state=ComponentState::Enabled
-                                                            on:click={
+                                                            state=if user_action_loading.get() { ComponentState::Loading } else { ComponentState::Enabled }
+                                                            on_click={
                                                                 let email = email_revoke.clone();
-                                                                move |_| {
+                                                                Callback::new(move |_| {
                                                                     let email = email.clone();
                                                                     set_user_action_loading.set(true);
                                                                     set_action_message.set(None);
@@ -360,17 +386,13 @@ pub fn AdminPage() -> impl IntoView {
                                                                         }
                                                                         set_user_action_loading.set(false);
                                                                     });
-                                                                }
+                                                                })
                                                             }
                                                         >
                                                             "🚪 Revoke All Sessions"
                                                         </Button>
                                                     </div>
-                                                    
-                                                    <Text variant=TextVariant::Body size=Size::Xs intent=Intent::Secondary class="mt-3">
-                                                        "⚠️ Use these actions carefully. Account locks last 24 hours and session revocation will force immediate logout."
-                                                    </Text>
-                                                </div>
+                                                </Card>
                                             </div>
                                         }
                                     })
@@ -383,14 +405,16 @@ pub fn AdminPage() -> impl IntoView {
                 }}
 
                 // Status Overview
-                <div class="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold class="mb-2">
-                        "System Status"
-                    </Text>
-                    <Text variant=TextVariant::Body intent=Intent::Secondary>
-                        "All systems operational. Authentication working correctly."
-                    </Text>
-                </div>
+                <Alert intent=Intent::Info size=Size::Lg class="p-6">
+                    <div>
+                        <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold class="mb-2">
+                            "System Status"
+                        </Text>
+                        <Text variant=TextVariant::Body intent=Intent::Secondary>
+                            "All systems operational. Authentication working correctly."
+                        </Text>
+                    </div>
+                </Alert>
             </div>
         </div>
     }

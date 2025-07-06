@@ -17,6 +17,41 @@ use crate::frontend::state::auth::{provide_auth_context, use_auth_context};
 use crate::frontend::design_system::{Theme, ThemeContext, Navbar, Spinner, theme::Size};
 use crate::common::types::UserRole;
 
+// Import server functions to ensure they're registered
+#[allow(unused_imports)]
+use crate::backend::services::auth::{
+    register_user, login_user, logout_user, get_current_user,
+    revoke_user_sessions, admin_lock_user_account, unlock_user_account,
+    get_user_security_info, cleanup_expired_sessions, initialize_database_schema
+};
+
+#[allow(unused_imports)]
+use crate::backend::services::items::{
+    get_items, create_item, get_item, update_item, delete_item
+};
+
+#[allow(unused_imports)]
+use crate::backend::services::categories::{
+    get_categories, create_category, get_category, update_category, delete_category
+};
+
+#[allow(unused_imports)]
+use crate::backend::services::orders::{
+    get_orders, create_order, get_order, update_order, update_order_status, delete_order
+};
+
+#[allow(unused_imports)]
+use crate::backend::services::order_items::{
+    get_order_items, get_all_order_items, create_order_item, get_order_item,
+    update_order_item, delete_order_item, bulk_update_order_items
+};
+
+#[allow(unused_imports)]
+use crate::backend::services::stations::{
+    get_stations, create_station, get_station, get_station_by_name,
+    update_station, delete_station
+};
+
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
         <!DOCTYPE html>
