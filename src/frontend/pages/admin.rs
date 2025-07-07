@@ -11,14 +11,16 @@ use crate::frontend::state::auth::use_auth_context;
 use crate::frontend::components::{
     item_section::ItemSection,
     category_section::CategorySection,
+    station_section::StationSection,
 };
 use crate::backend::services::{
     items::{get_items, create_item},
     categories::{get_categories, create_category, delete_category},
+    stations::{get_stations, create_station, delete_station},
     orders::{get_orders},
     order_items::{get_all_order_items},
 };
-use crate::common::types::{CreateItemRequest, CreateCategoryRequest};
+use crate::common::types::{CreateItemRequest, CreateCategoryRequest, CreateStationRequest};
 
 #[component]
 pub fn AdminPage() -> impl IntoView {
@@ -55,6 +57,9 @@ pub fn AdminPage() -> impl IntoView {
                     
                     // Menu Management Section using existing components
                     <MenuManagementSection />
+                    
+                    // Station Management Section
+                    <StationManagementSection />
                     
                     // Order Analytics Section
                     <OrderAnalyticsSection />
@@ -346,6 +351,70 @@ fn MenuManagementSection() -> impl IntoView {
                         on_submit=handle_create_item
                     />
                 </div>
+            </div>
+        </Card>
+    }
+}
+
+#[component]
+fn StationManagementSection() -> impl IntoView {
+    // Load stations and categories using Resources
+    let stations_resource = Resource::new(|| (), |_| get_stations());
+    let categories_resource = Resource::new(|| (), |_| get_categories());
+    
+    // Convert Resources to ReadSignals for the existing components
+    let stations_signal = RwSignal::new(Vec::new());
+    let categories_signal = RwSignal::new(Vec::new());
+    
+    // Update signals when resources load (SSR-safe)
+    Effect::new_isomorphic(move |_| {
+        if let Some(Ok(stations)) = stations_resource.get() {
+            stations_signal.set(stations);
+        }
+    });
+    
+    Effect::new_isomorphic(move |_| {
+        if let Some(Ok(categories)) = categories_resource.get() {
+            categories_signal.set(categories);
+        }
+    });
+    
+    // Action handlers for the existing components
+    let handle_create_station = move |request: CreateStationRequest| {
+        let stations_resource = stations_resource.clone();
+        spawn_local(async move {
+            if let Err(e) = create_station(request).await {
+                leptos::logging::log!("Error creating station: {}", e);
+            } else {
+                stations_resource.refetch();
+            }
+        });
+    };
+    
+    let handle_delete_station = move |id: String| {
+        let stations_resource = stations_resource.clone();
+        spawn_local(async move {
+            if let Err(e) = delete_station(id).await {
+                leptos::logging::log!("Error deleting station: {}", e);
+            } else {
+                stations_resource.refetch();
+            }
+        });
+    };
+
+    view! {
+        <Card class="p-6">
+            <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold class="mb-6">
+                "Station Management"
+            </Text>
+            
+            <div class="space-y-6">
+                <StationSection 
+                    stations=stations_signal.read_only()
+                    categories=categories_signal.read_only()
+                    on_submit=handle_create_station
+                    on_delete=handle_delete_station
+                />
             </div>
         </Card>
     }
