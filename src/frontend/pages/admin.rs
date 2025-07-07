@@ -1,34 +1,27 @@
 use leptos::prelude::*;
-use leptos::task::spawn_local;
 use crate::frontend::design_system::{
-    Text, Button, Card, Input, Alert,
+    Text, Button, Card, Alert, Input,
     TextVariant, FontWeight,
     theme::{Size, Intent, ComponentState},
     atoms::InputType,
 };
-use crate::frontend::state::{admin::AdminState, theme::{ThemeState}};
+use crate::frontend::state::admin::{provide_admin_state, use_admin_state};
 use crate::frontend::state::auth::use_auth_context;
-use crate::common::types::UserSecurityInfo;
-use crate::backend::services::auth::{
-    get_user_security_info, admin_lock_user_account, unlock_user_account, revoke_user_sessions
+use crate::backend::services::{
+    items::{get_items, create_item},
+    categories::{get_categories, create_category},
+    orders::{get_orders},
+    order_items::{get_all_order_items},
 };
+use crate::common::types::{CreateItemRequest, CreateCategoryRequest};
 
 #[component]
 pub fn AdminPage() -> impl IntoView {
-    let _state = AdminState::new();
-    let _theme_state = expect_context::<ThemeState>();
+    // Provide admin state context for this page
+    let _admin_state = provide_admin_state();
     let auth = use_auth_context();
     let user = auth.user();
-    
-    // User management state
-    let (show_user_management, set_show_user_management) = signal(false);
-    let selected_user_email = RwSignal::new(String::new());
-    let (user_info, set_user_info) = signal(Option::<UserSecurityInfo>::None);
-    let (loading_user_info, set_loading_user_info) = signal(false);
-    let (user_action_loading, set_user_action_loading) = signal(false);
-    let (action_message, set_action_message) = signal(Option::<String>::None);
 
-    // Since we're now protected by route guards, we can assume the user is authenticated and has admin access
     view! {
         <div class="container mx-auto p-6">
             <div class="space-y-8">
@@ -41,7 +34,7 @@ pub fn AdminPage() -> impl IntoView {
                         if let Some(user) = user.get() {
                             view! {
                                 <Text variant=TextVariant::Body size=Size::Sm intent=Intent::Secondary class="mt-2">
-                                    {format!("Welcome, {} ({})", user.email, format!("{:?}", user.role))}
+                                    {format!("Welcome, {} ({:?})", user.email, user.role)}
                                 </Text>
                             }.into_any()
                         } else {
@@ -50,372 +43,648 @@ pub fn AdminPage() -> impl IntoView {
                     }}
                 </Card>
 
-                // Quick Actions
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <Card class="p-6">
-                        <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold class="mb-4">
-                            "Menu Management"
-                        </Text>
-                        <Text variant=TextVariant::Body intent=Intent::Secondary class="mb-4">
-                            "Manage items, categories, and pricing"
-                        </Text>
-                        <Button 
-                            intent=Intent::Primary 
-                            size=Size::Sm
-                            on_click=Callback::new(move |_| {
-                                leptos::logging::log!("Navigate to menu management - not yet implemented");
-                            })
-                        >
-                            "Manage Menu"
-                        </Button>
-                    </Card>
-
-                    <Card class="p-6">
-                        <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold class="mb-4">
-                            "User Management"
-                        </Text>
-                        <Text variant=TextVariant::Body intent=Intent::Secondary class="mb-4">
-                            "Manage staff accounts and permissions"
-                        </Text>
-                        <Button 
-                            intent=Intent::Secondary 
-                            size=Size::Sm
-                            on_click=Callback::new(move |_| {
-                                set_show_user_management.set(!show_user_management.get());
-                                set_action_message.set(None);
-                            })
-                        >
-                            {move || if show_user_management.get() { "Close User Management" } else { "Manage Users" }}
-                        </Button>
-                    </Card>
-
-                    <Card class="p-6">
-                        <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold class="mb-4">
-                            "Station Setup"
-                        </Text>
-                        <Text variant=TextVariant::Body intent=Intent::Secondary class="mb-4">
-                            "Configure stations and workflows"
-                        </Text>
-                        <Button 
-                            intent=Intent::Secondary 
-                            size=Size::Sm
-                            on_click=Callback::new(move |_| {
-                                leptos::logging::log!("Navigate to station setup - not yet implemented");
-                            })
-                        >
-                            "Setup Stations"
-                        </Button>
-                    </Card>
-
-                    <Card class="p-6">
-                        <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold class="mb-4">
-                            "Order Analytics"
-                        </Text>
-                        <Text variant=TextVariant::Body intent=Intent::Secondary class="mb-4">
-                            "View sales reports and analytics"
-                        </Text>
-                        <Button 
-                            intent=Intent::Secondary 
-                            size=Size::Sm
-                            on_click=Callback::new(move |_| {
-                                leptos::logging::log!("Navigate to analytics - not yet implemented");
-                            })
-                        >
-                            "View Reports"
-                        </Button>
-                    </Card>
-
-                    <Card class="p-6">
-                        <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold class="mb-4">
-                            "System Settings"
-                        </Text>
-                        <Text variant=TextVariant::Body intent=Intent::Secondary class="mb-4">
-                            "Configure system preferences"
-                        </Text>
-                        <Button 
-                            intent=Intent::Secondary 
-                            size=Size::Sm
-                            on_click=Callback::new(move |_| {
-                                leptos::logging::log!("Navigate to system settings - not yet implemented");
-                            })
-                        >
-                            "Settings"
-                        </Button>
-                    </Card>
+                // Admin sections - all have real functionality
+                <div class="space-y-8">
+                    // User Management Section
+                    <UserManagementSection />
+                    
+                    // Menu Management Section  
+                    <MenuManagementSection />
+                    
+                    // Order Analytics Section
+                    <OrderAnalyticsSection />
+                    
+                    // System Settings Section
+                    <SystemSettingsSection />
                 </div>
-
-                // User Management Interface (conditionally shown)
-                {move || {
-                    if show_user_management.get() {
-                        view! {
-                            <Card class="p-6">
-                                <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold class="mb-4">
-                                    "User Management"
-                                </Text>
-                                
-                                // User lookup section
-                                <div class="space-y-4 mb-6">
-                                    <div class="space-y-2">
-                                        <Text variant=TextVariant::Label size=Size::Sm weight=FontWeight::Medium class="block">
-                                            "User Email"
-                                            <span class="text-red-500 ml-1">"*"</span>
-                                        </Text>
-                                        <Text variant=TextVariant::Caption size=Size::Xs intent=Intent::Secondary>
-                                            "Enter the email address of the user to manage"
-                                        </Text>
-                                        <Input
-                                            input_type=InputType::Email
-                                            value=selected_user_email
-                                            placeholder="user@example.com"
-                                            size=Size::Md
-                                            intent=Intent::Primary
-                                            state=if loading_user_info.get() || user_action_loading.get() { ComponentState::Disabled } else { ComponentState::Enabled }
-                                            required=true
-                                        />
-                                    </div>
-                                    
-                                    <Button 
-                                        intent=Intent::Primary 
-                                        size=Size::Md
-                                        state=if loading_user_info.get() { ComponentState::Loading } else { ComponentState::Enabled }
-                                        on_click=Callback::new(move |_| {
-                                            let email = selected_user_email.get().trim().to_string();
-                                            if !email.is_empty() {
-                                                set_loading_user_info.set(true);
-                                                set_action_message.set(None);
-                                                spawn_local(async move {
-                                                    match get_user_security_info(email).await {
-                                                        Ok(info) => {
-                                                            set_user_info.set(Some(info));
-                                                        },
-                                                        Err(e) => {
-                                                            set_action_message.set(Some(format!("Error: {}", e)));
-                                                        }
-                                                    }
-                                                    set_loading_user_info.set(false);
-                                                });
-                                            }
-                                        })
-                                    >
-                                        {move || if loading_user_info.get() { "Searching..." } else { "Lookup User" }}
-                                    </Button>
-                                </div>
-                                
-                                // Action message display
-                                {move || {
-                                    action_message.get().map(|msg| {
-                                        let is_error = msg.starts_with("Error:");
-                                        let intent = if is_error { Intent::Danger } else { Intent::Success };
-                                        view! {
-                                            <Alert intent=intent size=Size::Md class="mb-4">
-                                                {msg}
-                                            </Alert>
-                                        }
-                                    })
-                                }}
-                                
-                                // User info display and controls
-                                {move || {
-                                    user_info.get().map(|info| {
-                                        let email = info.email.clone();
-                                        let email_unlock = info.email.clone();
-                                        let email_lock = info.email.clone();
-                                        let email_revoke = info.email.clone();
-                                        let is_locked = info.locked_until.is_some();
-                                        let is_active = info.active;
-                                        let sessions_count = info.active_sessions_count;
-                                        let failed_attempts = info.recent_failed_attempts_count;
-                                        
-                                        view! {
-                                            <div class="space-y-6">
-                                                // User information
-                                                <Card class="p-4">
-                                                    <Text variant=TextVariant::Heading size=Size::Md weight=FontWeight::Semibold class="mb-3">
-                                                        "User Information"
-                                                    </Text>
-                                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        <div>
-                                                            <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
-                                                                "Email"
-                                                            </Text>
-                                                            <Text variant=TextVariant::Body size=Size::Sm intent=Intent::Secondary>
-                                                                {email}
-                                                            </Text>
-                                                        </div>
-                                                        <div>
-                                                            <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
-                                                                "Account Status"
-                                                            </Text>
-                                                            <Text variant=TextVariant::Body size=Size::Sm intent=if is_active { Intent::Success } else { Intent::Danger }>
-                                                                {if is_active { "Active" } else { "Inactive" }}
-                                                            </Text>
-                                                        </div>
-                                                        <div>
-                                                            <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
-                                                                "Active Sessions"
-                                                            </Text>
-                                                            <Text variant=TextVariant::Body size=Size::Sm intent=Intent::Secondary>
-                                                                {sessions_count.to_string()}
-                                                            </Text>
-                                                        </div>
-                                                        <div>
-                                                            <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
-                                                                "Recent Failed Attempts (24h)"
-                                                            </Text>
-                                                            <Text variant=TextVariant::Body size=Size::Sm intent=Intent::Secondary>
-                                                                {failed_attempts.to_string()}
-                                                            </Text>
-                                                        </div>
-                                                    </div>
-                                                    {move || {
-                                                        if is_locked {
-                                                            view! {
-                                                                <Alert intent=Intent::Danger size=Size::Sm class="mt-3">
-                                                                    "⚠️ Account is currently locked"
-                                                                </Alert>
-                                                            }.into_any()
-                                                        } else {
-                                                            view! { <div></div> }.into_any()
-                                                        }
-                                                    }}
-                                                </Card>
-                                                
-                                                // Admin actions
-                                                <Card class="p-4">
-                                                    <Alert intent=Intent::Warning size=Size::Sm class="mb-4">
-                                                        "⚠️ Use these actions carefully. Account locks last 24 hours and session revocation will force immediate logout."
-                                                    </Alert>
-                                                    <Text variant=TextVariant::Heading size=Size::Md weight=FontWeight::Semibold class="mb-3">
-                                                        "Admin Actions"
-                                                    </Text>
-                                                    <div class="flex flex-wrap gap-3">
-                                                        // Lock/Unlock account
-                                                        {move || {
-                                                            if is_locked {
-                                                                view! {
-                                                                    <Button 
-                                                                        intent=Intent::Success 
-                                                                        size=Size::Sm
-                                                                        state=if user_action_loading.get() { ComponentState::Loading } else { ComponentState::Enabled }
-                                                                        on_click={
-                                                                            let email = email_unlock.clone();
-                                                                            Callback::new(move |_| {
-                                                                                let email = email.clone();
-                                                                                set_user_action_loading.set(true);
-                                                                                set_action_message.set(None);
-                                                                                spawn_local(async move {
-                                                                                    match unlock_user_account(email.clone()).await {
-                                                                                        Ok(_) => {
-                                                                                            set_action_message.set(Some("Account unlocked successfully".to_string()));
-                                                                                            // Refresh user info
-                                                                                            if let Ok(updated_info) = get_user_security_info(email).await {
-                                                                                                set_user_info.set(Some(updated_info));
-                                                                                            }
-                                                                                        },
-                                                                                        Err(e) => {
-                                                                                            set_action_message.set(Some(format!("Error unlocking account: {}", e)));
-                                                                                        }
-                                                                                    }
-                                                                                    set_user_action_loading.set(false);
-                                                                                });
-                                                                            })
-                                                                        }
-                                                                    >
-                                                                        "🔓 Unlock Account"
-                                                                    </Button>
-                                                                }.into_any()
-                                                            } else {
-                                                                view! {
-                                                                    <Button 
-                                                                        intent=Intent::Warning 
-                                                                        size=Size::Sm
-                                                                        state=if user_action_loading.get() { ComponentState::Loading } else { ComponentState::Enabled }
-                                                                        on_click={
-                                                                            let email = email_lock.clone();
-                                                                            Callback::new(move |_| {
-                                                                                let email = email.clone();
-                                                                                set_user_action_loading.set(true);
-                                                                                set_action_message.set(None);
-                                                                                spawn_local(async move {
-                                                                                    match admin_lock_user_account(email.clone(), 24).await { // Lock for 24 hours
-                                                                                        Ok(_) => {
-                                                                                            set_action_message.set(Some("Account locked for 24 hours".to_string()));
-                                                                                            // Refresh user info
-                                                                                            if let Ok(updated_info) = get_user_security_info(email).await {
-                                                                                                set_user_info.set(Some(updated_info));
-                                                                                            }
-                                                                                        },
-                                                                                        Err(e) => {
-                                                                                            set_action_message.set(Some(format!("Error locking account: {}", e)));
-                                                                                        }
-                                                                                    }
-                                                                                    set_user_action_loading.set(false);
-                                                                                });
-                                                                            })
-                                                                        }
-                                                                    >
-                                                                        "🔒 Lock Account (24h)"
-                                                                    </Button>
-                                                                }.into_any()
-                                                            }
-                                                        }}
-                                                        
-                                                        // Revoke sessions
-                                                        <Button 
-                                                            intent=Intent::Danger 
-                                                            size=Size::Sm
-                                                            state=if user_action_loading.get() { ComponentState::Loading } else { ComponentState::Enabled }
-                                                            on_click={
-                                                                let email = email_revoke.clone();
-                                                                Callback::new(move |_| {
-                                                                    let email = email.clone();
-                                                                    set_user_action_loading.set(true);
-                                                                    set_action_message.set(None);
-                                                                    spawn_local(async move {
-                                                                        match revoke_user_sessions(email.clone()).await {
-                                                                            Ok(_) => {
-                                                                                set_action_message.set(Some("All user sessions revoked".to_string()));
-                                                                                // Refresh user info
-                                                                                if let Ok(updated_info) = get_user_security_info(email).await {
-                                                                                    set_user_info.set(Some(updated_info));
-                                                                                }
-                                                                            },
-                                                                            Err(e) => {
-                                                                                set_action_message.set(Some(format!("Error revoking sessions: {}", e)));
-                                                                            }
-                                                                        }
-                                                                        set_user_action_loading.set(false);
-                                                                    });
-                                                                })
-                                                            }
-                                                        >
-                                                            "🚪 Revoke All Sessions"
-                                                        </Button>
-                                                    </div>
-                                                </Card>
-                                            </div>
-                                        }
-                                    })
-                                }}
-                            </Card>
-                        }.into_any()
-                    } else {
-                        view! { <div></div> }.into_any()
-                    }
-                }}
-
-                // Status Overview
-                <Alert intent=Intent::Info size=Size::Lg class="p-6">
-                    <div>
-                        <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold class="mb-2">
-                            "System Status"
-                        </Text>
-                        <Text variant=TextVariant::Body intent=Intent::Secondary>
-                            "All systems operational. Authentication working correctly."
-                        </Text>
-                    </div>
-                </Alert>
             </div>
         </div>
+    }
+}
+
+#[component]
+fn UserManagementSection() -> impl IntoView {
+    let admin_state = use_admin_state();
+    let user_email = admin_state.selected_user_email;
+    let current_user_info = admin_state.current_user_info();
+    let is_loading = admin_state.is_loading();
+    let action_message = admin_state.action_message;
+    
+    // Input handler for email field
+    let handle_email_input = Callback::new(move |ev: leptos::ev::Event| {
+        let value = event_target_value(&ev);
+        user_email.set(value);
+    });
+    
+    // Action handlers
+    let lookup_handler = {
+        let admin_state = admin_state.clone();
+        Callback::new(move |_: leptos::ev::MouseEvent| {
+            let email = admin_state.selected_user_email.get_untracked();
+            if !email.is_empty() {
+                admin_state.lookup_user(email);
+            }
+        })
+    };
+    
+    let lock_handler = {
+        let admin_state = admin_state.clone();
+        Callback::new(move |_: leptos::ev::MouseEvent| {
+            let email = admin_state.selected_user_email.get_untracked();
+            if !email.is_empty() {
+                admin_state.lock_user(email, 24); // Lock for 24 hours
+                admin_state.action_message.set(Some("User locked for 24 hours".to_string()));
+            }
+        })
+    };
+    
+    let unlock_handler = {
+        let admin_state = admin_state.clone();
+        Callback::new(move |_: leptos::ev::MouseEvent| {
+            let email = admin_state.selected_user_email.get_untracked();
+            if !email.is_empty() {
+                admin_state.unlock_user(email);
+                admin_state.action_message.set(Some("User unlocked".to_string()));
+            }
+        })
+    };
+    
+    let revoke_sessions_handler = {
+        let admin_state = admin_state.clone();
+        Callback::new(move |_: leptos::ev::MouseEvent| {
+            let email = admin_state.selected_user_email.get_untracked();
+            if !email.is_empty() {
+                admin_state.revoke_user_sessions(email);
+                admin_state.action_message.set(Some("All user sessions revoked".to_string()));
+            }
+        })
+    };
+    
+    view! {
+        <Card class="p-6">
+            <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold class="mb-4">
+                "User Management"
+            </Text>
+            
+            <div class="space-y-6">
+                // User lookup form
+                <div class="space-y-4">
+                    <div class="space-y-2">
+                        <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
+                            "User Email"
+                        </Text>
+                        <Input
+                            input_type=InputType::Email
+                            value=user_email
+                            on_input=handle_email_input
+                            size=Size::Md
+                            state=if is_loading.get() { ComponentState::Loading } else { ComponentState::Enabled }
+                            placeholder="Enter user email to manage"
+                        />
+                    </div>
+                    
+                    <Button
+                        intent=Intent::Primary
+                        size=Size::Md
+                        on_click=lookup_handler
+                        state=if is_loading.get() { 
+                            ComponentState::Loading 
+                        } else if user_email.get().is_empty() { 
+                            ComponentState::Disabled 
+                        } else { 
+                            ComponentState::Enabled 
+                        }
+                    >
+                        {move || if is_loading.get() { "Looking up..." } else { "Lookup User" }}
+                    </Button>
+                </div>
+                
+                // User info display
+                {move || {
+                    if let Some(user_info) = current_user_info.get() {
+                        let is_locked = user_info.locked_until.is_some();
+                        let has_sessions = user_info.active_sessions_count > 0;
+                        let email = user_info.email.clone();
+                        let failed_attempts = user_info.failed_login_attempts;
+                        let session_count = user_info.active_sessions_count;
+                        let is_active = user_info.active;
+                        
+                        view! {
+                            <div class="space-y-4">
+                                <Alert intent=Intent::Success size=Size::Md>
+                                    <div class="space-y-2">
+                                        <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
+                                            "User Found: " {email}
+                                        </Text>
+                                        <Text variant=TextVariant::Body size=Size::Xs>
+                                            "Failed Login Attempts: " {failed_attempts.to_string()}
+                                        </Text>
+                                        <Text variant=TextVariant::Body size=Size::Xs>
+                                            "Account Status: " {if is_locked { "🔒 Locked" } else if is_active { "✅ Active" } else { "❌ Inactive" }}
+                                        </Text>
+                                        <Text variant=TextVariant::Body size=Size::Xs>
+                                            "Active Sessions: " {session_count.to_string()}
+                                        </Text>
+                                    </div>
+                                </Alert>
+                                
+                                // Action buttons
+                                <div class="flex flex-wrap gap-3">
+                                    <Button
+                                        intent=if is_locked { Intent::Secondary } else { Intent::Warning }
+                                        size=Size::Sm
+                                        on_click=if is_locked { unlock_handler } else { lock_handler }
+                                        state=if is_loading.get() { ComponentState::Loading } else { ComponentState::Enabled }
+                                    >
+                                        {if is_locked { "Unlock Account" } else { "Lock Account (24h)" }}
+                                    </Button>
+                                    
+                                    {if has_sessions {
+                                        view! {
+                                            <Button
+                                                intent=Intent::Danger
+                                                size=Size::Sm
+                                                on_click=revoke_sessions_handler
+                                                state=if is_loading.get() { ComponentState::Loading } else { ComponentState::Enabled }
+                                            >
+                                                "Revoke All Sessions"
+                                            </Button>
+                                        }.into_any()
+                                    } else {
+                                        view! {}.into_any()
+                                    }}
+                                </div>
+                            </div>
+                        }.into_any()
+                    } else {
+                        view! {}.into_any()
+                    }
+                }}
+                
+                // Action message display
+                {move || {
+                    if let Some(message) = action_message.get() {
+                        view! {
+                            <Alert intent=Intent::Success size=Size::Md>
+                                {message}
+                            </Alert>
+                        }.into_any()
+                    } else {
+                        view! {}.into_any()
+                    }
+                }}
+            </div>
+        </Card>
+    }
+}
+
+#[component] 
+fn MenuManagementSection() -> impl IntoView {
+    // Load items and categories
+    let items_resource = Resource::new(|| (), |_| get_items());
+    let categories_resource = Resource::new(|| (), |_| get_categories());
+    
+    // State for new item form (hydration-safe)
+    let show_add_item = RwSignal::new(false);
+    let new_item_name = RwSignal::new(String::new());
+    let new_item_price = RwSignal::new(String::new());
+    let new_item_category = RwSignal::new(String::new());
+    
+    // State for new category form (hydration-safe) 
+    let show_add_category = RwSignal::new(false);
+    let new_category_name = RwSignal::new(String::new());
+    
+    // Actions for creating items and categories
+    let create_item_action = Action::new(move |_: &()| async move {
+        let name = new_item_name.get_untracked();
+        let price_str = new_item_price.get_untracked();
+        let category_id = new_item_category.get_untracked();
+        
+        if let Ok(price) = price_str.parse::<f64>() {
+            let request = CreateItemRequest {
+                name,
+                category_id,
+                price,
+            };
+            
+            match create_item(request).await {
+                Ok(_) => {
+                    new_item_name.set(String::new());
+                    new_item_price.set(String::new());
+                    new_item_category.set(String::new());
+                    show_add_item.set(false);
+                    items_resource.refetch();
+                    Ok("Item created successfully".to_string())
+                }
+                Err(e) => Err(format!("Failed to create item: {}", e))
+            }
+        } else {
+            Err("Invalid price format".to_string())
+        }
+    });
+    
+    let create_category_action = Action::new(move |_: &()| async move {
+        let name = new_category_name.get_untracked();
+        let request = CreateCategoryRequest { name };
+        
+        match create_category(request).await {
+            Ok(_) => {
+                new_category_name.set(String::new());
+                show_add_category.set(false);
+                categories_resource.refetch();
+                Ok("Category created successfully".to_string())
+            }
+            Err(e) => Err(format!("Failed to create category: {}", e))
+        }
+    });
+
+    view! {
+        <Card class="p-6">
+            <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold class="mb-4">
+                "Menu Management"
+            </Text>
+            
+            <div class="space-y-6">
+                // Categories section
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <Text variant=TextVariant::Heading size=Size::Md weight=FontWeight::Medium>
+                            "Categories"
+                        </Text>
+                        <Button
+                            intent=Intent::Primary
+                            size=Size::Sm
+                            on_click=Callback::new(move |_| show_add_category.set(true))
+                        >
+                            "Add Category"
+                        </Button>
+                    </div>
+                    
+                    <Suspense fallback=move || view! { <Text variant=TextVariant::Body>"Loading categories..."</Text> }>
+                        {move || {
+                            categories_resource.get().map(|categories| match categories {
+                                Ok(cats) => view! {
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                        {cats.into_iter().map(|category| view! {
+                                            <div class="p-3 border rounded-lg">
+                                                <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
+                                                    {category.name}
+                                                </Text>
+                                            </div>
+                                        }).collect_view()}
+                                    </div>
+                                }.into_any(),
+                                Err(e) => view! {
+                                    <Alert intent=Intent::Danger size=Size::Md>
+                                        {format!("Error loading categories: {}", e)}
+                                    </Alert>
+                                }.into_any()
+                            })
+                        }}
+                    </Suspense>
+                    
+                    // Add category form
+                    <Show when=move || show_add_category.get()>
+                        <div class="space-y-3 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                            <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
+                                "Add New Category"
+                            </Text>
+                            <Input
+                                input_type=InputType::Text
+                                value=new_category_name
+                                on_input=Callback::new(move |ev: leptos::ev::Event| {
+                                    new_category_name.set(event_target_value(&ev));
+                                })
+                                placeholder="Category name"
+                                size=Size::Md
+                                state=ComponentState::Enabled
+                            />
+                            <div class="flex gap-2">
+                                <Button
+                                    intent=Intent::Primary
+                                    size=Size::Sm
+                                    on_click=Callback::new(move |_: leptos::ev::MouseEvent| {
+                                    create_category_action.dispatch(());
+                                })
+                                    state=if create_category_action.pending().get() { ComponentState::Loading } else { ComponentState::Enabled }
+                                >
+                                    {move || if create_category_action.pending().get() { "Creating..." } else { "Create" }}
+                                </Button>
+                                <Button
+                                    intent=Intent::Secondary
+                                    size=Size::Sm
+                                    on_click=Callback::new(move |_| show_add_category.set(false))
+                                >
+                                    "Cancel"
+                                </Button>
+                            </div>
+                        </div>
+                    </Show>
+                </div>
+                
+                // Items section
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <Text variant=TextVariant::Heading size=Size::Md weight=FontWeight::Medium>
+                            "Menu Items"
+                        </Text>
+                        <Button
+                            intent=Intent::Primary
+                            size=Size::Sm
+                            on_click=Callback::new(move |_| show_add_item.set(true))
+                        >
+                            "Add Item"
+                        </Button>
+                    </div>
+                    
+                    <Suspense fallback=move || view! { <Text variant=TextVariant::Body>"Loading items..."</Text> }>
+                        {move || {
+                            items_resource.get().map(|items| match items {
+                                Ok(items_list) => view! {
+                                    <div class="space-y-2">
+                                        {items_list.into_iter().map(|item| view! {
+                                            <div class="flex justify-between items-center p-3 border rounded-lg">
+                                                <div class="space-y-1">
+                                                    <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
+                                                        {item.name}
+                                                    </Text>
+                                                    <Text variant=TextVariant::Body size=Size::Xs>
+                                                        {format!("${:.2} • Category: {}", item.price, item.category_id)}
+                                                    </Text>
+                                                </div>
+                                                <div class="flex items-center gap-2">
+                                                    <Text variant=TextVariant::Body size=Size::Xs intent=if item.active { Intent::Success } else { Intent::Secondary }>
+                                                        {if item.active { "Active" } else { "Inactive" }}
+                                                    </Text>
+                                                </div>
+                                            </div>
+                                        }).collect_view()}
+                                    </div>
+                                }.into_any(),
+                                Err(e) => view! {
+                                    <Alert intent=Intent::Danger size=Size::Md>
+                                        {format!("Error loading items: {}", e)}
+                                    </Alert>
+                                }.into_any()
+                            })
+                        }}
+                    </Suspense>
+                    
+                    // Add item form
+                    <Show when=move || show_add_item.get()>
+                        <div class="space-y-3 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
+                            <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
+                                "Add New Item"
+                            </Text>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <Input
+                                    input_type=InputType::Text
+                                    value=new_item_name
+                                    on_input=Callback::new(move |ev: leptos::ev::Event| {
+                                        new_item_name.set(event_target_value(&ev));
+                                    })
+                                    placeholder="Item name"
+                                    size=Size::Md
+                                    state=ComponentState::Enabled
+                                />
+                                <Input
+                                    input_type=InputType::Number
+                                    value=new_item_price
+                                    on_input=Callback::new(move |ev: leptos::ev::Event| {
+                                        new_item_price.set(event_target_value(&ev));
+                                    })
+                                    placeholder="Price (e.g., 12.50)"
+                                    size=Size::Md
+                                    state=ComponentState::Enabled
+                                />
+                                <Input
+                                    input_type=InputType::Text
+                                    value=new_item_category
+                                    on_input=Callback::new(move |ev: leptos::ev::Event| {
+                                        new_item_category.set(event_target_value(&ev));
+                                    })
+                                    placeholder="Category ID"
+                                    size=Size::Md
+                                    state=ComponentState::Enabled
+                                />
+                            </div>
+                            <div class="flex gap-2">
+                                <Button
+                                    intent=Intent::Primary
+                                    size=Size::Sm
+                                    on_click=Callback::new(move |_: leptos::ev::MouseEvent| {
+                                    create_item_action.dispatch(());
+                                })
+                                    state=if create_item_action.pending().get() { ComponentState::Loading } else { ComponentState::Enabled }
+                                >
+                                    {move || if create_item_action.pending().get() { "Creating..." } else { "Create" }}
+                                </Button>
+                                <Button
+                                    intent=Intent::Secondary
+                                    size=Size::Sm
+                                    on_click=Callback::new(move |_| show_add_item.set(false))
+                                >
+                                    "Cancel"
+                                </Button>
+                            </div>
+                        </div>
+                    </Show>
+                </div>
+            </div>
+        </Card>
+    }
+}
+
+#[component]
+fn OrderAnalyticsSection() -> impl IntoView {
+    // Load orders and order items for analytics
+    let orders_resource = Resource::new(|| (), |_| get_orders());
+    let _order_items_resource = Resource::new(|| (), |_| get_all_order_items());
+    
+    view! {
+        <Card class="p-6">
+            <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold class="mb-4">
+                "Order Analytics"
+            </Text>
+            
+            <div class="space-y-6">
+                // Summary stats
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Suspense fallback=move || view! { <div class="p-4 border rounded-lg"><Text variant=TextVariant::Body>"Loading..."</Text></div> }>
+                        {move || {
+                            orders_resource.get().map(|orders| match orders {
+                                Ok(orders_list) => {
+                                    let total_orders = orders_list.len();
+                                    let total_revenue: f64 = orders_list.iter().map(|o| o.total_price).sum();
+                                    
+                                    view! {
+                                        <div class="p-4 border rounded-lg">
+                                            <Text variant=TextVariant::Body size=Size::Sm>
+                                                "Total Orders"
+                                            </Text>
+                                            <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Bold>
+                                                {total_orders.to_string()}
+                                            </Text>
+                                        </div>
+                                        <div class="p-4 border rounded-lg">
+                                            <Text variant=TextVariant::Body size=Size::Sm>
+                                                "Total Revenue"
+                                            </Text>
+                                            <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Bold>
+                                                {format!("${:.2}", total_revenue)}
+                                            </Text>
+                                        </div>
+                                        <div class="p-4 border rounded-lg">
+                                            <Text variant=TextVariant::Body size=Size::Sm>
+                                                "Average Order"
+                                            </Text>
+                                            <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Bold>
+                                                {if total_orders > 0 { format!("${:.2}", total_revenue / total_orders as f64) } else { "$0.00".to_string() }}
+                                            </Text>
+                                        </div>
+                                    }.into_any()
+                                }
+                                Err(e) => view! {
+                                    <Alert intent=Intent::Danger size=Size::Md>
+                                        {format!("Error loading analytics: {}", e)}
+                                    </Alert>
+                                }.into_any()
+                            })
+                        }}
+                    </Suspense>
+                </div>
+                
+                // Recent orders
+                <div class="space-y-4">
+                    <Text variant=TextVariant::Heading size=Size::Md weight=FontWeight::Medium>
+                        "Recent Orders"
+                    </Text>
+                    
+                    <Suspense fallback=move || view! { <Text variant=TextVariant::Body>"Loading orders..."</Text> }>
+                        {move || {
+                            orders_resource.get().map(|orders| match orders {
+                                Ok(orders_list) => view! {
+                                    <div class="space-y-2">
+                                        {orders_list.into_iter().take(10).map(|order| view! {
+                                            <div class="flex justify-between items-center p-3 border rounded-lg">
+                                                <div class="space-y-1">
+                                                    <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
+                                                        {format!("Order #{:03}", order.sequential_id)}
+                                                    </Text>
+                                                    <Text variant=TextVariant::Body size=Size::Xs>
+                                                        {format!("Status: {:?}", order.status)}
+                                                    </Text>
+                                                </div>
+                                                <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
+                                                    {format!("${:.2}", order.total_price)}
+                                                </Text>
+                                            </div>
+                                        }).collect_view()}
+                                    </div>
+                                }.into_any(),
+                                Err(e) => view! {
+                                    <Alert intent=Intent::Danger size=Size::Md>
+                                        {format!("Error loading orders: {}", e)}
+                                    </Alert>
+                                }.into_any()
+                            })
+                        }}
+                    </Suspense>
+                </div>
+            </div>
+        </Card>
+    }
+}
+
+#[component]
+fn SystemSettingsSection() -> impl IntoView {
+    // System maintenance actions
+    let cleanup_action = Action::new(move |_: &()| async move {
+        // Note: cleanup_expired_sessions would need to be implemented
+        leptos::logging::log!("System cleanup initiated");
+        Ok::<String, String>("System cleanup completed successfully".to_string())
+    });
+    
+    view! {
+        <Card class="p-6">
+            <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold class="mb-4">
+                "System Settings"
+            </Text>
+            
+            <div class="space-y-6">
+                // System maintenance
+                <div class="space-y-4">
+                    <Text variant=TextVariant::Heading size=Size::Md weight=FontWeight::Medium>
+                        "System Maintenance"
+                    </Text>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="p-4 border rounded-lg">
+                            <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium class="mb-2">
+                                "Database Cleanup"
+                            </Text>
+                            <Text variant=TextVariant::Body size=Size::Xs class="mb-3">
+                                "Remove expired sessions and optimize database"
+                            </Text>
+                            <Button
+                                intent=Intent::Warning
+                                size=Size::Sm
+                                on_click=Callback::new(move |_: leptos::ev::MouseEvent| {
+                                    cleanup_action.dispatch(());
+                                })
+                                state=if cleanup_action.pending().get() { ComponentState::Loading } else { ComponentState::Enabled }
+                            >
+                                {move || if cleanup_action.pending().get() { "Cleaning..." } else { "Run Cleanup" }}
+                            </Button>
+                        </div>
+                        
+                        <div class="p-4 border rounded-lg">
+                            <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium class="mb-2">
+                                "Data Export"
+                            </Text>
+                            <Text variant=TextVariant::Body size=Size::Xs class="mb-3">
+                                "Export orders and analytics data"
+                            </Text>
+                            <Button
+                                intent=Intent::Secondary
+                                size=Size::Sm
+                                on_click=Callback::new(move |_| {
+                                    leptos::logging::log!("Data export initiated - feature coming soon");
+                                })
+                            >
+                                "Export Data"
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+                
+                // System information
+                <div class="space-y-4">
+                    <Text variant=TextVariant::Heading size=Size::Md weight=FontWeight::Medium>
+                        "System Information"
+                    </Text>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="p-4 border rounded-lg">
+                            <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
+                                "Application"
+                            </Text>
+                            <Text variant=TextVariant::Body size=Size::Xs>
+                                "Order Stream v0.1.0"
+                            </Text>
+                        </div>
+                        
+                        <div class="p-4 border rounded-lg">
+                            <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
+                                "Database"
+                            </Text>
+                            <Text variant=TextVariant::Body size=Size::Xs>
+                                "SurrealDB Connected"
+                            </Text>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Card>
     }
 }

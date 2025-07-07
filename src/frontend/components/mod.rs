@@ -20,6 +20,7 @@ pub mod station_view;
 pub mod station_section;
 pub mod station_form;
 pub mod station_list;
+pub mod route_guard;
 
 // Cashier-specific components
 pub mod cashier_header;

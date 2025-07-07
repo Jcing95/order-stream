@@ -28,6 +28,11 @@ pub fn FilteredOrderCard(
 ) -> impl IntoView {
     let expanded = RwSignal::new(false);
     
+    // Optimized toggle handler
+    let toggle_expanded = Callback::new(move |_: leptos::ev::MouseEvent| {
+        expanded.update(|e| *e = !*e);
+    });
+    
     let status_intent = |status: &OrderStatus| -> Intent {
         match status {
             OrderStatus::Draft => Intent::Secondary,
@@ -155,9 +160,7 @@ pub fn FilteredOrderCard(
                                             <Button
                                                 size=Size::Sm
                                                 intent=Intent::Secondary
-                                                on_click=Callback::new(move |_| {
-                                                    expanded.update(|e| *e = !*e);
-                                                })
+                                                on_click=toggle_expanded
                                             >
                                                 {move || if expanded.get() { "Collapse" } else { "View All" }}
                                             </Button>

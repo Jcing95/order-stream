@@ -4,7 +4,7 @@ use leptos_router::{
     components::{FlatRoutes, Route, Router},
     StaticSegment, ParamSegment,
     params::Params,
-    hooks::{use_params, use_navigate},
+    hooks::use_params,
 };
 use crate::frontend::pages::admin::AdminPage;
 use crate::frontend::pages::home::Home;
@@ -12,9 +12,9 @@ use crate::frontend::pages::design_system::DesignSystemPage;
 use crate::frontend::pages::cashier::CashierPage;
 use crate::frontend::pages::station::{DynamicStationPage, StationsOverviewPage};
 use crate::frontend::pages::login::LoginPage;
-use crate::frontend::state::theme::ThemeState;
-use crate::frontend::state::auth::{provide_auth_context, use_auth_context};
-use crate::frontend::design_system::{Theme, ThemeContext, Navbar, Spinner, theme::Size};
+use crate::frontend::state::auth::provide_auth_context;
+use crate::frontend::design_system::{Theme, ThemeContext, Navbar};
+use crate::frontend::components::route_guard::{RouteGuard, RouteRequirement};
 use crate::common::types::UserRole;
 
 // Import server functions to ensure they're registered
@@ -79,40 +79,22 @@ pub fn App() -> impl IntoView {
     // Initialize authentication context
     let auth_state = provide_auth_context();
     
-    // Initialize auth on app startup - only on client side
-    let auth_state_init = auth_state.clone();
-    Effect::new({
-        let auth_state_init = auth_state_init.clone();
+    // Initialize auth on app startup using proper Leptos isomorphic Effect pattern
+    Effect::new_isomorphic({
+        let auth_state = auth_state.clone();
         move |_| {
-            let auth_state_init = auth_state_init.clone();
-            leptos::task::spawn_local(async move {
-                auth_state_init.initialize().await;
-            });
+            #[cfg(feature = "hydrate")]
+            {
+                let auth_state = auth_state.clone();
+                leptos::task::spawn_local(async move {
+                    auth_state.initialize().await;
+                });
+            }
         }
     });
     
-    // Initialize the old theme state system (for compatibility)
-    let theme_state = ThemeState::new();
-    provide_context(theme_state);
-
-    // Initialize design system theme based on old theme state (untracked for initialization)
-    let initial_theme = if theme_state.is_dark().get_untracked() {
-        Theme::dark()
-    } else {
-        Theme::light()
-    };
-    ThemeContext::provide(initial_theme);
-
-    // Sync the old theme state with the design system theme
-    Effect::new(move |_| {
-        let is_dark = theme_state.is_dark().get();
-        let new_theme = if is_dark {
-            Theme::dark()
-        } else {
-            Theme::light()
-        };
-        ThemeContext::set_theme(new_theme);
-    });
+    // Initialize enhanced theme system with default light theme
+    ThemeContext::provide(Theme::light());
 
     // Create reactive page background based on design system theme
     let page_bg_class = Signal::derive(move || {
@@ -155,258 +137,82 @@ struct StationParams {
 
 #[component]
 fn DynamicStationRoute() -> impl IntoView {
-    let auth = use_auth_context();
-    let navigate = use_navigate();
     let params = use_params::<StationParams>();
-    let user = auth.user();
-    let is_loading = auth.is_loading();
-
-    Effect::new({
-        let navigate = navigate.clone();
-        move |_| {
-            if !is_loading.get() && user.get().is_none() {
-                navigate("/signin", Default::default());
-            }
-        }
-    });
-
+    
     view! {
-        {move || {
-            if is_loading.get() {
-                view! {
-                    <div class="min-h-screen flex items-center justify-center">
-                        <Spinner size=Size::Lg />
-                    </div>
-                }.into_any()
-            } else if user.get().is_some() {
-                match params.with(|params| params.clone()) {
-                    Ok(StationParams { name }) => {
-                        // Convert URL-friendly name back to potential station names
-                        // URLs are generated as lowercase with spaces replaced by hyphens
-                        // So we need to try both the URL format and converting back
-                        let converted_name = name.replace("-", " ");
-                        
-                        view! {
-                            <DynamicStationPage station_name=converted_name />
-                        }.into_any()
-                    },
-                    Err(_) => {
-                        view! {
-                            <div class="container mx-auto p-6">
-                                <div class="text-center">
-                                    <h1 class="text-2xl font-bold text-red-600 mb-4">
-                                        "Invalid Station Route"
-                                    </h1>
-                                    <p class="text-gray-600">
-                                        "Station name is required in the URL."
-                                    </p>
-                                </div>
+        <RouteGuard requirement=RouteRequirement::Authenticated children=move || {
+            match params.with(|params| params.clone()) {
+                Ok(StationParams { name }) => {
+                    // Convert URL-friendly name back to potential station names
+                    // URLs are generated as lowercase with spaces replaced by hyphens
+                    // So we need to try both the URL format and converting back
+                    let converted_name = name.replace("-", " ");
+                    
+                    view! {
+                        <DynamicStationPage station_name=converted_name />
+                    }.into_any()
+                },
+                Err(_) => {
+                    view! {
+                        <div class="container mx-auto p-6">
+                            <div class="text-center">
+                                <h1 class="text-2xl font-bold text-red-600 mb-4">
+                                    "Invalid Station Route"
+                                </h1>
+                                <p class="text-gray-600">
+                                    "Station name is required in the URL."
+                                </p>
                             </div>
-                        }.into_any()
-                    }
+                        </div>
+                    }.into_any()
                 }
-            } else {
-                view! { <div></div> }.into_any()
             }
-        }}
+        } />
     }
 }
 
 // Protected route wrapper components
 #[component]
 fn ProtectedLoginPage() -> impl IntoView {
-    let auth = use_auth_context();
-    let navigate = use_navigate();
-    let user = auth.user();
-    let is_loading = auth.is_loading();
-
-    // Effect to redirect authenticated users away from login
-    Effect::new({
-        let navigate = navigate.clone();
-        move |_| {
-            if !is_loading.get() {
-                if let Some(user) = user.get() {
-                    let redirect_path = match user.role {
-                        UserRole::Admin => "/admin",
-                        UserRole::Cashier => "/cashier",
-                        UserRole::Staff => "/stations",
-                    };
-                    navigate(redirect_path, Default::default());
-                }
-            }
-        }
-    });
-
     view! {
-        {move || {
-            if is_loading.get() {
-                view! {
-                    <div class="min-h-screen flex items-center justify-center">
-                        <Spinner size=Size::Lg />
-                    </div>
-                }.into_any()
-            } else if user.get().is_none() {
-                view! { <LoginPage/> }.into_any()
-            } else {
-                view! { <div></div> }.into_any()
-            }
-        }}
+        <RouteGuard requirement=RouteRequirement::NotAuthenticated children=|| {
+            view! { <LoginPage/> }.into_any()
+        } />
     }
 }
 
 #[component]
 fn ProtectedAdminPage() -> impl IntoView {
-    let auth = use_auth_context();
-    let navigate = use_navigate();
-    let user = auth.user();
-    let is_loading = auth.is_loading();
-
-    Effect::new({
-        let navigate = navigate.clone();
-        move |_| {
-            if !is_loading.get() {
-                if let Some(user) = user.get() {
-                    if !matches!(user.role, UserRole::Admin) {
-                        let redirect_path = match user.role {
-                            UserRole::Admin => "/admin",
-                            UserRole::Cashier => "/cashier",
-                            UserRole::Staff => "/stations",
-                        };
-                        navigate(redirect_path, Default::default());
-                    }
-                } else {
-                    navigate("/signin", Default::default());
-                }
-            }
-        }
-    });
-
     view! {
-        {move || {
-            if is_loading.get() {
-                view! {
-                    <div class="min-h-screen flex items-center justify-center">
-                        <Spinner size=Size::Lg />
-                    </div>
-                }.into_any()
-            } else if let Some(user) = user.get() {
-                if matches!(user.role, UserRole::Admin) {
-                    view! { <AdminPage/> }.into_any()
-                } else {
-                    view! { <div></div> }.into_any()
-                }
-            } else {
-                view! { <div></div> }.into_any()
-            }
-        }}
+        <RouteGuard requirement=RouteRequirement::Role(UserRole::Admin) children=|| {
+            view! { <AdminPage/> }.into_any()
+        } />
     }
 }
 
 #[component]
 fn ProtectedCashierPage() -> impl IntoView {
-    let auth = use_auth_context();
-    let navigate = use_navigate();
-    let user = auth.user();
-    let is_loading = auth.is_loading();
-
-    Effect::new({
-        let navigate = navigate.clone();
-        move |_| {
-            if !is_loading.get() {
-                if let Some(user) = user.get() {
-                    if !matches!(user.role, UserRole::Admin | UserRole::Cashier) {
-                        navigate("/stations", Default::default());
-                    }
-                } else {
-                    navigate("/signin", Default::default());
-                }
-            }
-        }
-    });
-
     view! {
-        {move || {
-            if is_loading.get() {
-                view! {
-                    <div class="min-h-screen flex items-center justify-center">
-                        <Spinner size=Size::Lg />
-                    </div>
-                }.into_any()
-            } else if let Some(user) = user.get() {
-                if matches!(user.role, UserRole::Admin | UserRole::Cashier) {
-                    view! { <CashierPage/> }.into_any()
-                } else {
-                    view! { <div></div> }.into_any()
-                }
-            } else {
-                view! { <div></div> }.into_any()
-            }
-        }}
+        <RouteGuard requirement=RouteRequirement::AnyRole(vec![UserRole::Admin, UserRole::Cashier]) children=|| {
+            view! { <CashierPage/> }.into_any()
+        } />
     }
 }
 
 #[component]
 fn ProtectedStationsPage() -> impl IntoView {
-    let auth = use_auth_context();
-    let navigate = use_navigate();
-    let user = auth.user();
-    let is_loading = auth.is_loading();
-
-    Effect::new({
-        let navigate = navigate.clone();
-        move |_| {
-            if !is_loading.get() && user.get().is_none() {
-                navigate("/signin", Default::default());
-            }
-        }
-    });
-
     view! {
-        {move || {
-            if is_loading.get() {
-                view! {
-                    <div class="min-h-screen flex items-center justify-center">
-                        <Spinner size=Size::Lg />
-                    </div>
-                }.into_any()
-            } else if user.get().is_some() {
-                view! { <StationsOverviewPage/> }.into_any()
-            } else {
-                view! { <div></div> }.into_any()
-            }
-        }}
+        <RouteGuard requirement=RouteRequirement::Authenticated children=|| {
+            view! { <StationsOverviewPage/> }.into_any()
+        } />
     }
 }
 
 #[component]
 fn ProtectedDesignSystemPage() -> impl IntoView {
-    let auth = use_auth_context();
-    let navigate = use_navigate();
-    let user = auth.user();
-    let is_loading = auth.is_loading();
-
-    Effect::new({
-        let navigate = navigate.clone();
-        move |_| {
-            if !is_loading.get() && user.get().is_none() {
-                navigate("/signin", Default::default());
-            }
-        }
-    });
-
     view! {
-        {move || {
-            if is_loading.get() {
-                view! {
-                    <div class="min-h-screen flex items-center justify-center">
-                        <Spinner size=Size::Lg />
-                    </div>
-                }.into_any()
-            } else if user.get().is_some() {
-                view! { <DesignSystemPage/> }.into_any()
-            } else {
-                view! { <div></div> }.into_any()
-            }
-        }}
+        <RouteGuard requirement=RouteRequirement::Authenticated children=|| {
+            view! { <DesignSystemPage/> }.into_any()
+        } />
     }
 }

@@ -9,7 +9,7 @@ pub fn CategorySection<F1, F2>(
     on_delete: F2,
 ) -> impl IntoView
 where
-    F1: Fn(CreateCategoryRequest) + 'static + Clone + Send,
+    F1: Fn(CreateCategoryRequest) + 'static + Clone + Send + Sync,
     F2: Fn(String) + 'static + Clone + Send + Sync,
 {
     view! {
