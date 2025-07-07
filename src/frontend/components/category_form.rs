@@ -34,13 +34,9 @@ where
     });
     
     // Derived signals for form validation state
-    let is_form_valid = Signal::derive(move || {
-        !name.get().trim().is_empty()
-    });
+    let is_form_valid = move || !name.get().trim().is_empty();
     
-    let is_submitting = Signal::derive(move || {
-        submit_action.pending().get()
-    });
+    let is_submitting = submit_action.pending();
 
     // Handle form submission with proper Leptos event type
     let handle_submit = move |ev: leptos::ev::SubmitEvent| {
@@ -102,25 +98,33 @@ where
                     >
                         "Category Name"
                     </Text>
-                    <Input
-                        input_type=InputType::Text
-                        size=Size::Md
-                        intent=Intent::Primary
-                        value=name
-                        placeholder="e.g., Drinks, Food, Snacks"
-                        required=true
-                        state=if is_submitting.get() { ComponentState::Disabled } else { ComponentState::Enabled }
-                        on_input=Callback::new(move |ev| name.set(event_target_value(&ev)))
-                    />
+                    {move || {
+                        view! {
+                            <Input
+                                input_type=InputType::Text
+                                size=Size::Md
+                                intent=Intent::Primary
+                                value=name
+                                placeholder="e.g., Drinks, Food, Snacks"
+                                required=true
+                                state=if is_submitting.get() { ComponentState::Disabled } else { ComponentState::Enabled }
+                                on_input=Callback::new(move |ev| name.set(event_target_value(&ev)))
+                            />
+                        }
+                    }}
                 </div>
                 
-                <Button
-                    size=Size::Md
-                    intent=Intent::Primary
-                    state=if is_submitting.get() { ComponentState::Loading } else if is_form_valid.get() { ComponentState::Enabled } else { ComponentState::Disabled }
-                >
-                    {move || if is_submitting.get() { "Adding..." } else { "Add Category" }}
-                </Button>
+                {move || {
+                    view! {
+                        <Button
+                            size=Size::Md
+                            intent=Intent::Primary
+                            state=if is_submitting.get() { ComponentState::Loading } else if is_form_valid() { ComponentState::Enabled } else { ComponentState::Disabled }
+                        >
+                            {move || if is_submitting.get() { "Adding..." } else { "Add Category" }}
+                        </Button>
+                    }
+                }}
             </form>
         </Card>
     }

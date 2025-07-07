@@ -1,4 +1,5 @@
 use leptos::prelude::*;
+use leptos::task::spawn_local;
 use crate::frontend::design_system::{
     Text, Button, Card, Alert, Input,
     TextVariant, FontWeight,
@@ -7,9 +8,13 @@ use crate::frontend::design_system::{
 };
 use crate::frontend::state::admin::{provide_admin_state, use_admin_state};
 use crate::frontend::state::auth::use_auth_context;
+use crate::frontend::components::{
+    item_section::ItemSection,
+    category_section::CategorySection,
+};
 use crate::backend::services::{
     items::{get_items, create_item},
-    categories::{get_categories, create_category},
+    categories::{get_categories, create_category, delete_category},
     orders::{get_orders},
     order_items::{get_all_order_items},
 };
@@ -48,7 +53,7 @@ pub fn AdminPage() -> impl IntoView {
                     // User Management Section
                     <UserManagementSection />
                     
-                    // Menu Management Section  
+                    // Menu Management Section using existing components
                     <MenuManagementSection />
                     
                     // Order Analytics Section
@@ -133,30 +138,38 @@ fn UserManagementSection() -> impl IntoView {
                         <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
                             "User Email"
                         </Text>
-                        <Input
-                            input_type=InputType::Email
-                            value=user_email
-                            on_input=handle_email_input
-                            size=Size::Md
-                            state=if is_loading.get() { ComponentState::Loading } else { ComponentState::Enabled }
-                            placeholder="Enter user email to manage"
-                        />
+                        {move || {
+                            view! {
+                                <Input
+                                    input_type=InputType::Email
+                                    value=user_email
+                                    on_input=handle_email_input
+                                    size=Size::Md
+                                    state=if is_loading.get() { ComponentState::Loading } else { ComponentState::Enabled }
+                                    placeholder="Enter user email to manage"
+                                />
+                            }
+                        }}
                     </div>
                     
-                    <Button
-                        intent=Intent::Primary
-                        size=Size::Md
-                        on_click=lookup_handler
-                        state=if is_loading.get() { 
-                            ComponentState::Loading 
-                        } else if user_email.get().is_empty() { 
-                            ComponentState::Disabled 
-                        } else { 
-                            ComponentState::Enabled 
+                    {move || {
+                        view! {
+                            <Button
+                                intent=Intent::Primary
+                                size=Size::Md
+                                on_click=lookup_handler
+                                state=if is_loading.get() { 
+                                    ComponentState::Loading 
+                                } else if user_email.get().is_empty() { 
+                                    ComponentState::Disabled 
+                                } else { 
+                                    ComponentState::Enabled 
+                                }
+                            >
+                                {move || if is_loading.get() { "Looking up..." } else { "Lookup User" }}
+                            </Button>
                         }
-                    >
-                        {move || if is_loading.get() { "Looking up..." } else { "Lookup User" }}
-                    </Button>
+                    }}
                 </div>
                 
                 // User info display
@@ -190,25 +203,33 @@ fn UserManagementSection() -> impl IntoView {
                                 
                                 // Action buttons
                                 <div class="flex flex-wrap gap-3">
-                                    <Button
-                                        intent=if is_locked { Intent::Secondary } else { Intent::Warning }
-                                        size=Size::Sm
-                                        on_click=if is_locked { unlock_handler } else { lock_handler }
-                                        state=if is_loading.get() { ComponentState::Loading } else { ComponentState::Enabled }
-                                    >
-                                        {if is_locked { "Unlock Account" } else { "Lock Account (24h)" }}
-                                    </Button>
+                                    {move || {
+                                        view! {
+                                            <Button
+                                                intent=if is_locked { Intent::Secondary } else { Intent::Warning }
+                                                size=Size::Sm
+                                                on_click=if is_locked { unlock_handler } else { lock_handler }
+                                                state=if is_loading.get() { ComponentState::Loading } else { ComponentState::Enabled }
+                                            >
+                                                {if is_locked { "Unlock Account" } else { "Lock Account (24h)" }}
+                                            </Button>
+                                        }
+                                    }}
                                     
                                     {if has_sessions {
                                         view! {
-                                            <Button
-                                                intent=Intent::Danger
-                                                size=Size::Sm
-                                                on_click=revoke_sessions_handler
-                                                state=if is_loading.get() { ComponentState::Loading } else { ComponentState::Enabled }
-                                            >
-                                                "Revoke All Sessions"
-                                            </Button>
+                                            {move || {
+                                                view! {
+                                                    <Button
+                                                        intent=Intent::Danger
+                                                        size=Size::Sm
+                                                        on_click=revoke_sessions_handler
+                                                        state=if is_loading.get() { ComponentState::Loading } else { ComponentState::Enabled }
+                                                    >
+                                                        "Revoke All Sessions"
+                                                    </Button>
+                                                }
+                                            }}
                                         }.into_any()
                                     } else {
                                         view! {}.into_any()
@@ -238,257 +259,92 @@ fn UserManagementSection() -> impl IntoView {
     }
 }
 
-#[component] 
+#[component]
 fn MenuManagementSection() -> impl IntoView {
-    // Load items and categories
+    // Load items and categories using Resources
     let items_resource = Resource::new(|| (), |_| get_items());
     let categories_resource = Resource::new(|| (), |_| get_categories());
     
-    // State for new item form (hydration-safe)
-    let show_add_item = RwSignal::new(false);
-    let new_item_name = RwSignal::new(String::new());
-    let new_item_price = RwSignal::new(String::new());
-    let new_item_category = RwSignal::new(String::new());
+    // Convert Resources to ReadSignals for the existing components
+    let items_signal = RwSignal::new(Vec::new());
+    let categories_signal = RwSignal::new(Vec::new());
     
-    // State for new category form (hydration-safe) 
-    let show_add_category = RwSignal::new(false);
-    let new_category_name = RwSignal::new(String::new());
-    
-    // Actions for creating items and categories
-    let create_item_action = Action::new(move |_: &()| async move {
-        let name = new_item_name.get_untracked();
-        let price_str = new_item_price.get_untracked();
-        let category_id = new_item_category.get_untracked();
-        
-        if let Ok(price) = price_str.parse::<f64>() {
-            let request = CreateItemRequest {
-                name,
-                category_id,
-                price,
-            };
-            
-            match create_item(request).await {
-                Ok(_) => {
-                    new_item_name.set(String::new());
-                    new_item_price.set(String::new());
-                    new_item_category.set(String::new());
-                    show_add_item.set(false);
-                    items_resource.refetch();
-                    Ok("Item created successfully".to_string())
-                }
-                Err(e) => Err(format!("Failed to create item: {}", e))
-            }
-        } else {
-            Err("Invalid price format".to_string())
+    // Update signals when resources load (SSR-safe)
+    Effect::new_isomorphic(move |_| {
+        if let Some(Ok(items)) = items_resource.get() {
+            items_signal.set(items);
         }
     });
     
-    let create_category_action = Action::new(move |_: &()| async move {
-        let name = new_category_name.get_untracked();
-        let request = CreateCategoryRequest { name };
-        
-        match create_category(request).await {
-            Ok(_) => {
-                new_category_name.set(String::new());
-                show_add_category.set(false);
+    Effect::new_isomorphic(move |_| {
+        if let Some(Ok(categories)) = categories_resource.get() {
+            categories_signal.set(categories);
+        }
+    });
+    
+    // Action handlers for the existing components
+    let handle_create_item = move |request: CreateItemRequest| {
+        let items_resource = items_resource.clone();
+        spawn_local(async move {
+            if let Err(e) = create_item(request).await {
+                leptos::logging::log!("Error creating item: {}", e);
+            } else {
+                items_resource.refetch();
+            }
+        });
+    };
+    
+    let handle_create_category = move |request: CreateCategoryRequest| {
+        let categories_resource = categories_resource.clone();
+        spawn_local(async move {
+            if let Err(e) = create_category(request).await {
+                leptos::logging::log!("Error creating category: {}", e);
+            } else {
                 categories_resource.refetch();
-                Ok("Category created successfully".to_string())
             }
-            Err(e) => Err(format!("Failed to create category: {}", e))
-        }
-    });
+        });
+    };
+    
+    let handle_delete_category = move |id: String| {
+        let categories_resource = categories_resource.clone();
+        spawn_local(async move {
+            if let Err(e) = delete_category(id).await {
+                leptos::logging::log!("Error deleting category: {}", e);
+            } else {
+                categories_resource.refetch();
+            }
+        });
+    };
 
     view! {
         <Card class="p-6">
-            <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold class="mb-4">
+            <Text variant=TextVariant::Heading size=Size::Lg weight=FontWeight::Semibold class="mb-6">
                 "Menu Management"
             </Text>
             
-            <div class="space-y-6">
-                // Categories section
+            <div class="space-y-8">
+                // Categories section with existing components
                 <div class="space-y-4">
-                    <div class="flex justify-between items-center">
-                        <Text variant=TextVariant::Heading size=Size::Md weight=FontWeight::Medium>
-                            "Categories"
-                        </Text>
-                        <Button
-                            intent=Intent::Primary
-                            size=Size::Sm
-                            on_click=Callback::new(move |_| show_add_category.set(true))
-                        >
-                            "Add Category"
-                        </Button>
-                    </div>
-                    
-                    <Suspense fallback=move || view! { <Text variant=TextVariant::Body>"Loading categories..."</Text> }>
-                        {move || {
-                            categories_resource.get().map(|categories| match categories {
-                                Ok(cats) => view! {
-                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                        {cats.into_iter().map(|category| view! {
-                                            <div class="p-3 border rounded-lg">
-                                                <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
-                                                    {category.name}
-                                                </Text>
-                                            </div>
-                                        }).collect_view()}
-                                    </div>
-                                }.into_any(),
-                                Err(e) => view! {
-                                    <Alert intent=Intent::Danger size=Size::Md>
-                                        {format!("Error loading categories: {}", e)}
-                                    </Alert>
-                                }.into_any()
-                            })
-                        }}
-                    </Suspense>
-                    
-                    // Add category form
-                    <Show when=move || show_add_category.get()>
-                        <div class="space-y-3 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
-                            <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
-                                "Add New Category"
-                            </Text>
-                            <Input
-                                input_type=InputType::Text
-                                value=new_category_name
-                                on_input=Callback::new(move |ev: leptos::ev::Event| {
-                                    new_category_name.set(event_target_value(&ev));
-                                })
-                                placeholder="Category name"
-                                size=Size::Md
-                                state=ComponentState::Enabled
-                            />
-                            <div class="flex gap-2">
-                                <Button
-                                    intent=Intent::Primary
-                                    size=Size::Sm
-                                    on_click=Callback::new(move |_: leptos::ev::MouseEvent| {
-                                    create_category_action.dispatch(());
-                                })
-                                    state=if create_category_action.pending().get() { ComponentState::Loading } else { ComponentState::Enabled }
-                                >
-                                    {move || if create_category_action.pending().get() { "Creating..." } else { "Create" }}
-                                </Button>
-                                <Button
-                                    intent=Intent::Secondary
-                                    size=Size::Sm
-                                    on_click=Callback::new(move |_| show_add_category.set(false))
-                                >
-                                    "Cancel"
-                                </Button>
-                            </div>
-                        </div>
-                    </Show>
+                    <Text variant=TextVariant::Heading size=Size::Md weight=FontWeight::Medium>
+                        "Categories"
+                    </Text>
+                    <CategorySection 
+                        categories=categories_signal.read_only()
+                        on_submit=handle_create_category
+                        on_delete=handle_delete_category
+                    />
                 </div>
                 
-                // Items section
+                // Items section with existing components 
                 <div class="space-y-4">
-                    <div class="flex justify-between items-center">
-                        <Text variant=TextVariant::Heading size=Size::Md weight=FontWeight::Medium>
-                            "Menu Items"
-                        </Text>
-                        <Button
-                            intent=Intent::Primary
-                            size=Size::Sm
-                            on_click=Callback::new(move |_| show_add_item.set(true))
-                        >
-                            "Add Item"
-                        </Button>
-                    </div>
-                    
-                    <Suspense fallback=move || view! { <Text variant=TextVariant::Body>"Loading items..."</Text> }>
-                        {move || {
-                            items_resource.get().map(|items| match items {
-                                Ok(items_list) => view! {
-                                    <div class="space-y-2">
-                                        {items_list.into_iter().map(|item| view! {
-                                            <div class="flex justify-between items-center p-3 border rounded-lg">
-                                                <div class="space-y-1">
-                                                    <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
-                                                        {item.name}
-                                                    </Text>
-                                                    <Text variant=TextVariant::Body size=Size::Xs>
-                                                        {format!("${:.2} • Category: {}", item.price, item.category_id)}
-                                                    </Text>
-                                                </div>
-                                                <div class="flex items-center gap-2">
-                                                    <Text variant=TextVariant::Body size=Size::Xs intent=if item.active { Intent::Success } else { Intent::Secondary }>
-                                                        {if item.active { "Active" } else { "Inactive" }}
-                                                    </Text>
-                                                </div>
-                                            </div>
-                                        }).collect_view()}
-                                    </div>
-                                }.into_any(),
-                                Err(e) => view! {
-                                    <Alert intent=Intent::Danger size=Size::Md>
-                                        {format!("Error loading items: {}", e)}
-                                    </Alert>
-                                }.into_any()
-                            })
-                        }}
-                    </Suspense>
-                    
-                    // Add item form
-                    <Show when=move || show_add_item.get()>
-                        <div class="space-y-3 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
-                            <Text variant=TextVariant::Body size=Size::Sm weight=FontWeight::Medium>
-                                "Add New Item"
-                            </Text>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <Input
-                                    input_type=InputType::Text
-                                    value=new_item_name
-                                    on_input=Callback::new(move |ev: leptos::ev::Event| {
-                                        new_item_name.set(event_target_value(&ev));
-                                    })
-                                    placeholder="Item name"
-                                    size=Size::Md
-                                    state=ComponentState::Enabled
-                                />
-                                <Input
-                                    input_type=InputType::Number
-                                    value=new_item_price
-                                    on_input=Callback::new(move |ev: leptos::ev::Event| {
-                                        new_item_price.set(event_target_value(&ev));
-                                    })
-                                    placeholder="Price (e.g., 12.50)"
-                                    size=Size::Md
-                                    state=ComponentState::Enabled
-                                />
-                                <Input
-                                    input_type=InputType::Text
-                                    value=new_item_category
-                                    on_input=Callback::new(move |ev: leptos::ev::Event| {
-                                        new_item_category.set(event_target_value(&ev));
-                                    })
-                                    placeholder="Category ID"
-                                    size=Size::Md
-                                    state=ComponentState::Enabled
-                                />
-                            </div>
-                            <div class="flex gap-2">
-                                <Button
-                                    intent=Intent::Primary
-                                    size=Size::Sm
-                                    on_click=Callback::new(move |_: leptos::ev::MouseEvent| {
-                                    create_item_action.dispatch(());
-                                })
-                                    state=if create_item_action.pending().get() { ComponentState::Loading } else { ComponentState::Enabled }
-                                >
-                                    {move || if create_item_action.pending().get() { "Creating..." } else { "Create" }}
-                                </Button>
-                                <Button
-                                    intent=Intent::Secondary
-                                    size=Size::Sm
-                                    on_click=Callback::new(move |_| show_add_item.set(false))
-                                >
-                                    "Cancel"
-                                </Button>
-                            </div>
-                        </div>
-                    </Show>
+                    <Text variant=TextVariant::Heading size=Size::Md weight=FontWeight::Medium>
+                        "Menu Items"
+                    </Text>
+                    <ItemSection
+                        categories=categories_signal.read_only()
+                        items=items_signal.read_only()
+                        on_submit=handle_create_item
+                    />
                 </div>
             </div>
         </Card>
@@ -626,16 +482,20 @@ fn SystemSettingsSection() -> impl IntoView {
                             <Text variant=TextVariant::Body size=Size::Xs class="mb-3">
                                 "Remove expired sessions and optimize database"
                             </Text>
-                            <Button
-                                intent=Intent::Warning
-                                size=Size::Sm
-                                on_click=Callback::new(move |_: leptos::ev::MouseEvent| {
-                                    cleanup_action.dispatch(());
-                                })
-                                state=if cleanup_action.pending().get() { ComponentState::Loading } else { ComponentState::Enabled }
-                            >
-                                {move || if cleanup_action.pending().get() { "Cleaning..." } else { "Run Cleanup" }}
-                            </Button>
+                            {move || {
+                                view! {
+                                    <Button
+                                        intent=Intent::Warning
+                                        size=Size::Sm
+                                        on_click=Callback::new(move |_: leptos::ev::MouseEvent| {
+                                            cleanup_action.dispatch(());
+                                        })
+                                        state=if cleanup_action.pending().get() { ComponentState::Loading } else { ComponentState::Enabled }
+                                    >
+                                        {move || if cleanup_action.pending().get() { "Cleaning..." } else { "Run Cleanup" }}
+                                    </Button>
+                                }
+                            }}
                         </div>
                         
                         <div class="p-4 border rounded-lg">

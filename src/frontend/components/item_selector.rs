@@ -127,20 +127,24 @@ pub fn ItemSelector(
                             </div>
                         </div>
 
-                        <Button
-                            size=Size::Md
-                            intent=Intent::Primary
-                            on_click=handle_add_click
-                            state=if add_to_cart_action.pending().get() { 
-                                ComponentState::Loading 
-                            } else if can_add_to_cart.get() { 
-                                ComponentState::Enabled 
-                            } else { 
-                                ComponentState::Disabled 
+                        {move || {
+                            view! {
+                                <Button
+                                    size=Size::Md
+                                    intent=Intent::Primary
+                                    on_click=handle_add_click
+                                    state=if add_to_cart_action.pending().get() { 
+                                        ComponentState::Loading 
+                                    } else if can_add_to_cart.get() { 
+                                        ComponentState::Enabled 
+                                    } else { 
+                                        ComponentState::Disabled 
+                                    }
+                                >
+                                    {if add_to_cart_action.pending().get() { "Adding..." } else { "Add to Cart" }}
+                                </Button>
                             }
-                        >
-                            {move || if add_to_cart_action.pending().get() { "Adding..." } else { "Add to Cart" }}
-                        </Button>
+                        }}
                     }.into_any()
                 }
             }}
