@@ -22,8 +22,13 @@ pub fn CashierPage() -> impl IntoView {
     // Error and loading state
     let error_message = RwSignal::new(None::<String>);
     let is_creating_order = RwSignal::new(false);
+    
+    // Derived signal to check if we have a cart with items
+    let has_cart_items = Signal::derive(move || {
+        current_order.get().is_some()
+    });
 
-    // Data resources
+    // Data resources - using proper Resource pattern for SSR compatibility
     let orders = Resource::new(|| (), |_| get_orders());
     let order_items = Resource::new(|| (), |_| get_all_order_items());
     let items = Resource::new(|| (), |_| get_items());

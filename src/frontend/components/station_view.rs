@@ -26,7 +26,7 @@ pub fn StationView(
     view_mode: StationViewMode,
 ) -> impl IntoView {
     
-    // Data signals
+    // Data resources - using proper Resource pattern for SSR compatibility
     let orders = Resource::new(|| (), |_| get_orders());
     let order_items = Resource::new(|| (), |_| get_all_order_items());
     let items = Resource::new(|| (), |_| get_items());

@@ -1,224 +1,149 @@
 use leptos::prelude::*;
-use leptos::task::spawn_local;
-use crate::common::types::{Category, Item, Order, Station, CreateCategoryRequest, CreateItemRequest, CreateStationRequest};
-use crate::backend::services::{
-    categories::{get_categories, create_category, delete_category},
-    items::{get_items, create_item},
-    orders::{get_orders, create_order, delete_order},
-    stations::{get_stations, create_station, delete_station},
+use crate::common::types::UserSecurityInfo;
+use crate::backend::services::auth::{
+    get_user_security_info, admin_lock_user_account, unlock_user_account, revoke_user_sessions
 };
 
-#[derive(Clone, Copy)]
+/// AdminState with proper Actions pattern for user management
+#[derive(Clone)]
 pub struct AdminState {
-    pub categories: RwSignal<Vec<Category>>,
-    pub items: RwSignal<Vec<Item>>,
-    pub orders: RwSignal<Vec<Order>>,
-    pub stations: RwSignal<Vec<Station>>,
-    pub loading: RwSignal<bool>,
-    pub error: RwSignal<Option<String>>,
+    // User input signals
+    pub selected_user_email: RwSignal<String>,
+    pub action_message: RwSignal<Option<String>>,
+    pub show_user_management: RwSignal<bool>,
+    pub current_user_info: RwSignal<Option<UserSecurityInfo>>,
+    
+    // Actions for admin operations
+    pub lookup_user_action: Action<String, Result<UserSecurityInfo, String>>,
+    pub lock_user_action: Action<(String, u32), Result<(), String>>,
+    pub unlock_user_action: Action<String, Result<(), String>>,
+    pub revoke_sessions_action: Action<String, Result<(), String>>,
+    pub reset_action: Action<(), ()>,
 }
 
 impl AdminState {
     pub fn new() -> Self {
+        // User input signals
+        let selected_user_email = RwSignal::new(String::new());
+        let action_message = RwSignal::new(None);
+        let show_user_management = RwSignal::new(false);
+        let current_user_info = RwSignal::new(None);
+        
+        // Lookup user action
+        let lookup_user_action = Action::new(move |email: &String| {
+            let email = email.clone();
+            async move {
+                match get_user_security_info(email).await {
+                    Ok(info) => {
+                        current_user_info.set(Some(info.clone()));
+                        Ok(info)
+                    }
+                    Err(e) => {
+                        let error_msg = format!("Error: {}", e);
+                        Err(error_msg)
+                    }
+                }
+            }
+        });
+        
+        // Lock user action
+        let lock_user_action = Action::new(move |(email, hours): &(String, u32)| {
+            let email = email.clone();
+            let hours = *hours;
+            async move {
+                match admin_lock_user_account(email, hours).await {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(format!("Error: {}", e))
+                }
+            }
+        });
+        
+        // Unlock user action
+        let unlock_user_action = Action::new(move |email: &String| {
+            let email = email.clone();
+            async move {
+                match unlock_user_account(email).await {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(format!("Error: {}", e))
+                }
+            }
+        });
+        
+        // Revoke sessions action
+        let revoke_sessions_action = Action::new(move |email: &String| {
+            let email = email.clone();
+            async move {
+                match revoke_user_sessions(email).await {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(format!("Error: {}", e))
+                }
+            }
+        });
+        
+        // Simple demonstration action
+        let reset_action = Action::new(move |_: &()| async move {
+            leptos::logging::log!("Admin reset action executed");
+        });
+        
         Self {
-            categories: RwSignal::new(Vec::new()),
-            items: RwSignal::new(Vec::new()),
-            orders: RwSignal::new(Vec::new()),
-            stations: RwSignal::new(Vec::new()),
-            loading: RwSignal::new(false),
-            error: RwSignal::new(None),
+            selected_user_email,
+            action_message,
+            show_user_management,
+            current_user_info,
+            lookup_user_action,
+            lock_user_action,
+            unlock_user_action,
+            revoke_sessions_action,
+            reset_action,
         }
     }
-
-    pub async fn load_all(&self) {
-        self.loading.set(true);
-        self.error.set(None);
+    
+    // Helper methods for easier usage
+    pub fn lookup_user(&self, email: String) {
+        self.lookup_user_action.dispatch(email);
+    }
+    
+    pub fn lock_user(&self, email: String, hours: u32) {
+        self.lock_user_action.dispatch((email, hours));
+    }
+    
+    pub fn unlock_user(&self, email: String) {
+        self.unlock_user_action.dispatch(email);
+    }
+    
+    pub fn revoke_user_sessions(&self, email: String) {
+        self.revoke_sessions_action.dispatch(email);
+    }
+    
+    // Derived signals for loading states
+    pub fn is_loading(&self) -> Signal<bool> {
+        let lookup_pending = self.lookup_user_action.pending();
+        let lock_pending = self.lock_user_action.pending();
+        let unlock_pending = self.unlock_user_action.pending();
+        let revoke_pending = self.revoke_sessions_action.pending();
         
-        // Load categories first (needed for items)
-        match get_categories().await {
-            Ok(fetched_categories) => {
-                self.categories.set(fetched_categories);
-            }
-            Err(err) => {
-                self.error.set(Some(format!("Failed to load categories: {}", err)));
-                self.loading.set(false);
-                return;
-            }
-        }
-        
-        // Load items
-        match get_items().await {
-            Ok(fetched_items) => {
-                self.items.set(fetched_items);
-            }
-            Err(err) => {
-                self.error.set(Some(format!("Failed to load items: {}", err)));
-            }
-        }
-        
-        // Load orders
-        match get_orders().await {
-            Ok(fetched_orders) => {
-                self.orders.set(fetched_orders);
-            }
-            Err(err) => {
-                self.error.set(Some(format!("Failed to load orders: {}", err)));
-            }
-        }
-        
-        // Load stations
-        match get_stations().await {
-            Ok(fetched_stations) => {
-                self.stations.set(fetched_stations);
-            }
-            Err(err) => {
-                self.error.set(Some(format!("Failed to load stations: {}", err)));
-            }
-        }
-        
-        self.loading.set(false);
+        Signal::derive(move || {
+            lookup_pending.get() ||
+            lock_pending.get() ||
+            unlock_pending.get() ||
+            revoke_pending.get()
+        })
     }
+    
+    // Derived signal for current user info
+    pub fn current_user_info(&self) -> Signal<Option<UserSecurityInfo>> {
+        let current_user_info = self.current_user_info;
+        Signal::derive(move || current_user_info.get())
+    }
+}
 
-    // Category operations with backend calls
-    pub fn create_category(&self, request: CreateCategoryRequest) {
-        let state = self.clone();
-        spawn_local(async move {
-            state.loading.set(true);
-            state.error.set(None);
-            
-            match create_category(request).await {
-                Ok(new_category) => {
-                    state.categories.update(|categories| categories.push(new_category));
-                }
-                Err(err) => {
-                    state.error.set(Some(format!("Failed to create category: {}", err)));
-                }
-            }
-            
-            state.loading.set(false);
-        });
-    }
+// Context provider for AdminState  
+pub fn provide_admin_state() -> AdminState {
+    let admin_state = AdminState::new();
+    provide_context(admin_state.clone());
+    admin_state
+}
 
-    pub fn delete_category(&self, category_id: String) {
-        let state = self.clone();
-        spawn_local(async move {
-            state.loading.set(true);
-            state.error.set(None);
-            
-            match delete_category(category_id.clone()).await {
-                Ok(_) => {
-                    state.categories.update(|categories| {
-                        categories.retain(|c| c.id != category_id);
-                    });
-                }
-                Err(err) => {
-                    state.error.set(Some(format!("Failed to delete category: {}", err)));
-                }
-            }
-            
-            state.loading.set(false);
-        });
-    }
-
-    // Item operations with backend calls
-    pub fn create_item(&self, request: CreateItemRequest) {
-        let state = self.clone();
-        spawn_local(async move {
-            state.loading.set(true);
-            state.error.set(None);
-            
-            match create_item(request).await {
-                Ok(new_item) => {
-                    state.items.update(|items| items.push(new_item));
-                }
-                Err(err) => {
-                    state.error.set(Some(format!("Failed to create item: {}", err)));
-                }
-            }
-            
-            state.loading.set(false);
-        });
-    }
-
-    // Order operations with backend calls
-    pub fn create_order(&self) {
-        let state = self.clone();
-        spawn_local(async move {
-            state.loading.set(true);
-            state.error.set(None);
-            
-            match create_order().await {
-                Ok(new_order) => {
-                    state.orders.update(|orders| orders.push(new_order));
-                }
-                Err(err) => {
-                    state.error.set(Some(format!("Failed to create order: {}", err)));
-                }
-            }
-            
-            state.loading.set(false);
-        });
-    }
-
-    pub fn delete_order(&self, order_id: String) {
-        let state = self.clone();
-        spawn_local(async move {
-            state.loading.set(true);
-            state.error.set(None);
-            
-            match delete_order(order_id.clone()).await {
-                Ok(_) => {
-                    state.orders.update(|orders| {
-                        orders.retain(|o| o.id != order_id);
-                    });
-                }
-                Err(err) => {
-                    state.error.set(Some(format!("Failed to delete order: {}", err)));
-                }
-            }
-            
-            state.loading.set(false);
-        });
-    }
-
-    // Station operations with backend calls
-    pub fn create_station(&self, request: CreateStationRequest) {
-        let state = self.clone();
-        spawn_local(async move {
-            state.loading.set(true);
-            state.error.set(None);
-            
-            match create_station(request).await {
-                Ok(new_station) => {
-                    state.stations.update(|stations| stations.push(new_station));
-                }
-                Err(err) => {
-                    state.error.set(Some(format!("Failed to create station: {}", err)));
-                }
-            }
-            
-            state.loading.set(false);
-        });
-    }
-
-    pub fn delete_station(&self, station_id: String) {
-        let state = self.clone();
-        spawn_local(async move {
-            state.loading.set(true);
-            state.error.set(None);
-            
-            match delete_station(station_id.clone()).await {
-                Ok(_) => {
-                    state.stations.update(|stations| {
-                        stations.retain(|s| s.id != station_id);
-                    });
-                }
-                Err(err) => {
-                    state.error.set(Some(format!("Failed to delete station: {}", err)));
-                }
-            }
-            
-            state.loading.set(false);
-        });
-    }
+pub fn use_admin_state() -> AdminState {
+    expect_context::<AdminState>()
 }

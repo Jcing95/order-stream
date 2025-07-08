@@ -65,6 +65,18 @@ pub fn OrderItemRow(
         .map(|item| item.name.clone())
         .unwrap_or_else(|| format!("Item {}", order_item.item_id));
 
+    // Optimized event handler - avoid cloning in closure
+    let next_status = get_next_status(&order_item.status);
+    let handle_status_update = match next_status {
+        Some(status) => {
+            let item_id = order_item.id.clone();
+            Some(Callback::new(move |_: leptos::ev::MouseEvent| {
+                on_status_update.run((item_id.clone(), status));
+            }))
+        }
+        None => None,
+    };
+
     view! {
         <div class=move || if compact {
             "flex items-center justify-between py-3 px-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm"
@@ -153,12 +165,7 @@ pub fn OrderItemRow(
                 "flex flex-col gap-2 ml-4"
             }>
                 {
-                    let next_status = get_next_status(&order_item.status);
-                    
-                    if let Some(next) = next_status {
-                        let item_id = order_item.id.clone();
-                        let on_update = on_status_update.clone();
-                        
+                    if let (Some(next), Some(handler)) = (next_status, handle_status_update.clone()) {
                         view! {
                             <Button
                                 size=if compact { Size::Sm } else { Size::Md }
@@ -167,9 +174,7 @@ pub fn OrderItemRow(
                                     OrderStatus::Completed => Intent::Success,
                                     _ => Intent::Primary,
                                 }
-                                on_click=Callback::new(move |_| {
-                                    on_update.run((item_id.clone(), next));
-                                })
+                                on_click=handler
                             >
                                 {get_action_text(&next)}
                             </Button>

@@ -179,3 +179,75 @@ impl CreateStationRequest {
         Ok(())
     }
 }
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub enum UserRole {
+    Admin,    // Full access - admin panel, cashier, and views
+    Cashier,  // Cashier access and views
+    Staff,    // View-only access to stations
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct User {
+    pub id: String,
+    pub email: String,
+    pub role: UserRole,
+    pub active: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RegisterRequest {
+    pub email: String,
+    pub password: String,
+    pub role: UserRole,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoginRequest {
+    pub email: String,
+    pub password: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthResponse {
+    pub user: User,
+    pub session_token: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserSecurityInfo {
+    pub email: String,
+    pub active: bool,
+    pub failed_login_attempts: u32,
+    pub locked_until: Option<String>,
+    pub active_sessions_count: usize,
+    pub recent_failed_attempts_count: u32,
+    pub last_login: Option<String>,
+}
+
+impl RegisterRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.email.trim().is_empty() {
+            return Err("Email cannot be empty".to_string());
+        }
+        if !self.email.contains('@') {
+            return Err("Invalid email format".to_string());
+        }
+        if self.password.len() < 6 {
+            return Err("Password must be at least 6 characters".to_string());
+        }
+        Ok(())
+    }
+}
+
+impl LoginRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.email.trim().is_empty() {
+            return Err("Email cannot be empty".to_string());
+        }
+        if self.password.trim().is_empty() {
+            return Err("Password cannot be empty".to_string());
+        }
+        Ok(())
+    }
+}

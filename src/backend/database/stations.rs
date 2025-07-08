@@ -1,8 +1,10 @@
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::{Thing, Datetime};
+
 use crate::backend::errors::{AppError, AppResult};
 use crate::common::types;
-use super::Database;
+
+use super::{Database, validators};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StationRecord {
@@ -122,6 +124,7 @@ pub async fn update_station(
 
     // Update fields if provided
     if let Some(name) = request.name {
+        validators::non_empty_string(&name, "Name")?;
         existing.name = name;
     }
 
@@ -136,7 +139,6 @@ pub async fn update_station(
     if let Some(output_status) = request.output_status {
         existing.output_status = output_status;
     }
-
 
     existing.updated_at = Datetime::default();
 

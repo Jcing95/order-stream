@@ -1,8 +1,11 @@
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::{Thing, Datetime};
+
 use crate::backend::errors::{AppError, AppResult};
 use crate::common::types;
-use super::Database;
+
+use super::{Database, validators};
+use super::items::ItemRecord;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OrderItemRecord {
@@ -29,16 +32,6 @@ impl From<OrderItemRecord> for types::OrderItem {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ItemRecord {
-    pub id: Thing,
-    pub name: String,
-    pub category_id: String,
-    pub price: f64,
-    pub active: bool,
-    pub created_at: Datetime,
-    pub updated_at: Datetime,
-}
 
 pub async fn create_order_item(db: &Database, request: types::CreateOrderItemRequest) -> AppResult<types::OrderItem> {
     // Get current item price for price snapshotting
@@ -97,6 +90,8 @@ pub async fn create_order_item(db: &Database, request: types::CreateOrderItemReq
 }
 
 pub async fn get_order_items(db: &Database, order_id: &str) -> AppResult<Vec<types::OrderItem>> {
+    // Note: SurrealDB doesn't have native WHERE filtering on select() for simple fields
+    // We keep the query approach for filtering, but standardize the error handling
     let query = "SELECT * FROM order_items WHERE order_id = $order_id";
     let mut response = db
         .query(query)
@@ -159,9 +154,7 @@ pub async fn update_order_item(
     }
 
     if let Some(quantity) = request.quantity {
-        if quantity == 0 {
-            return Err(AppError::ValidationError("Quantity must be greater than 0".to_string()));
-        }
+        validators::positive_quantity(quantity, "Quantity")?;
         existing.quantity = quantity;
     }
 
@@ -244,16 +237,15 @@ async fn recalculate_order_status(db: &Database, order_id: &str) -> AppResult<()
 }
 
 pub async fn bulk_update_order_items(db: &Database, update: types::BulkOrderItemUpdate) -> AppResult<Vec<types::OrderItem>> {
+    if update.order_item_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+
     let mut updated_items = Vec::new();
     let mut affected_orders = std::collections::HashSet::new();
     
-    // Update each OrderItem
+    // Update each OrderItem individually (safer approach)
     for order_item_id in &update.order_item_ids {
-        let update_request = types::UpdateOrderItemRequest {
-            item_id: None,
-            quantity: None,
-            status: Some(update.new_status),
-        };
         
         // Get the OrderItem first to track which orders are affected
         let existing: Option<OrderItemRecord> = db
@@ -264,9 +256,20 @@ pub async fn bulk_update_order_items(db: &Database, update: types::BulkOrderItem
         if let Some(existing_item) = existing {
             affected_orders.insert(existing_item.order_id.clone());
             
-            // Update the item (without auto-recalculation to batch it)
-            let updated = update_order_item_without_recalc(db, order_item_id, update_request).await?;
-            updated_items.push(updated);
+            // Update the item without auto-recalculation to batch it
+            let mut updated_item = existing_item;
+            updated_item.status = update.new_status;
+            updated_item.updated_at = Datetime::default();
+            
+            let updated: Option<OrderItemRecord> = db
+                .update(("order_items", order_item_id))
+                .content(updated_item)
+                .await
+                .map_err(|e| AppError::DatabaseError(format!("Failed to update order item: {}", e)))?;
+                
+            if let Some(record) = updated {
+                updated_items.push(record.into());
+            }
         }
     }
     
@@ -278,55 +281,3 @@ pub async fn bulk_update_order_items(db: &Database, update: types::BulkOrderItem
     Ok(updated_items)
 }
 
-async fn update_order_item_without_recalc(
-    db: &Database,
-    id: &str,
-    request: types::UpdateOrderItemRequest,
-) -> AppResult<types::OrderItem> {
-    // Same logic as update_order_item but without recalculation
-    let existing: Option<OrderItemRecord> = db
-        .select(("order_items", id))
-        .await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to get order item: {}", e)))?;
-
-    let mut existing = existing
-        .ok_or_else(|| AppError::NotFound(format!("Order item with id {} not found", id)))?;
-
-    // Update fields if provided
-    if let Some(item_id) = request.item_id {
-        // Get new item price for price snapshotting
-        // Use item ID directly since it's now a clean UUID
-        let item: Option<ItemRecord> = db
-            .select(("items", &item_id))
-            .await
-            .map_err(|e| AppError::DatabaseError(format!("Failed to get item: {}", e)))?;
-
-        let item = item.ok_or_else(|| AppError::NotFound(format!("Item with id {} not found", item_id)))?;
-
-        existing.item_id = item_id;
-        existing.price = item.price; // Update price when item changes
-    }
-
-    if let Some(quantity) = request.quantity {
-        if quantity == 0 {
-            return Err(AppError::ValidationError("Quantity must be greater than 0".to_string()));
-        }
-        existing.quantity = quantity;
-    }
-
-    if let Some(status) = request.status {
-        existing.status = status;
-    }
-
-    existing.updated_at = Datetime::default();
-
-    let updated: Option<OrderItemRecord> = db
-        .update(("order_items", id))
-        .content(existing)
-        .await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to update order item: {}", e)))?;
-
-    updated
-        .map(|record| record.into())
-        .ok_or_else(|| AppError::InternalError("Failed to update order item: no record returned from database".to_string()))
-}

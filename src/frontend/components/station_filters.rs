@@ -46,8 +46,9 @@ pub fn StationFilters(
         .collect::<Vec<_>>();
     
     // Helper functions for status/index conversion
-    let status_to_index = |status: OrderStatus| -> usize {
-        available_statuses.iter().position(|&s| s == status).unwrap_or(0)
+    let available_statuses_for_index = available_statuses.clone();
+    let status_to_index = move |status: OrderStatus| -> usize {
+        available_statuses_for_index.iter().position(|&s| s == status).unwrap_or(0)
     };
     
     let index_to_status = {
@@ -59,9 +60,16 @@ pub fn StationFilters(
     
     // For now, using single category selection - we may need multi-select later
     let selected_category = RwSignal::new(String::new());
-    let selected_status_index = RwSignal::new(status_to_index(selected_status.get()).to_string());
     
-    // Update the vec when single category changes
+    // Derive status index from selected status signal instead of separate state
+    let selected_status_index = Signal::derive(move || {
+        status_to_index(selected_status.get()).to_string()
+    });
+    
+    // Create a settable version for the select component
+    let selected_status_index_rw = RwSignal::new(selected_status_index.get_untracked());
+    
+    // Update the category vec when single category changes
     Effect::new({
         let selected_category_ids = selected_category_ids;
         move |_| {
@@ -74,17 +82,43 @@ pub fn StationFilters(
         }
     });
     
-    // Update status when index changes
+    // Update status when index changes via the RwSignal
     Effect::new({
         let selected_status = selected_status;
         let index_to_status = index_to_status.clone();
         move |_| {
-            let index_str = selected_status_index.get();
+            let index_str = selected_status_index_rw.get();
             if let Ok(index) = index_str.parse::<usize>() {
                 selected_status.set(index_to_status(index));
             }
         }
     });
+    
+    // Sync derived signal changes back to RwSignal for UI
+    Effect::new({
+        move |_| {
+            selected_status_index_rw.set(selected_status_index.get());
+        }
+    });
+    
+    // Optimized quick filter handlers
+    let handle_all_ordered = if let Some(idx) = available_statuses_clone.iter().position(|&s| s == OrderStatus::Ordered) {
+        Some(Callback::new(move |_: leptos::ev::MouseEvent| {
+            selected_category.set(String::new());
+            selected_status_index_rw.set(idx.to_string());
+        }))
+    } else {
+        None
+    };
+    
+    let handle_all_ready = if let Some(idx) = available_statuses_clone.iter().position(|&s| s == OrderStatus::Ready) {
+        Some(Callback::new(move |_: leptos::ev::MouseEvent| {
+            selected_category.set(String::new());
+            selected_status_index_rw.set(idx.to_string());
+        }))
+    } else {
+        None
+    };
 
     view! {
         <Card variant=CardVariant::Default>
@@ -123,45 +157,32 @@ pub fn StationFilters(
                             size=Size::Md
                             intent=Intent::Primary
                             options=status_options
-                            value=selected_status_index
+                            value=selected_status_index_rw
                         />
                     </div>
                 </div>
                 
                 // Quick filter buttons for common selections
                 <div class="flex flex-wrap gap-2">
-                    {
-                        let ordered_index = available_statuses_clone.iter().position(|&s| s == OrderStatus::Ordered);
-                        let ready_index = available_statuses_clone.iter().position(|&s| s == OrderStatus::Ready);
-                        
-                        view! {
-                            {ordered_index.map(|idx| view! {
-                                <Button
-                                    size=Size::Sm
-                                    intent=Intent::Secondary
-                                    on_click=Callback::new(move |_| {
-                                        selected_category.set(String::new());
-                                        selected_status_index.set(idx.to_string());
-                                    })
-                                >
-                                    "All Ordered"
-                                </Button>
-                            })}
-                            
-                            {ready_index.map(|idx| view! {
-                                <Button
-                                    size=Size::Sm
-                                    intent=Intent::Secondary
-                                    on_click=Callback::new(move |_| {
-                                        selected_category.set(String::new());
-                                        selected_status_index.set(idx.to_string());
-                                    })
-                                >
-                                    "All Ready"
-                                </Button>
-                            })}
-                        }
-                    }
+                    {handle_all_ordered.map(|handler| view! {
+                        <Button
+                            size=Size::Sm
+                            intent=Intent::Secondary
+                            on_click=handler
+                        >
+                            "All Ordered"
+                        </Button>
+                    })}
+                    
+                    {handle_all_ready.map(|handler| view! {
+                        <Button
+                            size=Size::Sm
+                            intent=Intent::Secondary
+                            on_click=handler
+                        >
+                            "All Ready"
+                        </Button>
+                    })}
                 </div>
             </div>
         </Card>

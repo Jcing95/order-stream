@@ -5,6 +5,7 @@ async fn main() {
     use leptos::prelude::*;
     use leptos_axum::{generate_route_list, LeptosRoutes};
     use order_stream::app::{shell, App};
+    use tower_cookies::CookieManagerLayer;
 
     // Setting this to None means we'll be using cargo-leptos and its env vars
     let conf = get_configuration(None).unwrap();
@@ -19,6 +20,7 @@ async fn main() {
             move || shell(leptos_options.clone())
         })
         .fallback(leptos_axum::file_and_error_handler(shell))
+        .layer(CookieManagerLayer::new())
         .with_state(leptos_options);
 
     // run our app with hyper

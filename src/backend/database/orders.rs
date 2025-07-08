@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::{Thing, Datetime};
+
 use crate::backend::errors::{AppError, AppResult};
 use crate::common::types;
+
 use super::Database;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -139,7 +141,8 @@ async fn update_order_internal(
                 .map_err(|e| AppError::DatabaseError(format!("Failed to update order items status: {}", e)))?;
                 
             // Log how many items were updated for debugging
-            leptos::logging::log!("Updated order items for order {}: {:?}", id, result);
+            #[cfg(debug_assertions)]
+            println!("Updated order items for order {}: {:?}", id, result);
         }
     }
 

@@ -113,22 +113,136 @@ pub struct ThemeOverrides {
     pub shadows: Option<ShadowTokensOverride>,
 }
 
+/// Theme preference options
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ThemePreference {
+    System,
+    Light,
+    Dark,
+}
+
+impl ThemePreference {
+    pub fn cycle(self) -> Self {
+        match self {
+            ThemePreference::System => ThemePreference::Light,
+            ThemePreference::Light => ThemePreference::Dark,
+            ThemePreference::Dark => ThemePreference::System,
+        }
+    }
+
+    pub fn to_string(self) -> &'static str {
+        match self {
+            ThemePreference::System => "system",
+            ThemePreference::Light => "light",
+            ThemePreference::Dark => "dark",
+        }
+    }
+
+    pub fn from_string(s: &str) -> Self {
+        match s {
+            "light" => ThemePreference::Light,
+            "dark" => ThemePreference::Dark,
+            _ => ThemePreference::System,
+        }
+    }
+}
+
 /// Theme context for providing theme to components
 #[derive(Clone, Copy)]
 pub struct ThemeContext {
     pub theme: RwSignal<Theme>,
+    pub preference: RwSignal<ThemePreference>,
+    pub system_dark: RwSignal<bool>,
 }
 
 impl ThemeContext {
-    pub fn new(theme: Theme) -> Self {
+    pub fn new(initial_theme: Theme) -> Self {
+        let preference = RwSignal::new(ThemePreference::System);
+        let system_dark = RwSignal::new(false);
+        let theme = RwSignal::new(initial_theme);
+        
         Self {
-            theme: RwSignal::new(theme),
+            theme,
+            preference,
+            system_dark,
         }
     }
 
-    /// Provide theme context to the component tree
-    pub fn provide(theme: Theme) {
-        provide_context(ThemeContext::new(theme));
+    /// Provide theme context with enhanced functionality
+    pub fn provide(initial_theme: Theme) {
+        let context = ThemeContext::new(initial_theme);
+        
+        // Set up reactive theme resolution
+        let _theme_signal = context.theme;
+        let _preference_signal = context.preference;
+        let _system_dark_signal = context.system_dark;
+        
+        // Resolve theme based on preference and system setting
+        #[cfg(feature = "hydrate")]
+        Effect::new(move |_| {
+            let pref = context.preference.get();
+            let sys_dark = context.system_dark.get();
+            let resolved_theme = match pref {
+                ThemePreference::Light => Theme::light(),
+                ThemePreference::Dark => Theme::dark(),
+                ThemePreference::System => {
+                    if sys_dark {
+                        Theme::dark()
+                    } else {
+                        Theme::light()
+                    }
+                }
+            };
+            context.theme.set(resolved_theme);
+        });
+        
+        // Initialize from localStorage and system preferences (client-side only)
+        #[cfg(feature = "hydrate")]
+        Effect::new({
+            let preference = context.preference;
+            let system_dark = context.system_dark;
+            move |_| {
+                if let Some(window) = web_sys::window() {
+                    // Load saved preference from localStorage
+                    if let Ok(Some(storage)) = window.local_storage() {
+                        if let Ok(Some(saved_preference)) = storage.get_item("theme-preference") {
+                            let saved_preference = ThemePreference::from_string(&saved_preference);
+                            preference.set(saved_preference);
+                        }
+                    }
+
+                    // Check system preference
+                    if let Ok(media_query_list) = window.match_media("(prefers-color-scheme: dark)") {
+                        if let Some(mql) = media_query_list {
+                            system_dark.set(mql.matches());
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Apply theme class to document root
+        #[cfg(feature = "hydrate")]
+        Effect::new({
+            let theme = context.theme;
+            move |_| {
+                if let Some(window) = web_sys::window() {
+                    if let Some(document) = window.document() {
+                        if let Some(html) = document.document_element() {
+                            let class_list = html.class_list();
+                            let current_theme = theme.get();
+                            if current_theme.name == "dark" {
+                                let _ = class_list.add_1("dark");
+                            } else {
+                                let _ = class_list.remove_1("dark");
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        provide_context(context);
     }
 
     /// Get the current theme from context (reactive)
@@ -138,20 +252,63 @@ impl ThemeContext {
         Signal::derive(move || context.theme.get())
     }
 
-    /// Get the theme signal for reactive updates
-    pub fn use_theme_signal() -> RwSignal<Theme> {
-        use_context::<ThemeContext>()
-            .expect("Theme context not found. Make sure to call ThemeContext::provide() in your app root.")
-            .theme
+    /// Get theme preference from context (reactive)
+    pub fn use_preference() -> Signal<ThemePreference> {
+        let context = use_context::<ThemeContext>()
+            .expect("Theme context not found. Make sure to call ThemeContext::provide() in your app root.");
+        Signal::derive(move || context.preference.get())
     }
 
-    /// Switch to a different theme
+    /// Get if current theme is dark (reactive)
+    pub fn is_dark() -> Signal<bool> {
+        let context = use_context::<ThemeContext>()
+            .expect("Theme context not found. Make sure to call ThemeContext::provide() in your app root.");
+        Signal::derive(move || context.theme.get().name == "dark")
+    }
+
+    /// Switch to a different theme preference
+    pub fn set_preference(preference: ThemePreference) {
+        if let Some(context) = use_context::<ThemeContext>() {
+            context.preference.set(preference);
+            
+            // Save to localStorage (client-side only)
+            #[cfg(feature = "hydrate")]
+            if let Some(window) = web_sys::window() {
+                if let Ok(Some(storage)) = window.local_storage() {
+                    let _ = storage.set_item("theme-preference", preference.to_string());
+                }
+            }
+        }
+    }
+
+    /// Cycle through theme preferences
+    pub fn cycle_preference() {
+        if let Some(context) = use_context::<ThemeContext>() {
+            let current = context.preference.get();
+            let new_preference = current.cycle();
+            Self::set_preference(new_preference);
+        }
+    }
+
+    /// Get preference label for UI
+    pub fn preference_label() -> Signal<&'static str> {
+        let context = use_context::<ThemeContext>()
+            .expect("Theme context not found. Make sure to call ThemeContext::provide() in your app root.");
+        Signal::derive(move || {
+            match context.preference.get() {
+                ThemePreference::System => "Auto",
+                ThemePreference::Light => "Light",
+                ThemePreference::Dark => "Dark",
+            }
+        })
+    }
+
+    /// Switch to a different theme (direct theme change)
     pub fn set_theme(theme: Theme) {
         if let Some(context) = use_context::<ThemeContext>() {
             context.theme.set(theme);
         }
     }
-
 }
 
 

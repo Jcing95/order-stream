@@ -20,10 +20,10 @@ pub fn DynamicStationPage(
 ) -> impl IntoView {
     let station_name_clone = station_name.clone();
     
-    // Load station configuration from database
+    // Load station configuration from database - using proper Resource pattern
     let station_resource = Resource::new(
-        move || station_name.clone(), 
-        |name| get_station_by_name(name)
+        move || station_name.clone(),
+        |station_name| get_station_by_name(station_name)
     );
 
     view! {
@@ -72,11 +72,8 @@ pub fn DynamicStationPage(
 }
 #[component]
 pub fn StationsOverviewPage() -> impl IntoView {
-    // Load all stations from database
-    let stations_resource = Resource::new(
-        || (), 
-        |_| get_stations()
-    );
+    // Load all stations from database - using proper Resource pattern
+    let stations_resource = Resource::new(|| (), |_| get_stations());
 
     view! {
         <div class="container mx-auto p-6">

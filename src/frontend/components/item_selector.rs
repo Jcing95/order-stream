@@ -17,26 +17,46 @@ pub fn ItemSelector(
     let quantity_input = RwSignal::new(1u32);
     let quantity_string = RwSignal::new("1".to_string());
 
-    let handle_add_to_cart = move |_| {
-        let item_id = selected_item_id.get();
-        let quantity = quantity_input.get();
+    // Derived signal for form validation
+    let can_add_to_cart = Signal::derive(move || {
+        !selected_item_id.get().is_empty() && quantity_input.get() > 0
+    });
+
+    // Action for adding to cart with proper error handling
+    let add_to_cart_action = Action::new(move |_: &()| {
+        let item_id = selected_item_id.get_untracked();
+        let quantity = quantity_input.get_untracked();
         
-        if !item_id.is_empty() && quantity > 0 {
-            on_add_to_cart.run((item_id, quantity));
-            // Reset form
-            selected_item_id.set(String::new());
-            quantity_input.set(1);
-            quantity_string.set("1".to_string());
+        async move {
+            if can_add_to_cart.get_untracked() {
+                on_add_to_cart.run((item_id, quantity));
+                // Reset form after successful add
+                selected_item_id.set(String::new());
+                quantity_input.set(1);
+                quantity_string.set("1".to_string());
+                Ok(())
+            } else {
+                Err("Please select an item and valid quantity")
+            }
         }
+    });
+
+    // Event handler for native select element - must use closure pattern
+    let handle_item_change = move |ev| {
+        selected_item_id.set(event_target_value(&ev));
     };
 
-    let handle_quantity_change = move |ev| {
+    let handle_quantity_change = Callback::new(move |ev: leptos::ev::Event| {
         let val = event_target_value(&ev);
         quantity_string.set(val.clone());
         if let Ok(qty) = val.parse::<u32>() {
             quantity_input.set(qty.max(1));
         }
-    };
+    });
+    
+    let handle_add_click = Callback::new(move |_: leptos::ev::MouseEvent| {
+        add_to_cart_action.dispatch(());
+    });
 
     view! {
         <div class="space-y-4">
@@ -65,7 +85,7 @@ pub fn ItemSelector(
                                 </Text>
                                 <select 
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    on:change=move |ev| selected_item_id.set(event_target_value(&ev))
+                                    on:change=handle_item_change
                                     prop:value=move || selected_item_id.get()
                                 >
                                     <option value="">"Select an item..."</option>
@@ -100,20 +120,31 @@ pub fn ItemSelector(
                                 <Input
                                     input_type=InputType::Number
                                     value=quantity_string
-                                    on_input=Callback::new(handle_quantity_change)
+                                    on_input=handle_quantity_change
                                     size=Size::Md
                                     state=ComponentState::Enabled
                                 />
                             </div>
                         </div>
 
-                        <Button
-                            size=Size::Md
-                            intent=Intent::Secondary
-                            on_click=Callback::new(handle_add_to_cart)
-                        >
-                            "Add to Cart"
-                        </Button>
+                        {move || {
+                            view! {
+                                <Button
+                                    size=Size::Md
+                                    intent=Intent::Primary
+                                    on_click=handle_add_click
+                                    state=if add_to_cart_action.pending().get() { 
+                                        ComponentState::Loading 
+                                    } else if can_add_to_cart.get() { 
+                                        ComponentState::Enabled 
+                                    } else { 
+                                        ComponentState::Disabled 
+                                    }
+                                >
+                                    {if add_to_cart_action.pending().get() { "Adding..." } else { "Add to Cart" }}
+                                </Button>
+                            }
+                        }}
                     }.into_any()
                 }
             }}

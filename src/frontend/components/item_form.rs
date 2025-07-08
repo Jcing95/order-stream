@@ -1,27 +1,55 @@
 use leptos::prelude::*;
-use leptos::web_sys;
 use crate::common::types::{CreateItemRequest, Category};
 use crate::frontend::design_system::{
-    Card, CardVariant, Input, Button, Text, Alert,
-    theme::{Size, Intent},
+    Card, CardVariant, Input, Button, Text, Alert, Select, SelectOption,
+    theme::{Size, Intent, ComponentState},
     atoms::{InputType, TextVariant, FontWeight},
 };
 
 #[component]
 pub fn ItemForm<F>(
-    categories: ReadSignal<Vec<Category>>,
+    categories: Signal<Vec<Category>>,
     on_submit: F,
 ) -> impl IntoView 
 where
-    F: Fn(CreateItemRequest) + 'static + Clone + Send,
+    F: Fn(CreateItemRequest) + 'static + Clone + Send + Sync,
 {
     let name = RwSignal::new(String::new());
     let category = RwSignal::new(String::new());
     let price = RwSignal::new(String::new());
     let (error, set_error) = signal(Option::<String>::None);
 
-    let on_submit_clone = on_submit.clone();
-    let submit_form = move |ev: web_sys::SubmitEvent| {
+    // Create Action for form submission - proper Leptos pattern
+    let submit_action = Action::new({
+        let on_submit = on_submit.clone();
+        move |request: &CreateItemRequest| {
+            let on_submit = on_submit.clone();
+            let request = request.clone();
+            async move {
+                // Validate
+                if let Err(err) = request.validate() {
+                    return Err(err);
+                }
+                
+                // Submit to parent callback
+                on_submit(request);
+                Ok(())
+            }
+        }
+    });
+    
+    // Derived signals for form validation state
+    let is_form_valid = move || {
+        !name.get().trim().is_empty() && 
+        !category.get().trim().is_empty() && 
+        !price.get().trim().is_empty() &&
+        price.get().parse::<f64>().is_ok()
+    };
+    
+    let is_submitting = submit_action.pending();
+
+    // Handle form submission with proper Leptos event type
+    let handle_submit = move |ev: leptos::ev::SubmitEvent| {
         ev.prevent_default();
         
         // Clear previous error
@@ -46,24 +74,36 @@ where
             price: price_value,
         };
 
-        // Validate
-        if let Err(err) = request.validate() {
-            set_error.set(Some(err));
-            return;
-        }
-
-        // Submit
-        on_submit_clone(request);
-        
-        // Clear form
-        name.set(String::new());
-        category.set(String::new());
-        price.set(String::new());
+        submit_action.dispatch(request);
     };
+
+    // Handle action results
+    Effect::new_isomorphic({
+        let name = name;
+        let category = category;
+        let price = price;
+        let set_error = set_error;
+        move |_| {
+            if let Some(result) = submit_action.value().get() {
+                match result {
+                    Ok(_) => {
+                        // Success - clear form
+                        name.set(String::new());
+                        category.set(String::new());
+                        price.set(String::new());
+                    },
+                    Err(err) => {
+                        // Show validation error
+                        set_error.set(Some(err));
+                    }
+                }
+            }
+        }
+    });
 
     view! {
         <Card variant=CardVariant::Default>
-            <form on:submit=submit_form class="space-y-4">
+            <form on:submit=handle_submit class="space-y-4">
                 <Text 
                     variant=TextVariant::Heading 
                     size=Size::Lg 
@@ -87,15 +127,20 @@ where
                     >
                         "Item Name"
                     </Text>
-                    <Input
-                        input_type=InputType::Text
-                        size=Size::Md
-                        intent=Intent::Primary
-                        value=name
-                        placeholder="e.g., Coffee, Sandwich, Pizza"
-                        required=true
-                        on_input=Callback::new(move |ev| name.set(event_target_value(&ev)))
-                    />
+                    {move || {
+                        view! {
+                            <Input
+                                input_type=InputType::Text
+                                size=Size::Md
+                                intent=Intent::Primary
+                                value=name
+                                placeholder="e.g., Coffee, Burger, Soda"
+                                required=true
+                                state=if is_submitting.get() { ComponentState::Disabled } else { ComponentState::Enabled }
+                                on_input=Callback::new(move |ev| name.set(event_target_value(&ev)))
+                            />
+                        }
+                    }}
                 </div>
                 
                 <div class="space-y-2">
@@ -107,22 +152,23 @@ where
                     >
                         "Category"
                     </Text>
-                    // Use a regular HTML select for now due to reactivity constraints
-                    <select
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        prop:value=move || category.get()
-                        on:change=move |ev| category.set(event_target_value(&ev))
-                        required
-                    >
-                        <option value="">"Select a category..."</option>
-                        {move || {
-                            categories.get().into_iter().map(|cat| {
-                                view! {
-                                    <option value={cat.id.clone()}>{cat.name.clone()}</option>
-                                }
-                            }).collect_view()
-                        }}
-                    </select>
+                    {move || {
+                        let category_options = categories.get().into_iter().map(|cat| {
+                            SelectOption::new(cat.id, cat.name)
+                        }).collect::<Vec<_>>();
+                        
+                        view! {
+                            <Select
+                                size=Size::Md
+                                intent=Intent::Primary
+                                value=category
+                                state=if is_submitting.get() { ComponentState::Disabled } else { ComponentState::Enabled }
+                                placeholder="Select a category"
+                                required=true
+                                options=category_options
+                            />
+                        }
+                    }}
                 </div>
                 
                 <div class="space-y-2">
@@ -132,28 +178,35 @@ where
                         weight=FontWeight::Medium
                         as_element="label"
                     >
-                        "Price"
+                        "Price ($)"
                     </Text>
-                    <Input
-                        input_type=InputType::Number
-                        size=Size::Md
-                        intent=Intent::Primary
-                        value=price
-                        placeholder="0.00"
-                        required=true
-                        on_input=Callback::new(move |ev| price.set(event_target_value(&ev)))
-                    />
+                    {move || {
+                        view! {
+                            <Input
+                                input_type=InputType::Number
+                                size=Size::Md
+                                intent=Intent::Primary
+                                value=price
+                                placeholder="0.00"
+                                required=true
+                                state=if is_submitting.get() { ComponentState::Disabled } else { ComponentState::Enabled }
+                                on_input=Callback::new(move |ev| price.set(event_target_value(&ev)))
+                            />
+                        }
+                    }}
                 </div>
                 
-                <Button
-                    size=Size::Md
-                    intent=Intent::Primary
-                    on_click=Callback::new(move |_| {
-                        // The form submit will handle this
-                    })
-                >
-                    "Add Item"
-                </Button>
+                {move || {
+                    view! {
+                        <Button
+                            size=Size::Md
+                            intent=Intent::Primary
+                            state=if is_submitting.get() { ComponentState::Loading } else if is_form_valid() { ComponentState::Enabled } else { ComponentState::Disabled }
+                        >
+                            {move || if is_submitting.get() { "Adding..." } else { "Add Item" }}
+                        </Button>
+                    }
+                }}
             </form>
         </Card>
     }

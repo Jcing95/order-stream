@@ -29,7 +29,7 @@ where
 
 
     let get_category_names = move |category_ids: &Vec<String>| -> Vec<String> {
-        let cats = categories.get();
+        let cats = categories.get_untracked();
         category_ids.iter()
             .filter_map(|id| {
                 cats.iter().find(|cat| &cat.id == id).map(|cat| cat.name.clone())
