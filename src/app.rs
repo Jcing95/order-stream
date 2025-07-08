@@ -1,55 +1,22 @@
+use crate::common::types::UserRole;
+use crate::frontend::components::route_guard::{RouteGuard, RouteRequirement};
+use crate::frontend::design_system::{Navbar, Theme, ThemeContext};
+use crate::frontend::pages::{
+    admin::AdminPage,
+    cashier::CashierPage,
+    design_system::DesignSystemPage,
+    home::Home,
+    login::LoginPage,
+    station::{DynamicStationPage, StationsOverviewPage},
+};
+use crate::frontend::state::auth::provide_auth_context;
 use leptos::prelude::*;
 use leptos_meta::*;
 use leptos_router::{
     components::{FlatRoutes, Route, Router},
-    StaticSegment, ParamSegment,
-    params::Params,
     hooks::use_params,
-};
-use crate::frontend::pages::admin::AdminPage;
-use crate::frontend::pages::home::Home;
-use crate::frontend::pages::design_system::DesignSystemPage;
-use crate::frontend::pages::cashier::CashierPage;
-use crate::frontend::pages::station::{DynamicStationPage, StationsOverviewPage};
-use crate::frontend::pages::login::LoginPage;
-use crate::frontend::state::auth::provide_auth_context;
-use crate::frontend::design_system::{Theme, ThemeContext, Navbar};
-use crate::frontend::components::route_guard::{RouteGuard, RouteRequirement};
-use crate::common::types::UserRole;
-
-// Import server functions to ensure they're registered
-#[allow(unused_imports)]
-use crate::backend::services::auth::{
-    register_user, login_user, logout_user, get_current_user,
-    revoke_user_sessions, admin_lock_user_account, unlock_user_account,
-    get_user_security_info, cleanup_expired_sessions, initialize_database_schema
-};
-
-#[allow(unused_imports)]
-use crate::backend::services::items::{
-    get_items, create_item, get_item, update_item, delete_item
-};
-
-#[allow(unused_imports)]
-use crate::backend::services::categories::{
-    get_categories, create_category, get_category, update_category, delete_category
-};
-
-#[allow(unused_imports)]
-use crate::backend::services::orders::{
-    get_orders, create_order, get_order, update_order, update_order_status, delete_order
-};
-
-#[allow(unused_imports)]
-use crate::backend::services::order_items::{
-    get_order_items, get_all_order_items, create_order_item, get_order_item,
-    update_order_item, delete_order_item, bulk_update_order_items
-};
-
-#[allow(unused_imports)]
-use crate::backend::services::stations::{
-    get_stations, create_station, get_station, get_station_by_name,
-    update_station, delete_station
+    params::Params,
+    ParamSegment, StaticSegment,
 };
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
@@ -75,31 +42,18 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
 #[component]
 pub fn App() -> impl IntoView {
     provide_meta_context();
-    
-    // Initialize authentication context
-    let auth_state = provide_auth_context();
-    
-    // Initialize auth on app startup using proper Leptos isomorphic Effect pattern
-    Effect::new_isomorphic({
-        let auth_state = auth_state.clone();
-        move |_| {
-            #[cfg(feature = "hydrate")]
-            {
-                let auth_state = auth_state.clone();
-                leptos::task::spawn_local(async move {
-                    auth_state.initialize().await;
-                });
-            }
-        }
-    });
-    
+    provide_auth_context();
+
     // Initialize enhanced theme system with default light theme
     ThemeContext::provide(Theme::light());
 
     // Create reactive page background based on design system theme
     let page_bg_class = Signal::derive(move || {
         let theme = ThemeContext::use_theme().get();
-        format!("min-h-screen transition-colors duration-200 {}", theme.colors.background.page)
+        format!(
+            "min-h-screen transition-colors duration-200 {}",
+            theme.colors.background.page
+        )
     });
 
     view! {
@@ -109,18 +63,18 @@ pub fn App() -> impl IntoView {
                 <FlatRoutes fallback=|| "Page not found.">
                     // Public routes (no auth required)
                     <Route path=StaticSegment("") view=Home/>
-                    
+
                     // Public route that redirects authenticated users away
                     <Route path=StaticSegment("signin") view=ProtectedLoginPage/>
-                    
+
                     // Protected routes with role-based access
                     <Route path=StaticSegment("admin") view=ProtectedAdminPage/>
                     <Route path=StaticSegment("cashier") view=ProtectedCashierPage/>
                     <Route path=StaticSegment("stations") view=ProtectedStationsPage/>
-                    
+
                     // Dynamic station routes (database-driven) - all authenticated users
                     <Route path=(StaticSegment("stations"), ParamSegment("name")) view=DynamicStationRoute/>
-                    
+
                     // Design system page - protected but available to all authenticated users
                     <Route path=StaticSegment("design-system") view=ProtectedDesignSystemPage/>
                 </FlatRoutes>
@@ -138,7 +92,7 @@ struct StationParams {
 #[component]
 fn DynamicStationRoute() -> impl IntoView {
     let params = use_params::<StationParams>();
-    
+
     view! {
         <RouteGuard requirement=RouteRequirement::Authenticated children=move || {
             match params.with(|params| params.clone()) {
@@ -147,7 +101,7 @@ fn DynamicStationRoute() -> impl IntoView {
                     // URLs are generated as lowercase with spaces replaced by hyphens
                     // So we need to try both the URL format and converting back
                     let converted_name = name.replace("-", " ");
-                    
+
                     view! {
                         <DynamicStationPage station_name=converted_name />
                     }.into_any()

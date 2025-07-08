@@ -149,10 +149,9 @@ impl AuthState {
 }
 
 // Context provider/consumer
-pub fn provide_auth_context() -> AuthState {
+pub fn provide_auth_context() {
     let auth_state = AuthState::new();
-    provide_context(auth_state.clone());
-    auth_state
+    provide_context(auth_state);
 }
 
 pub fn use_auth_context() -> AuthState {
