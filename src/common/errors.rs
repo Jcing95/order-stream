@@ -4,16 +4,18 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Error {
     NotFound(String),
-    ValidationError(String),
+    NotAuthorized(String),
     InternalError(String),
+    InvalidArgument(String),
 }
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::NotFound(msg) => write!(f, "Not found: {}", msg),
-            Error::ValidationError(msg) => write!(f, "Validation error: {}", msg),
+            Error::NotAuthorized(msg) => write!(f, "Not authorized: {}", msg),
             Error::InternalError(msg) => write!(f, "Internal error: {}", msg),
+            Error::InvalidArgument(msg) => write!(f, "Invalid argument: {}", msg),
         }
     }
 }

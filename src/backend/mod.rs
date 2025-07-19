@@ -1,10 +1,8 @@
-// Services contain Leptos server functions (available to both client and server)
-pub mod services;
+pub mod service;
 
-// Backend-only modules (SSR only)
 #[cfg(feature = "ssr")]
 pub mod config;
 #[cfg(feature = "ssr")]
-pub mod errors;
+pub mod error;
 #[cfg(feature = "ssr")]
-pub mod database;
+pub mod db;

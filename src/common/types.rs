@@ -1,42 +1,26 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Item {
-    pub id: String,           // SurrealDB format: "item:uuid"
+pub enum Role {
+    Admin,
+    Cashier,
+    Staff,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Product {
+    pub id: String,
     pub name: String,
-    pub category_id: String,  // Foreign key to Category
+    pub category_id: String,
     pub price: f64,
     pub active: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CreateItemRequest {
-    pub name: String,
-    pub category_id: String,
-    pub price: f64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UpdateItemRequest {
-    pub name: Option<String>,
-    pub category_id: Option<String>,
-    pub price: Option<f64>,
-    pub active: Option<bool>,
-}
-
-impl CreateItemRequest {
-    pub fn validate(&self) -> Result<(), String> {
-        if self.name.trim().is_empty() {
-            return Err("Name cannot be empty".to_string());
-        }
-        if self.category_id.trim().is_empty() {
-            return Err("Category ID cannot be empty".to_string());
-        }
-        if self.price < 0.0 {
-            return Err("Price cannot be negative".to_string());
-        }
-        Ok(())
-    }
+pub struct User {
+    pub id: String,
+    pub email: String,
+    pub role: Role,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -142,11 +126,10 @@ impl BulkOrderItemUpdate {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Station {
-    pub id: String,
-    pub name: String,                    // "Bar", "Kitchen", "Pickup"
-    pub category_ids: Vec<String>,       // Filter: show only these categories
-    pub input_statuses: Vec<OrderStatus>, // Show orders with items in these statuses
-    pub output_status: OrderStatus,      // What status to update items to
+    pub name: String,       
+    pub category_ids: Vec<String>,
+    pub input_statuses: Vec<OrderStatus>,
+    pub output_status: OrderStatus,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -158,24 +141,17 @@ pub struct CreateStationRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UpdateStationRequest {
-    pub name: Option<String>,
+pub struct StationUpdate {
     pub category_ids: Option<Vec<String>>,
     pub input_statuses: Option<Vec<OrderStatus>>,
     pub output_status: Option<OrderStatus>,
 }
 
-impl CreateStationRequest {
-    pub fn validate(&self) -> Result<(), String> {
-        if self.name.trim().is_empty() {
-            return Err("Station name cannot be empty".to_string());
-        }
-        if self.category_ids.is_empty() {
-            return Err("At least one category must be selected".to_string());
-        }
-        if self.input_statuses.is_empty() {
-            return Err("At least one input status must be selected".to_string());
-        }
-        Ok(())
-    }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProductUpdate {
+    pub name: Option<String>,
+    pub category_id: Option<String>,
+    pub price: Option<f64>,
+    pub active: Option<bool>,
 }
+

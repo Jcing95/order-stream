@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::{Thing, Datetime};
-use crate::backend::errors::{AppError, AppResult};
+use crate::backend::error::Error;
 use crate::common::types;
 use super::Database;
 
@@ -24,21 +24,6 @@ impl From<OrderRecord> for types::Order {
             status: record.status,
         }
     }
-}
-
-async fn get_next_sequential_id(db: &Database) -> AppResult<u32> {
-    // Query for the maximum sequential_id
-    let query = "SELECT VALUE sequential_id FROM orders ORDER BY sequential_id DESC LIMIT 1";
-    let mut response = db
-        .query(query)
-        .await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to get next sequential ID: {}", e)))?;
-
-    let max_id: Option<u32> = response
-        .take(0)
-        .map_err(|e| AppError::DatabaseError(format!("Failed to parse sequential ID query result: {}", e)))?;
-
-    Ok(max_id.map(|id| id + 1).unwrap_or(1))
 }
 
 pub async fn create_order(db: &Database) -> AppResult<types::Order> {
@@ -66,17 +51,17 @@ pub async fn create_order(db: &Database) -> AppResult<types::Order> {
             updated_at: Datetime::default(),
         })
         .await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to create order: {}", e)))?;
+        .map_err(|e| Error::InternalError(format!("Failed to create order: {}", e)))?;
 
     order.map(|record| record.into())
-        .ok_or_else(|| AppError::InternalError("Failed to create order: no record returned from database".to_string()))
+        .ok_or_else(|| Error::InternalError("Failed to create order: no record returned from database".to_string()))
 }
 
 pub async fn get_orders(db: &Database) -> AppResult<Vec<types::Order>> {
     let orders: Vec<OrderRecord> = db
         .select("orders")
         .await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to get orders: {}", e)))?;
+        .map_err(|e| Error::InternalError(format!("Failed to get orders: {}", e)))?;
 
     Ok(orders.into_iter().map(|record| record.into()).collect())
 }
@@ -85,7 +70,7 @@ pub async fn get_order(db: &Database, id: &str) -> AppResult<Option<types::Order
     let order: Option<OrderRecord> = db
         .select(("orders", id))
         .await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to get order: {}", e)))?;
+        .map_err(|e| Error::InternalError(format!("Failed to get order: {}", e)))?;
 
     Ok(order.map(|record| record.into()))
 }
@@ -116,10 +101,10 @@ async fn update_order_internal(
     let existing: Option<OrderRecord> = db
         .select(("orders", id))
         .await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to get order: {}", e)))?;
+        .map_err(|e| Error::InternalError(format!("Failed to get order: {}", e)))?;
 
     let mut existing = existing
-        .ok_or_else(|| AppError::NotFound(format!("Order with id {} not found", id)))?;
+        .ok_or_else(|| Error::NotFound(format!("Order with id {} not found", id)))?;
 
     // Update fields if provided
     if let Some(status) = request.status {
@@ -136,7 +121,7 @@ async fn update_order_internal(
                 .bind(("new_status", types::OrderStatus::Ordered))
                 .bind(("order_id", id.to_string()))
                 .await
-                .map_err(|e| AppError::DatabaseError(format!("Failed to update order items status: {}", e)))?;
+                .map_err(|e| Error::InternalError(format!("Failed to update order items status: {}", e)))?;
                 
             // Log how many items were updated for debugging
             leptos::logging::log!("Updated order items for order {}: {:?}", id, result);
@@ -149,21 +134,21 @@ async fn update_order_internal(
         .update(("orders", id))
         .content(existing)
         .await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to update order: {}", e)))?;
+        .map_err(|e| Error::InternalError(format!("Failed to update order: {}", e)))?;
 
     updated
         .map(|record| record.into())
-        .ok_or_else(|| AppError::InternalError("Failed to update order: no record returned from database".to_string()))
+        .ok_or_else(|| Error::InternalError("Failed to update order: no record returned from database".to_string()))
 }
 
 pub async fn delete_order(db: &Database, id: &str) -> AppResult<()> {
     let deleted: Option<OrderRecord> = db
         .delete(("orders", id))
         .await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to delete order: {}", e)))?;
+        .map_err(|e| Error::InternalError(format!("Failed to delete order: {}", e)))?;
 
     if deleted.is_none() {
-        return Err(AppError::NotFound(format!("Order with id {} not found", id)));
+        return Err(Error::NotFound(format!("Order with id {} not found", id)));
     }
 
     Ok(())

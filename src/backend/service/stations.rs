@@ -2,21 +2,21 @@ use leptos::prelude::*;
 use crate::common::types::{Station, CreateStationRequest, UpdateStationRequest};
 
 #[cfg(feature = "ssr")]
-use crate::backend::errors::AppError;
+use crate::backend::error::Error;
 #[cfg(feature = "ssr")]
-use crate::backend::database;
+use crate::backend::db;
 
 #[server(GetStations, "/api")]
 pub async fn get_stations() -> Result<Vec<Station>, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        let db = database::get_db_connection()
+        let db = db::get_db_connection()
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))?;
         
-        database::stations::get_stations(&db)
+        db::station::get_stations(&db)
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))
     }
     #[cfg(not(feature = "ssr"))]
     {
@@ -33,13 +33,13 @@ pub async fn create_station(request: CreateStationRequest) -> Result<Station, Se
             .validate()
             .map_err(|e| ServerFnError::new(e))?;
 
-        let db = database::get_db_connection()
+        let db = db::get_db_connection()
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))?;
         
-        database::stations::create_station(&db, request)
+        db::station::create_station(&db, request)
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))
     }
     #[cfg(not(feature = "ssr"))]
     {
@@ -51,13 +51,13 @@ pub async fn create_station(request: CreateStationRequest) -> Result<Station, Se
 pub async fn get_station(id: String) -> Result<Station, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        let db = database::get_db_connection()
+        let db = db::get_db_connection()
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))?;
         
-        match database::stations::get_station(&db, &id)
+        match db::station::get_station(&db, &id)
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))?
         {
             Some(station) => Ok(station),
             None => Err(ServerFnError::new(format!("Station with id {} not found", id))),
@@ -73,13 +73,13 @@ pub async fn get_station(id: String) -> Result<Station, ServerFnError> {
 pub async fn get_station_by_name(name: String) -> Result<Station, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        let db = database::get_db_connection()
+        let db = db::get_db_connection()
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))?;
         
-        match database::stations::get_station_by_name(&db, &name)
+        match db::station::get_station_by_name(&db, &name)
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))?
         {
             Some(station) => Ok(station),
             None => Err(ServerFnError::new(format!("Station with name '{}' not found", name))),
@@ -95,13 +95,13 @@ pub async fn get_station_by_name(name: String) -> Result<Station, ServerFnError>
 pub async fn update_station(id: String, request: UpdateStationRequest) -> Result<Station, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        let db = database::get_db_connection()
+        let db = db::get_db_connection()
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))?;
         
-        database::stations::update_station(&db, &id, request)
+        db::station::update_station(&db, &id, request)
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))
     }
     #[cfg(not(feature = "ssr"))]
     {
@@ -113,13 +113,13 @@ pub async fn update_station(id: String, request: UpdateStationRequest) -> Result
 pub async fn delete_station(id: String) -> Result<(), ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        let db = database::get_db_connection()
+        let db = db::get_db_connection()
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))?;
         
-        database::stations::delete_station(&db, &id)
+        db::station::delete_station(&db, &id)
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))
     }
     #[cfg(not(feature = "ssr"))]
     {

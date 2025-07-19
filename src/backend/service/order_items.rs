@@ -2,21 +2,21 @@ use leptos::prelude::*;
 use crate::common::types::{CreateOrderItemRequest, OrderItem, UpdateOrderItemRequest, BulkOrderItemUpdate};
 
 #[cfg(feature = "ssr")]
-use crate::backend::errors::AppError;
+use crate::backend::error::Error;
 #[cfg(feature = "ssr")]
-use crate::backend::database;
+use crate::backend::db;
 
 #[server(GetOrderItems, "/api")]
 pub async fn get_order_items(order_id: String) -> Result<Vec<OrderItem>, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        let db = database::get_db_connection()
+        let db = db::get_db_connection()
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))?;
         
-        database::order_items::get_order_items(&db, &order_id)
+        db::item::get_order_items(&db, &order_id)
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))
     }
     #[cfg(not(feature = "ssr"))]
     {
@@ -28,13 +28,13 @@ pub async fn get_order_items(order_id: String) -> Result<Vec<OrderItem>, ServerF
 pub async fn get_all_order_items() -> Result<Vec<OrderItem>, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        let db = database::get_db_connection()
+        let db = db::get_db_connection()
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))?;
         
-        database::order_items::get_all_order_items(&db)
+        db::item::get_all_order_items(&db)
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))
     }
     #[cfg(not(feature = "ssr"))]
     {
@@ -51,13 +51,13 @@ pub async fn create_order_item(request: CreateOrderItemRequest) -> Result<OrderI
             .validate()
             .map_err(|e| ServerFnError::new(e))?;
 
-        let db = database::get_db_connection()
+        let db = db::get_db_connection()
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))?;
         
-        database::order_items::create_order_item(&db, request)
+        db::item::create_order_item(&db, request)
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))
     }
     #[cfg(not(feature = "ssr"))]
     {
@@ -69,13 +69,13 @@ pub async fn create_order_item(request: CreateOrderItemRequest) -> Result<OrderI
 pub async fn get_order_item(id: String) -> Result<OrderItem, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        let db = database::get_db_connection()
+        let db = db::get_db_connection()
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))?;
         
-        match database::order_items::get_order_item(&db, &id)
+        match db::item::get_order_item(&db, &id)
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))?
         {
             Some(order_item) => Ok(order_item),
             None => Err(ServerFnError::new(format!("Order item with id {} not found", id))),
@@ -91,13 +91,13 @@ pub async fn get_order_item(id: String) -> Result<OrderItem, ServerFnError> {
 pub async fn update_order_item(id: String, request: UpdateOrderItemRequest) -> Result<OrderItem, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        let db = database::get_db_connection()
+        let db = db::get_db_connection()
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))?;
         
-        database::order_items::update_order_item(&db, &id, request)
+        db::item::update_order_item(&db, &id, request)
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))
     }
     #[cfg(not(feature = "ssr"))]
     {
@@ -109,13 +109,13 @@ pub async fn update_order_item(id: String, request: UpdateOrderItemRequest) -> R
 pub async fn delete_order_item(id: String) -> Result<(), ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        let db = database::get_db_connection()
+        let db = db::get_db_connection()
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))?;
         
-        database::order_items::delete_order_item(&db, &id)
+        db::item::delete_order_item(&db, &id)
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))
     }
     #[cfg(not(feature = "ssr"))]
     {
@@ -132,13 +132,13 @@ pub async fn bulk_update_order_items(update: BulkOrderItemUpdate) -> Result<Vec<
             .validate()
             .map_err(|e| ServerFnError::new(e))?;
 
-        let db = database::get_db_connection()
+        let db = db::get_db_connection()
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))?;
         
-        database::order_items::bulk_update_order_items(&db, update)
+        db::item::bulk_update_order_items(&db, update)
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))
     }
     #[cfg(not(feature = "ssr"))]
     {

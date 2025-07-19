@@ -9,29 +9,34 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 leptos = { version = "0.8.2", features = ["nightly"] }
 leptos_router = { version = "0.8.2", features = ["nightly"] }
-axum = { version = "0.8.4", optional = true }
 console_error_panic_hook = "0.1.7"
-leptos_axum = { version = "0.8.2", optional = true }
 leptos_meta = { version = "0.8.2" }
+wasm-bindgen = "0.2.100"
+thiserror = "2.0"
+http = "1.3"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+validator = { version = "0.20.0", features = ["derive"] }
+
+axum = { version = "0.8.4", optional = true }
+leptos_axum = { version = "0.8.2", optional = true }
 tokio = { version = "1.45", features = [
   "rt-multi-thread",
   "macros",
 ], optional = true }
 tower = { version = "0.5.2", optional = true }
 tower-http = { version = "0.6.6", features = ["fs"], optional = true }
-wasm-bindgen = "0.2.100"
-thiserror = "2.0"
 tracing = { version = "0.1.41", optional = true }
-http = "1.3"
 surrealdb = { version = "2.3.4", optional = true }
-serde = { version = "1.0.219", features = ["derive"] }
-chrono = { version = "0.4.41", features = ["serde"] }
 uuid = { version = "1.17.0", features = ["v4", "serde"], optional = true }
 dotenvy = { version = "0.15.7", optional = true }
 reqwest = { version = "0.12.20", features = ["json"], optional = true }
-cfg-if = "1.0.1"
-serde_json = "1.0.140"
-web-sys = { version = "0.3.77", features = ["Window", "Document", "Storage", "MediaQueryList"] }
+web-sys = { version = "0.3.77", features = [
+  "Window",
+  "Document",
+  "Storage",
+  "MediaQueryList",
+] }
 
 [features]
 hydrate = ["leptos/hydrate"]

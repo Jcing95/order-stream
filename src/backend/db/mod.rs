@@ -1,41 +1,42 @@
 
 use crate::backend::config::DatabaseConfig;
-use crate::backend::errors::{AppError, AppResult};
+use crate::backend::error::Error;
 use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::opt::auth::Root;
 use surrealdb::Surreal;
 
-pub mod categories;
-pub mod items;
-pub mod orders;
-pub mod order_items;
-pub mod stations;
+pub mod category;
+pub mod product;
+pub mod order;
+pub mod item;
+pub mod station;
+pub mod user;
 
 pub type Database = Surreal<Client>;
 
-pub async fn connect_database(config: &DatabaseConfig) -> AppResult<Database> {
+pub async fn connect_database(config: &DatabaseConfig) -> Result<Database, Error> {
     let db = Surreal::new::<Ws>(&config.url)
         .await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to connect to database: {}", e)))?;
+        .map_err(|e| Error::InternalError(format!("Failed to connect to database: {}", e)))?;
 
     db.signin(Root {
         username: &config.user,
         password: &config.pass,
     })
     .await
-    .map_err(|e| AppError::DatabaseError(format!("Failed to sign in: {}", e)))?;
+    .map_err(|e| Error::InternalError(format!("Failed to sign in: {}", e)))?;
 
     db.use_ns(&config.ns)
         .use_db(&config.db)
         .await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to select namespace/database: {}", e)))?;
+        .map_err(|e| Error::InternalError(format!("Failed to select namespace/database: {}", e)))?;
 
     // SurrealDB will automatically create table schema based on our model usage
     Ok(db)
 }
 
 // Helper function for services to get database connection
-pub async fn get_db_connection() -> AppResult<Database> {
+pub async fn get_db_connection() -> Result<Database, Error> {
     use crate::backend::config::AppConfig;
     
     let config = AppConfig::from_env()?;

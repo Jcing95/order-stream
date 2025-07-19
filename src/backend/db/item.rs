@@ -1,14 +1,14 @@
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::{Thing, Datetime};
-use crate::backend::errors::{AppError, AppResult};
+use crate::backend::error::{Error, AppResult};
 use crate::common::types;
 use super::Database;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OrderItemRecord {
+pub struct Item {
     pub id: Thing,
     pub order_id: String,     // FK to OrderRecord
-    pub item_id: String,      // FK to ItemRecord  
+    pub product_id: String,      // FK to ItemRecord  
     pub quantity: u32,
     pub price: f64,          // Snapshot of item price at order time
     pub status: types::OrderStatus, // Individual item status
@@ -16,12 +16,12 @@ pub struct OrderItemRecord {
     pub updated_at: Datetime,
 }
 
-impl From<OrderItemRecord> for types::OrderItem {
-    fn from(record: OrderItemRecord) -> Self {
+impl From<Item> for types::OrderItem {
+    fn from(record: Item) -> Self {
         Self {
             id: record.id.id.to_string(), // Extract just the UUID part
             order_id: record.order_id,
-            item_id: record.item_id,
+            item_id: record.product_id,
             quantity: record.quantity,
             price: record.price,
             status: record.status,
@@ -46,17 +46,17 @@ pub async fn create_order_item(db: &Database, request: types::CreateOrderItemReq
     let item: Option<ItemRecord> = db
         .select(("items", &request.item_id))
         .await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to get item: {}", e)))?;
+        .map_err(|e| Error::InternalError(format!("Failed to get item: {}", e)))?;
 
-    let item = item.ok_or_else(|| AppError::NotFound(format!("Item with id {} not found", request.item_id)))?;
+    let item = item.ok_or_else(|| Error::NotFound(format!("Item with id {} not found", request.item_id)))?;
     
     // Get order to determine initial OrderItem status
-    let order: Option<super::orders::OrderRecord> = db
+    let order: Option<super::order::OrderRecord> = db
         .select(("orders", &request.order_id))
         .await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to get order: {}", e)))?;
+        .map_err(|e| Error::InternalError(format!("Failed to get order: {}", e)))?;
 
-    let order = order.ok_or_else(|| AppError::NotFound(format!("Order with id {} not found", request.order_id)))?;
+    let order = order.ok_or_else(|| Error::NotFound(format!("Order with id {} not found", request.order_id)))?;
     
     // Set OrderItem status based on Order status
     let item_status = match order.status {
@@ -78,7 +78,7 @@ pub async fn create_order_item(db: &Database, request: types::CreateOrderItemReq
         updated_at: Datetime,
     }
 
-    let order_item: Option<OrderItemRecord> = db
+    let order_item: Option<Item> = db
         .create("order_items")
         .content(CreateOrderItemData {
             order_id: request.order_id,
@@ -90,10 +90,10 @@ pub async fn create_order_item(db: &Database, request: types::CreateOrderItemReq
             updated_at: Datetime::default(),
         })
         .await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to create order item: {}", e)))?;
+        .map_err(|e| Error::InternalError(format!("Failed to create order item: {}", e)))?;
 
     order_item.map(|record| record.into())
-        .ok_or_else(|| AppError::InternalError("Failed to create order item: no record returned from database".to_string()))
+        .ok_or_else(|| Error::InternalError("Failed to create order item: no record returned from database".to_string()))
 }
 
 pub async fn get_order_items(db: &Database, order_id: &str) -> AppResult<Vec<types::OrderItem>> {
@@ -102,29 +102,29 @@ pub async fn get_order_items(db: &Database, order_id: &str) -> AppResult<Vec<typ
         .query(query)
         .bind(("order_id", order_id.to_string()))
         .await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to get order items: {}", e)))?;
+        .map_err(|e| Error::InternalError(format!("Failed to get order items: {}", e)))?;
 
-    let order_items: Vec<OrderItemRecord> = response
+    let order_items: Vec<Item> = response
         .take(0)
-        .map_err(|e| AppError::DatabaseError(format!("Failed to parse order items query result: {}", e)))?;
+        .map_err(|e| Error::InternalError(format!("Failed to parse order items query result: {}", e)))?;
 
     Ok(order_items.into_iter().map(|record| record.into()).collect())
 }
 
 pub async fn get_all_order_items(db: &Database) -> AppResult<Vec<types::OrderItem>> {
-    let order_items: Vec<OrderItemRecord> = db
+    let order_items: Vec<Item> = db
         .select("order_items")
         .await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to get all order items: {}", e)))?;
+        .map_err(|e| Error::InternalError(format!("Failed to get all order items: {}", e)))?;
 
     Ok(order_items.into_iter().map(|record| record.into()).collect())
 }
 
 pub async fn get_order_item(db: &Database, id: &str) -> AppResult<Option<types::OrderItem>> {
-    let order_item: Option<OrderItemRecord> = db
+    let order_item: Option<Item> = db
         .select(("order_items", id))
         .await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to get order item: {}", e)))?;
+        .map_err(|e| Error::InternalError(format!("Failed to get order item: {}", e)))?;
 
     Ok(order_item.map(|record| record.into()))
 }
@@ -135,13 +135,13 @@ pub async fn update_order_item(
     request: types::UpdateOrderItemRequest,
 ) -> AppResult<types::OrderItem> {
     // First check if order item exists
-    let existing: Option<OrderItemRecord> = db
+    let existing: Option<Item> = db
         .select(("order_items", id))
         .await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to get order item: {}", e)))?;
+        .map_err(|e| Error::InternalError(format!("Failed to get order item: {}", e)))?;
 
     let mut existing = existing
-        .ok_or_else(|| AppError::NotFound(format!("Order item with id {} not found", id)))?;
+        .ok_or_else(|| Error::NotFound(format!("Order item with id {} not found", id)))?;
 
     // Update fields if provided
     if let Some(item_id) = request.item_id {
@@ -150,17 +150,17 @@ pub async fn update_order_item(
         let item: Option<ItemRecord> = db
             .select(("items", &item_id))
             .await
-            .map_err(|e| AppError::DatabaseError(format!("Failed to get item: {}", e)))?;
+            .map_err(|e| Error::InternalError(format!("Failed to get item: {}", e)))?;
 
-        let item = item.ok_or_else(|| AppError::NotFound(format!("Item with id {} not found", item_id)))?;
+        let item = item.ok_or_else(|| Error::NotFound(format!("Item with id {} not found", item_id)))?;
 
-        existing.item_id = item_id;
+        existing.product_id = item_id;
         existing.price = item.price; // Update price when item changes
     }
 
     if let Some(quantity) = request.quantity {
         if quantity == 0 {
-            return Err(AppError::ValidationError("Quantity must be greater than 0".to_string()));
+            return Err(Error::ValidationError("Quantity must be greater than 0".to_string()));
         }
         existing.quantity = quantity;
     }
@@ -174,15 +174,15 @@ pub async fn update_order_item(
     // Store order_id before moving existing
     let order_id = existing.order_id.clone();
     
-    let updated: Option<OrderItemRecord> = db
+    let updated: Option<Item> = db
         .update(("order_items", id))
         .content(existing)
         .await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to update order item: {}", e)))?;
+        .map_err(|e| Error::InternalError(format!("Failed to update order item: {}", e)))?;
 
     let result = updated
         .map(|record| record.into())
-        .ok_or_else(|| AppError::InternalError("Failed to update order item: no record returned from database".to_string()))?;
+        .ok_or_else(|| Error::InternalError("Failed to update order item: no record returned from database".to_string()))?;
     
     // Auto-update order status based on all OrderItems
     recalculate_order_status(db, &order_id).await?;
@@ -191,13 +191,13 @@ pub async fn update_order_item(
 }
 
 pub async fn delete_order_item(db: &Database, id: &str) -> AppResult<()> {
-    let deleted: Option<OrderItemRecord> = db
+    let deleted: Option<Item> = db
         .delete(("order_items", id))
         .await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to delete order item: {}", e)))?;
+        .map_err(|e| Error::InternalError(format!("Failed to delete order item: {}", e)))?;
 
     if deleted.is_none() {
-        return Err(AppError::NotFound(format!("Order item with id {} not found", id)));
+        return Err(Error::NotFound(format!("Order item with id {} not found", id)));
     }
 
     Ok(())
@@ -210,11 +210,11 @@ async fn recalculate_order_status(db: &Database, order_id: &str) -> AppResult<()
         .query(query)
         .bind(("order_id", order_id.to_string()))
         .await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to get order items for status calculation: {}", e)))?;
+        .map_err(|e| Error::InternalError(format!("Failed to get order items for status calculation: {}", e)))?;
 
-    let order_items: Vec<OrderItemRecord> = response
+    let order_items: Vec<Item> = response
         .take(0)
-        .map_err(|e| AppError::DatabaseError(format!("Failed to parse order items query result: {}", e)))?;
+        .map_err(|e| Error::InternalError(format!("Failed to parse order items query result: {}", e)))?;
 
     if order_items.is_empty() {
         return Ok(()); // No items, no status update needed
@@ -238,7 +238,7 @@ async fn recalculate_order_status(db: &Database, order_id: &str) -> AppResult<()
         status: Some(new_order_status),
     };
 
-    super::orders::update_order_without_cascade(db, order_id, order_update_request).await?;
+    super::order::update_order_without_cascade(db, order_id, order_update_request).await?;
     
     Ok(())
 }
@@ -256,10 +256,10 @@ pub async fn bulk_update_order_items(db: &Database, update: types::BulkOrderItem
         };
         
         // Get the OrderItem first to track which orders are affected
-        let existing: Option<OrderItemRecord> = db
+        let existing: Option<Item> = db
             .select(("order_items", order_item_id))
             .await
-            .map_err(|e| AppError::DatabaseError(format!("Failed to get order item: {}", e)))?;
+            .map_err(|e| Error::InternalError(format!("Failed to get order item: {}", e)))?;
             
         if let Some(existing_item) = existing {
             affected_orders.insert(existing_item.order_id.clone());
@@ -284,13 +284,13 @@ async fn update_order_item_without_recalc(
     request: types::UpdateOrderItemRequest,
 ) -> AppResult<types::OrderItem> {
     // Same logic as update_order_item but without recalculation
-    let existing: Option<OrderItemRecord> = db
+    let existing: Option<Item> = db
         .select(("order_items", id))
         .await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to get order item: {}", e)))?;
+        .map_err(|e| Error::InternalError(format!("Failed to get order item: {}", e)))?;
 
     let mut existing = existing
-        .ok_or_else(|| AppError::NotFound(format!("Order item with id {} not found", id)))?;
+        .ok_or_else(|| Error::NotFound(format!("Order item with id {} not found", id)))?;
 
     // Update fields if provided
     if let Some(item_id) = request.item_id {
@@ -299,17 +299,17 @@ async fn update_order_item_without_recalc(
         let item: Option<ItemRecord> = db
             .select(("items", &item_id))
             .await
-            .map_err(|e| AppError::DatabaseError(format!("Failed to get item: {}", e)))?;
+            .map_err(|e| Error::InternalError(format!("Failed to get item: {}", e)))?;
 
-        let item = item.ok_or_else(|| AppError::NotFound(format!("Item with id {} not found", item_id)))?;
+        let item = item.ok_or_else(|| Error::NotFound(format!("Item with id {} not found", item_id)))?;
 
-        existing.item_id = item_id;
+        existing.product_id = item_id;
         existing.price = item.price; // Update price when item changes
     }
 
     if let Some(quantity) = request.quantity {
         if quantity == 0 {
-            return Err(AppError::ValidationError("Quantity must be greater than 0".to_string()));
+            return Err(Error::ValidationError("Quantity must be greater than 0".to_string()));
         }
         existing.quantity = quantity;
     }
@@ -320,13 +320,13 @@ async fn update_order_item_without_recalc(
 
     existing.updated_at = Datetime::default();
 
-    let updated: Option<OrderItemRecord> = db
+    let updated: Option<Item> = db
         .update(("order_items", id))
         .content(existing)
         .await
-        .map_err(|e| AppError::DatabaseError(format!("Failed to update order item: {}", e)))?;
+        .map_err(|e| Error::InternalError(format!("Failed to update order item: {}", e)))?;
 
     updated
         .map(|record| record.into())
-        .ok_or_else(|| AppError::InternalError("Failed to update order item: no record returned from database".to_string()))
+        .ok_or_else(|| Error::InternalError("Failed to update order item: no record returned from database".to_string()))
 }

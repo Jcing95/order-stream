@@ -2,21 +2,21 @@ use leptos::prelude::*;
 use crate::common::types::{CreateCategoryRequest, Category, UpdateCategoryRequest};
 
 #[cfg(feature = "ssr")]
-use crate::backend::errors::AppError;
+use crate::backend::error::Error;
 #[cfg(feature = "ssr")]
-use crate::backend::database;
+use crate::backend::db;
 
 #[server(GetCategories, "/api")]
 pub async fn get_categories() -> Result<Vec<Category>, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        let db = database::get_db_connection()
+        let db = db::get_db_connection()
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))?;
         
-        database::categories::get_categories(&db)
+        db::category::get_categories(&db)
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))
     }
     #[cfg(not(feature = "ssr"))]
     {
@@ -33,13 +33,13 @@ pub async fn create_category(request: CreateCategoryRequest) -> Result<Category,
             .validate()
             .map_err(|e| ServerFnError::new(e))?;
 
-        let db = database::get_db_connection()
+        let db = db::get_db_connection()
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))?;
         
-        database::categories::create_category(&db, request)
+        db::category::create_category(&db, request)
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))
     }
     #[cfg(not(feature = "ssr"))]
     {
@@ -51,13 +51,13 @@ pub async fn create_category(request: CreateCategoryRequest) -> Result<Category,
 pub async fn get_category(id: String) -> Result<Category, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        let db = database::get_db_connection()
+        let db = db::get_db_connection()
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))?;
         
-        match database::categories::get_category(&db, &id)
+        match db::category::get_category(&db, &id)
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))?
         {
             Some(category) => Ok(category),
             None => Err(ServerFnError::new(format!("Category with id {} not found", id))),
@@ -80,13 +80,13 @@ pub async fn update_category(id: String, request: UpdateCategoryRequest) -> Resu
             }
         }
 
-        let db = database::get_db_connection()
+        let db = db::get_db_connection()
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))?;
         
-        database::categories::update_category(&db, &id, request)
+        db::category::update_category(&db, &id, request)
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))
     }
     #[cfg(not(feature = "ssr"))]
     {
@@ -98,13 +98,13 @@ pub async fn update_category(id: String, request: UpdateCategoryRequest) -> Resu
 pub async fn delete_category(id: String) -> Result<(), ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        let db = database::get_db_connection()
+        let db = db::get_db_connection()
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))?;
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))?;
         
-        database::categories::delete_category(&db, &id)
+        db::category::delete_category(&db, &id)
             .await
-            .map_err(|e: AppError| ServerFnError::new(e.to_string()))
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))
     }
     #[cfg(not(feature = "ssr"))]
     {
