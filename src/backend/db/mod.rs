@@ -11,6 +11,7 @@ pub mod order;
 pub mod item;
 pub mod station;
 pub mod user;
+pub mod event;
 
 pub type Database = Surreal<Client>;
 
@@ -30,12 +31,9 @@ pub async fn connect_database(config: &DatabaseConfig) -> Result<Database, Error
         .use_db(&config.db)
         .await
         .map_err(|e| Error::InternalError(format!("Failed to select namespace/database: {}", e)))?;
-
-    // SurrealDB will automatically create table schema based on our model usage
     Ok(db)
 }
 
-// Helper function for services to get database connection
 pub async fn get_db_connection() -> Result<Database, Error> {
     use crate::backend::config::AppConfig;
     

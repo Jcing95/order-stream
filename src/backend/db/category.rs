@@ -1,110 +1,65 @@
-use serde::{Deserialize, Serialize};
-use surrealdb::sql::{Thing, Datetime};
-use crate::backend::error::{Error, AppResult};
-use crate::common::types;
 use super::Database;
+use crate::backend::error::Error;
+use crate::common::{types, requests};
+use serde::{Deserialize, Serialize};
+use surrealdb::sql::Thing;
+
+const CATEGORIES: &str = "categories";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Category {
-    pub id: Thing,
+    pub id: Option<Thing>,
     pub name: String,
-    pub created_at: Datetime,
-    pub updated_at: Datetime,
 }
 
 impl From<Category> for types::Category {
     fn from(record: Category) -> Self {
         Self {
-            id: record.id.id.to_string(), // Extract just the UUID part
+            id: record.id.unwrap().id.to_string(),
             name: record.name,
         }
     }
 }
 
-pub async fn create_category(db: &Database, request: types::CreateCategoryRequest) -> AppResult<types::Category> {
-    #[derive(serde::Serialize)]
-    struct CreateCategoryData {
-        name: String,
-        created_at: Datetime,
-        updated_at: Datetime,
-    }
-
-    let category: Option<Category> = db
-        .create("categories")
-        .content(CreateCategoryData {
-            name: request.name,
-            created_at: Datetime::default(),
-            updated_at: Datetime::default(),
+pub async fn create_category(
+    db: &Database,
+    req: requests::category::Create,
+) -> Result<types::Category, Error> {
+    db.create(CATEGORIES)
+        .content(Category {
+            id: None,
+            name: req.name,
         })
-        .await
-        .map_err(|e| Error::InternalError(format!("Failed to create category: {}", e)))?;
-
-    category.map(|record| record.into())
-        .ok_or_else(|| Error::InternalError("Failed to create category: no record returned from database".to_string()))
+        .await?
+        .ok_or_else(|| Error::InternalError("Failed to create category".into()))
 }
 
-pub async fn get_categories(db: &Database) -> AppResult<Vec<types::Category>> {
-    let categories: Vec<Category> = db
-        .select("categories")
-        .await
-        .map_err(|e| Error::InternalError(format!("Failed to get categories: {}", e)))?;
-
-    Ok(categories.into_iter().map(|record| record.into()).collect())
+pub async fn get_categories(db: &Database) -> Result<Vec<types::Category>, Error> {
+    let categories: Vec<Category> = db.select(CATEGORIES).await?;
+    Ok(categories.into_iter().map(Into::into).collect())
 }
 
-pub async fn get_category(db: &Database, id: &str) -> AppResult<Option<types::Category>> {
-    let category: Option<Category> = db
-        .select(("categories", id))
-        .await
-        .map_err(|e| Error::InternalError(format!("Failed to get category: {}", e)))?;
-
-    Ok(category.map(|record| record.into()))
+pub async fn get_category(db: &Database, id: &str) -> Result<types::Category, Error> {
+    db.select((CATEGORIES, id))
+        .await?
+        .ok_or_else(|| Error::NotFound("Category not found".into()))
 }
 
 pub async fn update_category(
     db: &Database,
     id: &str,
-    request: types::UpdateCategoryRequest,
-) -> AppResult<types::Category> {
-    // First check if category exists
-    let existing: Option<Category> = db
-        .select(("categories", id))
-        .await
-        .map_err(|e| Error::InternalError(format!("Failed to get category: {}", e)))?;
-
-    let mut existing = existing
-        .ok_or_else(|| Error::NotFound(format!("Category with id {} not found", id)))?;
-
-    // Update fields if provided
-    if let Some(name) = request.name {
-        if name.trim().is_empty() {
-            return Err(Error::ValidationError("Name cannot be empty".to_string()));
-        }
-        existing.name = name;
-    }
-
-    existing.updated_at = Datetime::default();
-
-    let updated: Option<Category> = db
-        .update(("categories", id))
-        .content(existing)
-        .await
-        .map_err(|e| Error::InternalError(format!("Failed to update category: {}", e)))?;
-
-    updated
-        .map(|record| record.into())
-        .ok_or_else(|| Error::InternalError("Failed to update category: no record returned from database".to_string()))
+    update: requests::category::Update,
+) -> Result<types::Category, Error> {
+    db.update((CATEGORIES, id))
+        .merge(update)
+        .await?
+        .ok_or_else(|| Error::InternalError("Failed to update category".into()))
 }
 
-pub async fn delete_category(db: &Database, id: &str) -> AppResult<()> {
-    let deleted: Option<Category> = db
-        .delete(("categories", id))
-        .await
-        .map_err(|e| Error::InternalError(format!("Failed to delete category: {}", e)))?;
-
+pub async fn delete_category(db: &Database, id: &str) -> Result<(), Error> {
+    let deleted: Option<Category> = db.delete((CATEGORIES, id)).await?;
     if deleted.is_none() {
         return Err(Error::NotFound(format!("Category with id {} not found", id)));
     }
-
     Ok(())
 }

@@ -1,6 +1,6 @@
 use super::Database;
 use crate::backend::error::Error;
-use crate::common::types;
+use crate::common::{requests, types};
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::Thing;
 
@@ -29,18 +29,16 @@ impl From<Product> for types::Product {
 
 pub async fn create_product(
     db: &Database,
-    name: String,
-    price: f64,
-    category_id: String,
+    req: requests::product::Create
 ) -> Result<types::Product, Error> {
     let item: Option<Product> = db
         .create(PRODUCTS)
         .content(Product {
             id: None,
-            name,
-            category_id,
-            price,
-            active: true,
+            name: req.name,
+            category_id: req.category_id,
+            price: req.price,
+            active: req.active,
         })
         .await?;
     item.map(Into::into)
@@ -65,7 +63,7 @@ pub async fn get_product(db: &Database, id: &str) -> Result<types::Product, Erro
 pub async fn update_product(
     db: &Database,
     id: &str,
-    update: types::ProductUpdate,
+    update: requests::product::Update,
 ) -> Result<types::Product, Error> {
     db.update((PRODUCTS, id))
         .merge(update)

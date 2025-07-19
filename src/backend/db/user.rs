@@ -6,6 +6,8 @@ use crate::backend::error::Error;
 use crate::common::types;
 use validator::Validate;
 
+const USERS: &str = "users";
+
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub struct User {
     pub id: Option<Thing>,
@@ -31,7 +33,7 @@ pub async fn create_user(
     password_hash: String,
     role: types::Role,
 ) -> Result<types::User, Error> {
-    db.create("user")
+    db.create(USERS)
         .content(User {
             id: None,
             email,
@@ -43,7 +45,7 @@ pub async fn create_user(
 }
 
 pub async fn get_user(db: &Database, email: String) -> Result<User, Error> {
-    db.select(("user", email))
+    db.select((USERS, email))
         .await?
         .ok_or_else(|| Error::NotFound("User".into()))
 }

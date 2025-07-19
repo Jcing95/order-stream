@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use crate::common::types::{CreateItemRequest, Product, UpdateItemRequest};
+use crate::common::types::{Product, ProductUpdate};
 
 #[cfg(feature = "ssr")]
 use crate::backend::error::Error;
@@ -25,19 +25,18 @@ pub async fn get_items() -> Result<Vec<Product>, ServerFnError> {
 }
 
 #[server(CreateItem, "/api")]
-pub async fn create_item(request: CreateItemRequest) -> Result<Product, ServerFnError> {
+pub async fn create_item(name: String, price: f64, category_id: String) -> Result<Product, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
-        // Validation happens in service layer
-        request
-            .validate()
-            .map_err(|e| ServerFnError::new(e))?;
+        if name.trim().is_empty() {
+            return Err(ServerFnError::new("Name cannot be empty".to_string()));
+        }
 
         let db = db::get_db_connection()
             .await
             .map_err(|e: Error| ServerFnError::new(e.to_string()))?;
         
-        db::product::create_product(&db, request)
+        db::product::create_product(&db, name, price, category_id)
             .await
             .map_err(|e: Error| ServerFnError::new(e.to_string()))
     }
@@ -55,14 +54,9 @@ pub async fn get_item(id: String) -> Result<Product, ServerFnError> {
             .await
             .map_err(|e: Error| ServerFnError::new(e.to_string()))?;
         
-        let item = db::product::get_product(&db, &id)
+        db::product::get_product(&db, &id)
             .await
-            .map_err(|e: Error| ServerFnError::new(e.to_string()))?;
-            
-        match item {
-            Some(item) => Ok(item),
-            None => Err(ServerFnError::new(format!("Item with id {} not found", id))),
-        }
+            .map_err(|e: Error| ServerFnError::new(e.to_string()))
     }
     #[cfg(not(feature = "ssr"))]
     {
@@ -71,7 +65,7 @@ pub async fn get_item(id: String) -> Result<Product, ServerFnError> {
 }
 
 #[server(UpdateItem, "/api")]
-pub async fn update_item(id: String, request: UpdateItemRequest) -> Result<Product, ServerFnError> {
+pub async fn update_item(id: String, request: ProductUpdate) -> Result<Product, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
         let db = db::get_db_connection()
