@@ -21,3 +21,10 @@ impl std::fmt::Display for Error {
 }
 
 impl std::error::Error for Error {}
+
+#[cfg(feature = "ssr")]
+impl From<surrealdb::Error> for Error {
+    fn from(error: surrealdb::Error) -> Self {
+        Error::InternalError(error.to_string())
+    }
+}

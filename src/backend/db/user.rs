@@ -1,9 +1,8 @@
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::Thing;
-
-use crate::backend::error::Error;
-use crate::common::{types, requests};
 use validator::Validate;
+
+use crate::common::{errors::Error, requests, types};
 
 use super::DB;
 const USERS: &str = "users";
@@ -27,9 +26,7 @@ impl From<User> for types::User {
     }
 }
 
-pub async fn create_user(
-    req: requests::user::Create,
-) -> Result<types::User, Error> {
+pub async fn create_user(req: requests::user::Create) -> Result<types::User, Error> {
     DB.create(USERS)
         .content(User {
             id: None,
@@ -47,12 +44,8 @@ pub async fn get_user(email: String) -> Result<User, Error> {
         .ok_or_else(|| Error::NotFound("User".into()))
 }
 
-pub async fn update_user(
-    id: &str,
-    update: requests::user::Update,
-) -> Result<types::User, Error> {
-    DB
-        .update((USERS, id))
+pub async fn update_user(id: &str, update: requests::user::Update) -> Result<types::User, Error> {
+    DB.update((USERS, id))
         .merge(update)
         .await?
         .ok_or_else(|| Error::InternalError("Failed to update product".into()))

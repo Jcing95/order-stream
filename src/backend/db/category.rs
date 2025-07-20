@@ -1,8 +1,9 @@
-use crate::backend::error::Error;
-use crate::common::{types, requests};
+use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::Thing;
 use validator::Validate;
+
+use crate::common::{errors::Error, requests, types};
 
 use super::DB;
 const CATEGORIES: &str = "categories";
@@ -23,9 +24,7 @@ impl From<Category> for types::Category {
     }
 }
 
-pub async fn create_category(
-    req: requests::category::Create,
-) -> Result<types::Category, Error> {
+pub async fn create_category(req: requests::category::Create) -> Result<types::Category, Error> {
     DB.create(CATEGORIES)
         .content(Category {
             id: None,
@@ -59,7 +58,10 @@ pub async fn update_category(
 pub async fn delete_category(id: &str) -> Result<(), Error> {
     let deleted: Option<Category> = DB.delete((CATEGORIES, id)).await?;
     if deleted.is_none() {
-        return Err(Error::NotFound(format!("Category with id {} not found", id)));
+        return Err(Error::NotFound(format!(
+            "Category with id {} not found",
+            id
+        )));
     }
     Ok(())
 }

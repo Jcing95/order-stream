@@ -1,8 +1,8 @@
-use crate::backend::error::Error;
-use crate::common::{requests, types};
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::{Datetime, Thing};
 use validator::Validate;
+
+use crate::common::{errors::Error, requests, types};
 
 use super::DB;
 const ORDERS: &str = "orders";
@@ -24,8 +24,7 @@ impl From<Order> for types::Order {
 }
 
 pub async fn create_order(req: requests::order::Create) -> Result<types::Order, Error> {
-    DB
-        .create(ORDERS)
+    DB.create(ORDERS)
         .content(Order {
             id: None,
             event: req.event,
@@ -41,8 +40,7 @@ pub async fn get_orders() -> Result<Vec<types::Order>, Error> {
 }
 
 pub async fn get_order(id: &str) -> Result<types::Order, Error> {
-    DB
-        .select((ORDERS, id))
+    DB.select((ORDERS, id))
         .await?
         .ok_or_else(|| Error::NotFound("Order not found".into()))
 }

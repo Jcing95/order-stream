@@ -1,5 +1,4 @@
-use crate::backend::error::Error;
-use crate::common::{requests, types};
+use crate::common::{requests, types, errors::Error};
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::Thing;
 use validator::Validate;

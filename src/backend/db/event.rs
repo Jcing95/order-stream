@@ -1,8 +1,8 @@
-use crate::backend::error::Error;
-use crate::common::{requests, types};
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::Thing;
 use validator::Validate;
+
+use crate::common::{errors::Error, requests, types};
 
 use super::DB;
 const EVENTS: &str = "events";

@@ -1,14 +1,15 @@
-use crate::backend::error::Error;
-use crate::common::{requests, types};
 use serde::{Deserialize, Serialize};
+use surrealdb::sql::Thing;
 use validator::Validate;
+
+use crate::common::{errors::Error, requests, types};
 
 use super::DB;
 const STATIONS: &str = "stations";
 
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub struct Station {
-    pub id: Option<surrealdb::sql::Thing>,
+    pub id: Option<Thing>,
     #[validate(length(min = 1, max = 64))]
     pub name: String,
     pub category_ids: Vec<String>,
