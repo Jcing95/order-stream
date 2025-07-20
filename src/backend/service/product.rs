@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use crate::common::types::{Product, ProductUpdate};
+use crate::common::{types::Product, requests::product};
 
 #[cfg(feature = "ssr")]
 use crate::backend::error::Error;
@@ -65,7 +65,7 @@ pub async fn get_item(id: String) -> Result<Product, ServerFnError> {
 }
 
 #[server(UpdateItem, "/api")]
-pub async fn update_item(id: String, request: ProductUpdate) -> Result<Product, ServerFnError> {
+pub async fn update_item(id: String, request: product::Update) -> Result<Product, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
         let db = db::get_db_connection()

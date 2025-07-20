@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use crate::common::types::{Order, UpdateOrderRequest, OrderStatus};
+use crate::common::{types::{Order, OrderStatus}, requests::order};
 
 #[cfg(feature = "ssr")]
 use crate::backend::error::Error;
@@ -65,7 +65,7 @@ pub async fn get_order(id: String) -> Result<Order, ServerFnError> {
 }
 
 #[server(UpdateOrder, "/api")]
-pub async fn update_order(id: String, request: UpdateOrderRequest) -> Result<Order, ServerFnError> {
+pub async fn update_order(id: String, request: order::Update) -> Result<Order, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
         let db = db::get_db_connection()
@@ -90,7 +90,7 @@ pub async fn update_order_status(id: String, status: OrderStatus) -> Result<Orde
             .await
             .map_err(|e: Error| ServerFnError::new(e.to_string()))?;
         
-        let request = UpdateOrderRequest {
+        let request = order::Update {
             status: Some(status),
         };
         

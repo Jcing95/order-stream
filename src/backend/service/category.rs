@@ -49,7 +49,7 @@ pub async fn get_category(id: String) -> Result<Category, ServerFnError> {
 #[server(UpdateCategory, "/api")]
 pub async fn update_category(
     id: String,
-    request: UpdateCategoryRequest,
+    request: category::Update,
 ) -> Result<Category, ServerFnError> {
     #[cfg(feature = "ssr")]
     {

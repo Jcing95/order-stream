@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use crate::common::types::{Station, CreateStationRequest, StationUpdate};
+use crate::common::{types::Station, requests::station};
 
 #[cfg(feature = "ssr")]
 use crate::backend::error::Error;
@@ -25,7 +25,7 @@ pub async fn get_stations() -> Result<Vec<Station>, ServerFnError> {
 }
 
 #[server(CreateStation, "/api")]
-pub async fn create_station(request: CreateStationRequest) -> Result<Station, ServerFnError> {
+pub async fn create_station(request: station::Create) -> Result<Station, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
         // Validation happens in service layer
@@ -92,7 +92,7 @@ pub async fn get_station_by_name(name: String) -> Result<Station, ServerFnError>
 }
 
 #[server(UpdateStation, "/api")]
-pub async fn update_station(id: String, request: StationUpdate) -> Result<Station, ServerFnError> {
+pub async fn update_station(id: String, request: station::Update) -> Result<Station, ServerFnError> {
     #[cfg(feature = "ssr")]
     {
         let db = db::get_db_connection()

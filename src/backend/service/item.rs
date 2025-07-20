@@ -1,6 +1,4 @@
-use crate::common::types::{
-    BulkOrderItemUpdate, CreateOrderItemRequest, Item, UpdateOrderItemRequest,
-};
+use crate::common::{types::Item, requests::item};
 use leptos::prelude::*;
 
 #[cfg(feature = "ssr")]
@@ -20,7 +18,7 @@ pub async fn get_items(order_id: String) -> Result<Vec<Item>, ServerFnError> {
 }
 
 #[server(CreateItem, "/api")]
-pub async fn create_item(request: CreateOrderItemRequest) -> Result<Item, ServerFnError> {
+pub async fn create_item(request: item::Create) -> Result<Item, ServerFnError> {
     // Validation happens in service layer
     request.validate().map_err(|e| ServerFnError::new(e))?;
 
@@ -54,7 +52,7 @@ pub async fn get_item(id: String) -> Result<Item, ServerFnError> {
 #[server(UpdateItem, "/api")]
 pub async fn update_item(
     id: String,
-    request: UpdateOrderItemRequest,
+    request: item::Update,
 ) -> Result<Item, ServerFnError> {
     let db = db::get_db_connection()
         .await
