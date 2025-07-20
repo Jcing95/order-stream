@@ -5,7 +5,14 @@ async fn main() {
     use leptos::prelude::*;
     use leptos_axum::{generate_route_list, LeptosRoutes};
     use order_stream::app::{shell, App};
-    use tower_cookies::CookieManagerLayer;
+    use order_stream::backend::db;
+
+    // Initialize database connection
+    if let Err(e) = db::initialize_database().await {
+        eprintln!("Failed to initialize database: {}", e);
+        std::process::exit(1);
+    }
+    println!("Database initialized successfully");
 
     // Setting this to None means we'll be using cargo-leptos and its env vars
     let conf = get_configuration(None).unwrap();

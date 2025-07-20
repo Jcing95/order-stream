@@ -1,0 +1,88 @@
+use crate::common::{requests, types};
+
+use leptos::prelude::*;
+
+#[cfg(feature = "ssr")]
+pub mod ssr {
+    pub use crate::backend::db::DB;
+    pub use crate::common::types;
+    pub use leptos::server_fn::error::ServerFnError::ServerError;
+    pub use serde::{Deserialize, Serialize};
+    pub use surrealdb::sql::Thing;
+    pub use validator::Validate;
+    pub const PRODUCTS: &str = "products";
+
+    #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
+    pub struct Product {
+        pub id: Option<Thing>,
+        #[validate(length(min = 1, max = 100))]
+        pub name: String,
+        pub category_id: String,
+        #[validate(range(min = 0.0))]
+        pub price: f64,
+        pub active: bool,
+    }
+
+    impl From<Product> for types::Product {
+        fn from(record: Product) -> Self {
+            Self {
+                id: record.id.unwrap().id.to_string(),
+                name: record.name,
+                category_id: record.category_id,
+                price: record.price,
+                active: record.active,
+            }
+        }
+    }
+}
+#[cfg(feature = "ssr")]
+use ssr::*;
+
+#[server(CreateProduct, "/api/product")]
+pub async fn create_product(
+    req: requests::product::Create,
+) -> Result<types::Product, ServerFnError> {
+    DB.create(PRODUCTS)
+        .content(Product {
+            id: None,
+            name: req.name,
+            category_id: req.category_id,
+            price: req.price,
+            active: req.active,
+        })
+        .await?
+        .ok_or_else(|| ServerError("Failed to create product".into()))
+}
+
+#[server(GetProducts, "/api/product")]
+pub async fn get_products() -> Result<Vec<types::Product>, ServerFnError> {
+    let products: Vec<Product> = DB.select(PRODUCTS).await?;
+    Ok(products.into_iter().map(Into::into).collect())
+}
+
+#[server(GetProduct, "/api/product")]
+pub async fn get_product(id: String) -> Result<types::Product, ServerFnError> {
+    DB.select((PRODUCTS, &id))
+        .await?
+        .ok_or_else(|| ServerError("Product not found".into()))
+}
+
+#[server(UpdateProduct, "/api/product")]
+pub async fn update_product(
+    id: String,
+    update: requests::product::Update,
+) -> Result<types::Product, ServerFnError> {
+    DB.update((PRODUCTS, &id))
+        .merge(update)
+        .await?
+        .ok_or_else(|| ServerError("Failed to update product".into()))
+}
+
+#[server(DeleteProduct, "/api/product")]
+pub async fn delete_product(id: String) -> Result<(), ServerFnError> {
+    let deleted: Option<Product> = DB.delete((PRODUCTS, &id)).await?;
+    if deleted.is_none() {
+        return Err(ServerError(format!("Product with id {} not found", id)));
+    }
+    Ok(())
+}

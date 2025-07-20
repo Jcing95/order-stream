@@ -14,10 +14,18 @@ use leptos::prelude::*;
 use leptos_meta::*;
 use leptos_router::{
     components::{FlatRoutes, Route, Router},
-    hooks::use_params,
-    params::Params,
-    ParamSegment, StaticSegment,
+    StaticSegment, 
+    // ParamSegment,
+    // params::Params,
+    // hooks::use_params,
 };
+// use crate::frontend::pages::admin::AdminPage;
+// use crate::frontend::pages::home::Home;
+// use crate::frontend::pages::design_system::DesignSystemPage;
+// use crate::frontend::pages::cashier::CashierPage;
+// use crate::frontend::pages::station::{DynamicStationPage, StationsOverviewPage};
+// use crate::frontend::state::theme::ThemeState;
+// use crate::frontend::design_system::{Theme, ThemeContext, Navbar};
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -42,131 +50,100 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
 #[component]
 pub fn App() -> impl IntoView {
     provide_meta_context();
-    provide_auth_context();
+    
+    // Initialize the old theme state system (for compatibility)
+    // let theme_state = ThemeState::new();
+    // provide_context(theme_state);
 
-    // Initialize enhanced theme system with default light theme
-    ThemeContext::provide(Theme::light());
+    // Initialize design system theme based on old theme state (untracked for initialization)
+    // let initial_theme = if theme_state.is_dark().get_untracked() {
+    //     Theme::dark()
+    // } else {
+    //     Theme::light()
+    // };
+    // ThemeContext::provide(initial_theme);
+
+    // Sync the old theme state with the design system theme
+    // Effect::new(move |_| {
+    //     let is_dark = theme_state.is_dark().get();
+    //     let new_theme = if is_dark {
+    //         Theme::dark()
+    //     } else {
+    //         Theme::light()
+    //     };
+    //     ThemeContext::set_theme(new_theme);
+    // });
 
     // Create reactive page background based on design system theme
-    let page_bg_class = Signal::derive(move || {
-        let theme = ThemeContext::use_theme().get();
-        format!(
-            "min-h-screen transition-colors duration-200 {}",
-            theme.colors.background.page
-        )
-    });
+    // let page_bg_class = Signal::derive(move || {
+    //     let theme = ThemeContext::use_theme().get();
+    //     format!("min-h-screen transition-colors duration-200 {}", theme.colors.background.page)
+    // });
 
     view! {
-        <div class=move || page_bg_class.get()>
+        // <div class=move || page_bg_class.get()>
             <Router>
-                <Navbar />
+                // <Navbar />
                 <FlatRoutes fallback=|| "Page not found.">
                     // Public routes (no auth required)
                     <Route path=StaticSegment("") view=Home/>
-
-                    // Public route that redirects authenticated users away
-                    <Route path=StaticSegment("signin") view=ProtectedLoginPage/>
-
-                    // Protected routes with role-based access
-                    <Route path=StaticSegment("admin") view=ProtectedAdminPage/>
-                    <Route path=StaticSegment("cashier") view=ProtectedCashierPage/>
-                    <Route path=StaticSegment("stations") view=ProtectedStationsPage/>
-
-                    // Dynamic station routes (database-driven) - all authenticated users
-                    <Route path=(StaticSegment("stations"), ParamSegment("name")) view=DynamicStationRoute/>
-
-                    // Design system page - protected but available to all authenticated users
-                    <Route path=StaticSegment("design-system") view=ProtectedDesignSystemPage/>
+                    // <Route path=StaticSegment("admin") view=AdminPage/>
+                    // <Route path=StaticSegment("design-system") view=DesignSystemPage/>
+                    // <Route path=StaticSegment("cashier") view=CashierPage/>
+                    // <Route path=StaticSegment("stations") view=StationsOverviewPage/>                    
+                    // // Dynamic station routes (database-driven)
+                    // <Route path=(StaticSegment("stations"), ParamSegment("name")) view=DynamicStationRoute/>
                 </FlatRoutes>
             </Router>
-        </div>
-    }
-}
-
-// Route handler for dynamic station URLs /stations/:name
-#[derive(Params, PartialEq, Clone)]
-struct StationParams {
-    name: String,
-}
-
-#[component]
-fn DynamicStationRoute() -> impl IntoView {
-    let params = use_params::<StationParams>();
-
-    view! {
-        <RouteGuard requirement=RouteRequirement::Authenticated children=move || {
-            match params.with(|params| params.clone()) {
-                Ok(StationParams { name }) => {
-                    // Convert URL-friendly name back to potential station names
-                    // URLs are generated as lowercase with spaces replaced by hyphens
-                    // So we need to try both the URL format and converting back
-                    let converted_name = name.replace("-", " ");
-
-                    view! {
-                        <DynamicStationPage station_name=converted_name />
-                    }.into_any()
-                },
-                Err(_) => {
-                    view! {
-                        <div class="container mx-auto p-6">
-                            <div class="text-center">
-                                <h1 class="text-2xl font-bold text-red-600 mb-4">
-                                    "Invalid Station Route"
-                                </h1>
-                                <p class="text-gray-600">
-                                    "Station name is required in the URL."
-                                </p>
-                            </div>
-                        </div>
-                    }.into_any()
-                }
-            }
-        } />
-    }
-}
-
-// Protected route wrapper components
-#[component]
-fn ProtectedLoginPage() -> impl IntoView {
-    view! {
-        <RouteGuard requirement=RouteRequirement::NotAuthenticated children=|| {
-            view! { <LoginPage/> }.into_any()
-        } />
+        // </div>
     }
 }
 
 #[component]
-fn ProtectedAdminPage() -> impl IntoView {
+fn Home() -> impl IntoView {
     view! {
-        <RouteGuard requirement=RouteRequirement::Role(UserRole::Admin) children=|| {
-            view! { <AdminPage/> }.into_any()
-        } />
+        Hello World!
     }
 }
 
-#[component]
-fn ProtectedCashierPage() -> impl IntoView {
-    view! {
-        <RouteGuard requirement=RouteRequirement::AnyRole(vec![UserRole::Admin, UserRole::Cashier]) children=|| {
-            view! { <CashierPage/> }.into_any()
-        } />
-    }
-}
+// // Route handler for dynamic station URLs /stations/:name
+// #[derive(Params, PartialEq, Clone)]
+// struct StationParams {
+//     name: String,
+// }
 
-#[component]
-fn ProtectedStationsPage() -> impl IntoView {
-    view! {
-        <RouteGuard requirement=RouteRequirement::Authenticated children=|| {
-            view! { <StationsOverviewPage/> }.into_any()
-        } />
-    }
-}
-
-#[component]
-fn ProtectedDesignSystemPage() -> impl IntoView {
-    view! {
-        <RouteGuard requirement=RouteRequirement::Authenticated children=|| {
-            view! { <DesignSystemPage/> }.into_any()
-        } />
-    }
-}
+// #[component]
+// fn DynamicStationRoute() -> impl IntoView {
+//     let params = use_params::<StationParams>();
+    
+//     view! {
+//         {move || {
+//             match params.with(|params| params.clone()) {
+//                 Ok(StationParams { name }) => {
+//                     // Convert URL-friendly name back to potential station names
+//                     // URLs are generated as lowercase with spaces replaced by hyphens
+//                     // So we need to try both the URL format and converting back
+//                     let converted_name = name.replace("-", " ");
+                    
+//                     view! {
+//                         <DynamicStationPage station_name=converted_name />
+//                     }.into_any()
+//                 },
+//                 Err(_) => {
+//                     view! {
+//                         <div class="container mx-auto p-6">
+//                             <div class="text-center">
+//                                 <h1 class="text-2xl font-bold text-red-600 mb-4">
+//                                     "Invalid Station Route"
+//                                 </h1>
+//                                 <p class="text-gray-600">
+//                                     "Station name is required in the URL."
+//                                 </p>
+//                             </div>
+//                         </div>
+//                     }.into_any()
+//                 }
+//             }
+//         }}
+//     }
+// }
