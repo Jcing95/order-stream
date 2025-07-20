@@ -3,8 +3,21 @@ use leptos::prelude::*;
 use crate::common::{requests, types};
 
 #[cfg(feature = "ssr")]
+use crate::common::errors::Error;
+
+#[cfg(feature = "ssr")]
 pub mod ssr {
-    pub use crate::backend::ssr::*;
+    pub use crate::backend::{
+        auth::{get_extended_expiry, should_extend_session, verify_password, SessionData},
+        db::DB,
+    };
+    pub use crate::common::types;
+    pub use leptos::server_fn::error::ServerFnError::ServerError;
+    pub use leptos_axum::extract;
+    pub use serde::{Deserialize, Serialize};
+    pub use surrealdb::sql::{Datetime, Thing};
+    pub use tower_sessions::Session;
+    pub use validator::Validate;
     pub const USERS: &str = "users";
 
     #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
@@ -75,4 +88,74 @@ pub async fn delete_user(id: String) -> Result<(), ServerFnError> {
         return Err(ServerError(format!("User with id {} not found", id)));
     }
     Ok(())
+}
+
+#[server(Login, "/api/auth/login")]
+pub async fn login(email: String, password: String) -> Result<types::User, ServerFnError> {
+    let session: Session = extract().await?;
+    // Find user by email
+    let user: Option<User> = DB.select((USERS, &email)).await?;
+
+    let user = user.ok_or_else(|| Error::NotAuthorized("Invalid credentials".to_string()))?;
+
+    // Verify password
+    if !verify_password(&password, &user.password_hash)? {
+        return Err(Error::NotAuthorized("Invalid credentials".to_string()).into());
+    }
+
+    // Create session data
+    let session_data = SessionData::new(user.id.as_ref().unwrap().id.to_string());
+
+    // Store in session
+    session.insert("user", session_data).await?;
+
+    // Set session expiry to 24 hours
+    session.set_expiry(Some(tower_sessions::Expiry::AtDateTime(
+        get_extended_expiry(),
+    )));
+
+    Ok(user.into())
+}
+
+#[server(Logout, "/api/auth/logout")]
+pub async fn logout() -> Result<(), ServerFnError> {
+    let session: Session = extract().await?;
+    let _ = session.delete().await;
+    Ok(())
+}
+
+#[server(GetCurrentUser, "/api/auth/current")]
+pub async fn get_current_user() -> Result<Option<types::User>, ServerFnError> {
+    let session: Session = extract().await?;
+
+    // Get session data
+    let session_data: Option<SessionData> = session.get("user").await?;
+
+    let session_data = match session_data {
+        Some(data) => data,
+        None => return Ok(None), // Not logged in
+    };
+
+    // Check if we should extend the session
+    if let Some(expiry) = session.expiry() {
+        if let tower_sessions::Expiry::AtDateTime(expiry_time) = expiry {
+            if should_extend_session(expiry_time) {
+                session.set_expiry(Some(tower_sessions::Expiry::AtDateTime(
+                    get_extended_expiry(),
+                )));
+            }
+        }
+    }
+
+    // Get current user data from database
+    let user: Option<User> = DB.select((USERS, &session_data.user_id)).await?;
+
+    match user {
+        Some(user) => Ok(Some(user.into())),
+        None => {
+            // User not found, invalidate session
+            let _ = session.delete().await;
+            Ok(None)
+        }
+    }
 }

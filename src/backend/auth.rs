@@ -9,8 +9,9 @@ use tower_sessions::{
     session::{Id, Record},
     session_store, SessionStore,
 };
+use time::OffsetDateTime;
 use crate::backend::db::DB;
-use crate::common::errors::Error;
+use crate::common::{errors::Error};
 
 pub fn hash_password(password: &str) -> Result<String, Error> {
     let salt = SaltString::generate(&mut OsRng);
@@ -33,6 +34,30 @@ pub fn verify_password(password: &str, hash: &str) -> Result<bool, Error> {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SessionData {
+    pub user_id: String,
+}
+
+impl SessionData {
+    pub fn new(user_id: String) -> Self {
+        Self { user_id }
+    }
+}
+
+#[cfg(feature = "ssr")]
+pub fn should_extend_session(expiry_date: OffsetDateTime) -> bool {
+    let now = OffsetDateTime::now_utc();
+    let twelve_hours = time::Duration::hours(12);
+    expiry_date - now < twelve_hours
+}
+
+#[cfg(feature = "ssr")]
+pub fn get_extended_expiry() -> OffsetDateTime {
+    OffsetDateTime::now_utc() + time::Duration::hours(24)
+}
+
+#[cfg(feature = "ssr")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct SessionRecord {
     id: String,
     data: HashMap<String, serde_json::Value>,
@@ -52,15 +77,12 @@ const SESSIONS_TABLE: &str = "sessions";
 #[async_trait]
 impl SessionStore for SurrealSessionStore {
     async fn create(&self, record: &mut Record) -> session_store::Result<()> {
-        let now = OffsetDateTime::now_utc();
         let session_record = SessionRecord {
             id: record.id.to_string(),
             data: record.data.clone(),
-            expiry_date: record.expiry_date.map(|d| d.format(&time::format_description::well_known::Rfc3339).unwrap()),
-            created_at: now.format(&time::format_description::well_known::Rfc3339).unwrap(),
         };
 
-        DB.create((SESSIONS_TABLE, &record.id.to_string()))
+        let _: Option<SessionRecord> = DB.create((SESSIONS_TABLE, &record.id.to_string()))
             .content(session_record)
             .await
             .map_err(|e| session_store::Error::Backend(e.to_string()))?;
@@ -72,11 +94,9 @@ impl SessionStore for SurrealSessionStore {
         let session_record = SessionRecord {
             id: record.id.to_string(),
             data: record.data.clone(),
-            expiry_date: record.expiry_date.map(|d| d.format(&time::format_description::well_known::Rfc3339).unwrap()),
-            created_at: OffsetDateTime::now_utc().format(&time::format_description::well_known::Rfc3339).unwrap(),
         };
 
-        DB.update((SESSIONS_TABLE, &record.id.to_string()))
+        let _: Option<SessionRecord> = DB.update((SESSIONS_TABLE, &record.id.to_string()))
             .content(session_record)
             .await
             .map_err(|e| session_store::Error::Backend(e.to_string()))?;
@@ -92,29 +112,24 @@ impl SessionStore for SurrealSessionStore {
 
         match session_record {
             Some(record) => {
-                let expiry_date = record
-                    .expiry_date
-                    .as_ref()
-                    .and_then(|d| OffsetDateTime::parse(d, &time::format_description::well_known::Rfc3339).ok());
-
-                let session_record = Record {
+                Ok(Some(Record {
                     id: session_id.clone(),
                     data: record.data,
-                    expiry_date,
-                };
-
-                Ok(Some(session_record))
+                    expiry_date: OffsetDateTime::now_utc() + time::Duration::days(30),
+                }))
             }
             None => Ok(None),
         }
     }
 
     async fn delete(&self, session_id: &Id) -> session_store::Result<()> {
-        let _deleted: Option<SessionRecord> = DB
+        let deleted: Option<SessionRecord> = DB
             .delete((SESSIONS_TABLE, &session_id.to_string()))
             .await
             .map_err(|e| session_store::Error::Backend(e.to_string()))?;
-
+        if deleted.is_none() {
+                return Err(session_store::Error::Backend("Could not delete Session.".into()));
+            }
         Ok(())
     }
 }

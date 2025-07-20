@@ -4,7 +4,12 @@ use crate::common::{requests, types};
 
 #[cfg(feature = "ssr")]
 pub mod ssr {
-    pub use crate::backend::ssr::*;
+    pub use crate::backend::db::DB;
+    pub use crate::common::types;
+    pub use leptos::server_fn::error::ServerFnError::ServerError;
+    pub use serde::{Deserialize, Serialize};
+    pub use surrealdb::sql::Thing;
+    pub use validator::Validate;
     pub const EVENTS: &str = "events";
 
     #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
