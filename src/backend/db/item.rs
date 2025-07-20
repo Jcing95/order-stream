@@ -4,15 +4,18 @@ use crate::backend::error::Error;
 use crate::common::{requests, types};
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::Thing;
+use validator::Validate;
 
 const ITEMS: &str = "items";
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub struct Item {
     pub id: Option<Thing>,
     pub order_id: String,
     pub product_id: String,
+    #[validate(range(min = 1))]
     pub quantity: u32,
+    #[validate(range(min = 0.0))]
     pub price: f64,
     pub status: types::OrderStatus,
 }

@@ -1,7 +1,6 @@
 pub mod category {
     #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
     pub struct Create {
-        pub id: String,
         pub name: String,
     }
 
@@ -14,7 +13,6 @@ pub mod category {
 pub mod event {
     #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
     pub struct Create {
-        pub id: String,
         pub name: String,
     }
 
@@ -66,6 +64,7 @@ pub mod product {
         pub active: Option<bool>,
     }
 
+    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
     pub struct Create {
         pub name: String,
         pub category_id: String,

@@ -18,6 +18,7 @@ pub struct Event {
 impl From<Event> for types::Event {
     fn from(event: Event) -> Self {
         Self {
+            id: event.id.unwrap().id.to_string(),
             name: event.name,
         }
     }

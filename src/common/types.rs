@@ -55,6 +55,7 @@ pub struct Order {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Station {
+    pub id: String,
     pub name: String,
     pub category_ids: Vec<String>,
     pub input_statuses: Vec<OrderStatus>,
@@ -64,6 +65,7 @@ pub struct Station {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Event {
+    pub id: String,
     pub name: String,
 }
 

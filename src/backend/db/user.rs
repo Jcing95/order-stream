@@ -41,7 +41,7 @@ pub async fn create_user(
             role,
         })
         .await?
-        .ok_or_else(|| Error::InternalError(format!("Failed to create User.")))
+        .ok_or_else(|| Error::InternalError("Failed to create user".into()))
 }
 
 pub async fn get_user(db: &Database, email: String) -> Result<User, Error> {

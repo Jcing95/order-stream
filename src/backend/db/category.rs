@@ -3,12 +3,14 @@ use crate::backend::error::Error;
 use crate::common::{types, requests};
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::Thing;
+use validator::Validate;
 
 const CATEGORIES: &str = "categories";
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub struct Category {
     pub id: Option<Thing>,
+    #[validate(length(min = 1, max = 64))]
     pub name: String,
 }
 

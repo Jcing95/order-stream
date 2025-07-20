@@ -8,6 +8,7 @@ const STATIONS: &str = "stations";
 
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub struct Station {
+    pub id: Option<surrealdb::sql::Thing>,
     #[validate(length(min = 1, max = 64))]
     pub name: String,
     pub category_ids: Vec<String>,
@@ -18,6 +19,7 @@ pub struct Station {
 impl From<Station> for types::Station {
     fn from(station: Station) -> Self {
         Self {
+            id: station.id.unwrap().id.to_string(),
             name: station.name,
             category_ids: station.category_ids,
             input_statuses: station.input_statuses,
@@ -32,13 +34,14 @@ pub async fn create_station(
 ) -> Result<types::Station, Error> {
     db.create((STATIONS, &request.name))
         .content(Station {
+            id: None,
             name: request.name,
             category_ids: request.category_ids,
             input_statuses: request.input_statuses,
             output_status: request.output_status,
         })
         .await?
-        .ok_or_else(|| Error::InternalError(format!("Failed to create station.")))
+        .ok_or_else(|| Error::InternalError("Failed to create station".into()))
 }
 
 pub async fn get_stations(db: &Database) -> Result<Vec<types::Station>, Error> {
@@ -46,10 +49,9 @@ pub async fn get_stations(db: &Database) -> Result<Vec<types::Station>, Error> {
     Ok(stations.into_iter().map(Into::into).collect())
 }
 
-pub async fn get_station(db: &Database, name: &str) -> Result<types::Station, Error> {
-    db.select((STATIONS, name))
-        .await?
-        .ok_or_else(|| Error::NotFound(format!("Not Found")))
+pub async fn get_station(db: &Database, name: &str) -> Result<Option<types::Station>, Error> {
+    let station: Option<Station> = db.select((STATIONS, name)).await?;
+    Ok(station.map(Into::into))
 }
 
 pub async fn update_station(
@@ -60,7 +62,7 @@ pub async fn update_station(
     db.update((STATIONS, name))
         .merge(update)
         .await?
-        .ok_or_else(|| Error::InternalError(format!("Failed to update station.")))
+        .ok_or_else(|| Error::InternalError("Failed to update station".into()))
 }
 
 pub async fn delete_station(db: &Database, id: &str) -> Result<(), Error> {
