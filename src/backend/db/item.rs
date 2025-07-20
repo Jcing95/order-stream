@@ -1,4 +1,3 @@
-use super::Database;
 use crate::backend::db::product::get_product;
 use crate::backend::error::Error;
 use crate::common::{requests, types};
@@ -6,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use surrealdb::sql::Thing;
 use validator::Validate;
 
+use super::DB;
 const ITEMS: &str = "items";
 
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
@@ -33,10 +33,10 @@ impl From<Item> for types::Item {
     }
 }
 
-pub async fn create_item(db: &Database, req: requests::item::Create) -> Result<Item, Error> {
-    let product = get_product(&db, &req.product_id).await;
+pub async fn create_item(req: requests::item::Create) -> Result<Item, Error> {
+    let product = get_product(&req.product_id).await;
     match product {
-        Ok(p) => db
+        Ok(p) => DB
             .create(ITEMS)
             .content(Item {
                 id: None,
@@ -52,9 +52,9 @@ pub async fn create_item(db: &Database, req: requests::item::Create) -> Result<I
     }
 }
 
-pub async fn get_items_by_order(db: &Database, order_id: &str) -> Result<Vec<types::Item>, Error> {
+pub async fn get_items_by_order(order_id: &str) -> Result<Vec<types::Item>, Error> {
     let query = "SELECT * FROM items WHERE order_id = $order_id";
-    let mut response = db
+    let mut response = DB
         .query(query)
         .bind(("order_id", order_id.to_string()))
         .await?;
@@ -63,18 +63,19 @@ pub async fn get_items_by_order(db: &Database, order_id: &str) -> Result<Vec<typ
     Ok(items.into_iter().map(Into::into).collect())
 }
 
-pub async fn get_items(db: &Database) -> Result<Vec<types::Item>, Error> {
-    let items: Vec<Item> = db.select(ITEMS).await?;
+pub async fn get_items() -> Result<Vec<types::Item>, Error> {
+    let items: Vec<Item> = DB.select(ITEMS).await?;
     Ok(items.into_iter().map(Into::into).collect())
 }
 
-pub async fn get_item(db: &Database, id: &str) -> Result<Option<types::Item>, Error> {
-    let item: Option<Item> = db.select((ITEMS, id)).await?;
-    Ok(item.map(Into::into))
+pub async fn get_item(id: &str) -> Result<types::Item, Error> {
+    DB.select((ITEMS, id))
+        .await?
+        .ok_or_else(|| Error::NotFound("Item not found".into()))
 }
 
-pub async fn delete_item(db: &Database, id: &str) -> Result<(), Error> {
-    let deleted: Option<Item> = db.delete((ITEMS, id)).await?;
+pub async fn delete_item(id: &str) -> Result<(), Error> {
+    let deleted: Option<Item> = DB.delete((ITEMS, id)).await?;
     if deleted.is_none() {
         return Err(Error::NotFound(format!("Item with id {} not found", id)));
     }

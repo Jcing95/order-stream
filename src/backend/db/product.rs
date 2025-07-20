@@ -1,10 +1,10 @@
-use super::Database;
 use crate::backend::error::Error;
 use crate::common::{requests, types};
 use serde::{Deserialize, Serialize};
 use surrealdb::sql::Thing;
 use validator::Validate;
 
+use super::DB;
 const PRODUCTS: &str = "products";
 
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
@@ -30,11 +30,8 @@ impl From<Product> for types::Product {
     }
 }
 
-pub async fn create_product(
-    db: &Database,
-    req: requests::product::Create,
-) -> Result<types::Product, Error> {
-    let item: Option<Product> = db
+pub async fn create_product(req: requests::product::Create) -> Result<types::Product, Error> {
+    let item: Option<Product> = DB
         .create(PRODUCTS)
         .content(Product {
             id: None,
@@ -48,34 +45,31 @@ pub async fn create_product(
         .ok_or_else(|| Error::InternalError("Failed to create product".into()))
 }
 
-pub async fn get_products(db: &Database) -> Result<Vec<types::Product>, Error> {
-    let items: Vec<Product> = db
-        .select(PRODUCTS)
-        .await
-        .map_err(|e| Error::InternalError("Failed to get items".into()))?;
-
+pub async fn get_products() -> Result<Vec<types::Product>, Error> {
+    let items: Vec<Product> = DB.select(PRODUCTS).await?;
     Ok(items.into_iter().map(|record| record.into()).collect())
 }
 
-pub async fn get_product(db: &Database, id: &str) -> Result<types::Product, Error> {
-    db.select((PRODUCTS, id))
+pub async fn get_product(id: &str) -> Result<types::Product, Error> {
+    DB
+        .select((PRODUCTS, id))
         .await?
         .ok_or_else(|| Error::NotFound("Product not found".into()))
 }
 
 pub async fn update_product(
-    db: &Database,
     id: &str,
     update: requests::product::Update,
 ) -> Result<types::Product, Error> {
-    db.update((PRODUCTS, id))
+    DB
+        .update((PRODUCTS, id))
         .merge(update)
         .await?
         .ok_or_else(|| Error::InternalError("Failed to update product".into()))
 }
 
-pub async fn delete_product(db: &Database, id: &str) -> Result<(), Error> {
-    let deleted: Option<Product> = db
+pub async fn delete_product(id: &str) -> Result<(), Error> {
+    let deleted: Option<Product> = DB
         .delete((PRODUCTS, id))
         .await
         .map_err(|e| Error::InternalError(format!("Failed to delete product with id: {}", id)))?;

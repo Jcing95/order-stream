@@ -90,3 +90,20 @@ pub mod item {
         pub status: Option<OrderStatus>, // Allow updating status
     }
 }
+
+pub mod user {
+    use crate::common::types::Role;
+    
+    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+    pub struct Create {
+        pub email: String,
+        pub password: String,
+    }
+
+    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+    pub struct Update {
+        pub email: Option<String>,
+        pub password: Option<String>,
+        pub role: Option<Role>
+    }
+}
