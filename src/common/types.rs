@@ -1,11 +1,12 @@
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum Role {
-    Admin,
-    Cashier,
+    Visitor,
     Staff,
+    Cashier,
+    Admin,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]

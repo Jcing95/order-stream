@@ -11,7 +11,7 @@ use tower_sessions::{
 };
 use time::OffsetDateTime;
 use crate::backend::db::DB;
-use crate::common::{errors::Error};
+use crate::common::errors::Error;
 
 pub fn hash_password(password: &str) -> Result<String, Error> {
     let salt = SaltString::generate(&mut OsRng);
@@ -44,19 +44,27 @@ impl SessionData {
     }
 }
 
-#[cfg(feature = "ssr")]
 pub fn should_extend_session(expiry_date: OffsetDateTime) -> bool {
     let now = OffsetDateTime::now_utc();
     let twelve_hours = time::Duration::hours(12);
     expiry_date - now < twelve_hours
 }
 
-#[cfg(feature = "ssr")]
 pub fn get_extended_expiry() -> OffsetDateTime {
     OffsetDateTime::now_utc() + time::Duration::hours(24)
 }
 
 #[cfg(feature = "ssr")]
+pub fn handle_session_extension(session: &tower_sessions::Session) {
+    if let Some(expiry) = session.expiry() {
+        if let tower_sessions::Expiry::AtDateTime(expiry_time) = expiry {
+            if should_extend_session(expiry_time) {
+                session.set_expiry(Some(tower_sessions::Expiry::AtDateTime(get_extended_expiry())));
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct SessionRecord {
     id: String,
@@ -132,4 +140,56 @@ impl SessionStore for SurrealSessionStore {
             }
         Ok(())
     }
+}
+
+pub async fn get_authenticated_user(session: &tower_sessions::Session) -> Result<crate::common::types::User, leptos::prelude::ServerFnError> {
+    use crate::backend::user::ssr::{User, USERS};
+    
+    let session_data: Option<SessionData> = session.get("user").await?;
+    
+    let session_data = session_data.ok_or_else(|| 
+        Error::NotAuthorized("Not authenticated".to_string()))?;
+    
+    handle_session_extension(session);
+    
+    let user: Option<User> = DB.select((USERS, &session_data.user_id)).await?;
+    
+    let user = user.ok_or_else(|| {
+        let _ = session.delete();
+        Error::NotAuthorized("User not found".to_string())
+    })?;
+    
+    Ok(user.into())
+}
+
+#[macro_export]
+macro_rules! requireUserOrRole {
+    ($user_id:expr $(, $role:ident)*) => {
+        let session: tower_sessions::Session = leptos_axum::extract().await?;
+        let current_user = $crate::backend::auth::get_authenticated_user(&session).await?;
+        
+        let is_target_user = current_user.id == $user_id;
+        let has_required_role = false $(|| current_user.role == $crate::common::types::Role::$role)*;
+        
+        if !is_target_user && !has_required_role {
+            return Err($crate::common::errors::Error::NotAuthorized("Access denied: must be the user or have required role".to_string()).into());
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! roles {
+    (Public) => {
+        // No auth check for public endpoints
+    };
+    ($($role:ident),+) => {
+        let session: tower_sessions::Session = leptos_axum::extract().await?;
+        let current_user = $crate::backend::auth::get_authenticated_user(&session).await?;
+        
+        let has_required_role = $(current_user.role == $crate::common::types::Role::$role)||+ || current_user.role == $crate::common::types::Role::Admin;
+        
+        if !has_required_role {
+            return Err($crate::common::errors::Error::NotAuthorized("Insufficient permissions".to_string()).into());
+        }
+    };
 }

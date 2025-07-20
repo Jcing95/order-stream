@@ -90,7 +90,7 @@ pub async fn delete_user(id: String) -> Result<(), ServerFnError> {
     Ok(())
 }
 
-#[server(Login, "/api/auth/login")]
+#[server(Login, "/api/user/")]
 pub async fn login(email: String, password: String) -> Result<types::User, ServerFnError> {
     let session: Session = extract().await?;
     // Find user by email
@@ -117,45 +117,15 @@ pub async fn login(email: String, password: String) -> Result<types::User, Serve
     Ok(user.into())
 }
 
-#[server(Logout, "/api/auth/logout")]
+#[server(Logout, "/api/user/")]
 pub async fn logout() -> Result<(), ServerFnError> {
     let session: Session = extract().await?;
     let _ = session.delete().await;
     Ok(())
 }
 
-#[server(GetCurrentUser, "/api/auth/current")]
-pub async fn get_current_user() -> Result<Option<types::User>, ServerFnError> {
+#[server(GetCurrentUser, "/api/user/")]
+pub async fn get_current_user() -> Result<types::User, ServerFnError> {
     let session: Session = extract().await?;
-
-    // Get session data
-    let session_data: Option<SessionData> = session.get("user").await?;
-
-    let session_data = match session_data {
-        Some(data) => data,
-        None => return Ok(None), // Not logged in
-    };
-
-    // Check if we should extend the session
-    if let Some(expiry) = session.expiry() {
-        if let tower_sessions::Expiry::AtDateTime(expiry_time) = expiry {
-            if should_extend_session(expiry_time) {
-                session.set_expiry(Some(tower_sessions::Expiry::AtDateTime(
-                    get_extended_expiry(),
-                )));
-            }
-        }
-    }
-
-    // Get current user data from database
-    let user: Option<User> = DB.select((USERS, &session_data.user_id)).await?;
-
-    match user {
-        Some(user) => Ok(Some(user.into())),
-        None => {
-            // User not found, invalidate session
-            let _ = session.delete().await;
-            Ok(None)
-        }
-    }
+    crate::backend::auth::get_authenticated_user(&session).await
 }
