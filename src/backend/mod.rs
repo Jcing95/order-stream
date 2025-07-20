@@ -16,6 +16,7 @@ pub mod ssr {
     pub use leptos::server_fn::error::ServerFnError::ServerError;
 }
 
+pub mod auth;
 pub mod category;
 pub mod event;
 pub mod item;

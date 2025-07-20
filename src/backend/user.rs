@@ -31,11 +31,19 @@ use ssr::*;
 
 #[server(CreateUser, "/api/user")]
 pub async fn create_user(req: requests::user::Create) -> Result<types::User, ServerFnError> {
+    use crate::backend::auth::hash_password;
+
+    let password_hash = hash_password(&req.password);
+    if password_hash.is_err() {
+        return Err(ServerError(format!("Password hashing failed.")));
+    }
+    let password_hash = password_hash.unwrap();
+
     DB.create(USERS)
         .content(User {
             id: None,
             email: req.email,
-            password_hash: req.password,
+            password_hash,
             role: types::Role::Staff,
         })
         .await?
