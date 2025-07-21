@@ -9,13 +9,14 @@ pub mod ssr {
     pub use leptos::server_fn::error::ServerFnError::ServerError;
     pub use serde::{Deserialize, Serialize};
     pub use surrealdb::sql::Thing;
+    use surrealdb::RecordId;
     pub use validator::Validate;
 
     pub const CATEGORIES: &str = "categories";
 
     #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
     pub struct Category {
-        pub id: Option<Thing>,
+        pub id: Option<RecordId>,
         #[validate(length(min = 1, max = 64))]
         pub name: String,
     }
@@ -23,7 +24,7 @@ pub mod ssr {
     impl From<Category> for types::Category {
         fn from(record: Category) -> Self {
             Self {
-                id: record.id.unwrap().id.to_string(),
+                id: record.id.unwrap().to_string(),
                 name: record.name,
             }
         }
@@ -36,13 +37,13 @@ use ssr::*;
 pub async fn create_category(
     req: requests::category::Create,
 ) -> Result<types::Category, ServerFnError> {
-    DB.create(CATEGORIES)
+    let c: Option<Category> = DB.create(CATEGORIES)
         .content(Category {
             id: None,
             name: req.name,
         })
-        .await?
-        .ok_or_else(|| ServerError("Failed to create category".into()))
+        .await?;
+    c.map(Into::into).ok_or_else(|| ServerError("Failed to create category".into()))
 }
 
 #[server(GetCategories, "/api/category")]

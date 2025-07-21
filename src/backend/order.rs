@@ -9,13 +9,14 @@ pub mod ssr {
     pub use leptos::server_fn::error::ServerFnError::ServerError;
     pub use serde::{Deserialize, Serialize};
     pub use surrealdb::sql::{Datetime, Thing};
+    use surrealdb::RecordId;
     pub use validator::Validate;
 
     pub const ORDERS: &str = "orders";
 
     #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
     pub struct Order {
-        pub id: Option<Thing>,
+        pub id: Option<RecordId>,
         #[validate(length(min = 1))]
         pub event: String,
         pub created_at: Datetime,
@@ -24,7 +25,7 @@ pub mod ssr {
     impl From<Order> for types::Order {
         fn from(record: Order) -> Self {
             Self {
-                id: record.id.unwrap().id.to_string(),
+                id: record.id.unwrap().to_string(),
             }
         }
     }
@@ -34,14 +35,14 @@ use ssr::*;
 
 #[server(CreateOrder, "/api/order")]
 pub async fn create_order(req: requests::order::Create) -> Result<types::Order, ServerFnError> {
-    DB.create(ORDERS)
+    let o: Option<Order> = DB.create(ORDERS)
         .content(Order {
             id: None,
             event: req.event,
             created_at: Datetime::default(),
         })
-        .await?
-        .ok_or_else(|| ServerError("Failed to create order".into()))
+        .await?;
+    o.map(Into::into).ok_or_else(|| ServerError("Failed to create order".into()))
 }
 
 #[server(GetOrders, "/api/order")]

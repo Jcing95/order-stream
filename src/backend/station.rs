@@ -9,12 +9,13 @@ pub mod ssr {
     pub use leptos::server_fn::error::ServerFnError::ServerError;
     pub use serde::{Deserialize, Serialize};
     pub use surrealdb::sql::Thing;
+    use surrealdb::RecordId;
     pub use validator::Validate;
     pub const STATIONS: &str = "stations";
 
     #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
     pub struct Station {
-        pub id: Option<Thing>,
+        pub id: Option<RecordId>,
         #[validate(length(min = 1, max = 64))]
         pub name: String,
         pub category_ids: Vec<String>,
@@ -25,7 +26,7 @@ pub mod ssr {
     impl From<Station> for types::Station {
         fn from(station: Station) -> Self {
             Self {
-                id: station.id.unwrap().id.to_string(),
+                id: station.id.unwrap().to_string(),
                 name: station.name,
                 category_ids: station.category_ids,
                 input_statuses: station.input_statuses,
@@ -41,7 +42,7 @@ use ssr::*;
 pub async fn create_station(
     request: requests::station::Create,
 ) -> Result<types::Station, ServerFnError> {
-    DB.create((STATIONS, &request.name))
+    let s: Option<Station> = DB.create((STATIONS, &request.name))
         .content(Station {
             id: None,
             name: request.name,
@@ -49,8 +50,8 @@ pub async fn create_station(
             input_statuses: request.input_statuses,
             output_status: request.output_status,
         })
-        .await?
-        .ok_or_else(|| ServerError("Failed to create station".into()))
+        .await?;
+    s.map(Into::into).ok_or_else(|| ServerError("Failed to create station".into()))
 }
 
 #[server(GetStations, "/api/station")]

@@ -9,19 +9,20 @@ pub mod ssr {
     pub use leptos::server_fn::error::ServerFnError::ServerError;
     pub use serde::{Deserialize, Serialize};
     pub use surrealdb::sql::Thing;
+    use surrealdb::RecordId;
     pub use validator::Validate;
     pub const EVENTS: &str = "events";
 
     #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
     pub struct Event {
-        pub id: Option<Thing>,
+        pub id: Option<RecordId>,
         #[validate(length(min = 1, max = 64))]
         pub name: String,
     }
     impl From<Event> for types::Event {
         fn from(event: Event) -> Self {
             Self {
-                id: event.id.unwrap().id.to_string(),
+                id: event.id.unwrap().to_string(),
                 name: event.name,
             }
         }
@@ -32,13 +33,13 @@ use ssr::*;
 
 #[server(CreateEvent, "/api/event")]
 pub async fn create_event(req: requests::event::Create) -> Result<types::Event, ServerFnError> {
-    DB.create(EVENTS)
+    let e: Option<Event> = DB.create(EVENTS)
         .content(Event {
             id: None,
             name: req.name,
         })
-        .await?
-        .ok_or_else(|| ServerError("Failed to create event".into()))
+        .await?;
+    e.map(Into::into).ok_or_else(|| ServerError("Failed to create event".into()))
 }
 
 #[server(GetEvents, "/api/event")]

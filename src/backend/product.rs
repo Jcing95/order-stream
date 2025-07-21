@@ -9,12 +9,13 @@ pub mod ssr {
     pub use leptos::server_fn::error::ServerFnError::ServerError;
     pub use serde::{Deserialize, Serialize};
     pub use surrealdb::sql::Thing;
+    use surrealdb::RecordId;
     pub use validator::Validate;
     pub const PRODUCTS: &str = "products";
 
     #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
     pub struct Product {
-        pub id: Option<Thing>,
+        pub id: Option<RecordId>,
         #[validate(length(min = 1, max = 100))]
         pub name: String,
         pub category_id: String,
@@ -26,7 +27,7 @@ pub mod ssr {
     impl From<Product> for types::Product {
         fn from(record: Product) -> Self {
             Self {
-                id: record.id.unwrap().id.to_string(),
+                id: record.id.unwrap().to_string(),
                 name: record.name,
                 category_id: record.category_id,
                 price: record.price,
@@ -42,7 +43,7 @@ use ssr::*;
 pub async fn create_product(
     req: requests::product::Create,
 ) -> Result<types::Product, ServerFnError> {
-    DB.create(PRODUCTS)
+    let p: Option<Product> = DB.create(PRODUCTS)
         .content(Product {
             id: None,
             name: req.name,
@@ -50,8 +51,8 @@ pub async fn create_product(
             price: req.price,
             active: req.active,
         })
-        .await?
-        .ok_or_else(|| ServerError("Failed to create product".into()))
+        .await?;
+    p.map(Into::into).ok_or_else(|| ServerError("Failed to create product".into()))
 }
 
 #[server(GetProducts, "/api/product")]
