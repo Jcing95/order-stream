@@ -1,4 +1,5 @@
 use leptos::prelude::*;
+use leptos::logging::log;
 
 use crate::common::{requests, types};
 
@@ -16,13 +17,14 @@ pub mod ssr {
     pub use leptos_axum::extract;
     pub use serde::{Deserialize, Serialize};
     pub use surrealdb::sql::{Datetime, Thing};
+    use surrealdb::RecordId;
     pub use tower_sessions::Session;
     pub use validator::Validate;
     pub const USERS: &str = "users";
 
     #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
     pub struct User {
-        pub id: Option<Thing>,
+        pub id: Option<RecordId>,
         #[validate(email)]
         pub email: String,
         pub password_hash: String,
@@ -32,7 +34,7 @@ pub mod ssr {
     impl From<User> for types::User {
         fn from(user: User) -> Self {
             types::User {
-                id: user.id.unwrap().id.to_string(),
+                id: user.id.unwrap().to_string(),
                 email: user.email,
                 role: user.role,
             }
@@ -52,15 +54,15 @@ pub async fn create_user(req: requests::user::Create) -> Result<types::User, Ser
     }
     let password_hash = password_hash.unwrap();
 
-    DB.create(USERS)
+    let u: Option<User> = DB.create(USERS)
         .content(User {
             id: None,
             email: req.email,
             password_hash,
             role: types::Role::Staff,
         })
-        .await?
-        .ok_or_else(|| ServerError("Failed to create user".into()))
+        .await?;
+    u.map(Into::into).ok_or_else(|| ServerError("Failed to create user".into()))
 }
 
 #[server(GetUser, "/api/user")]
@@ -104,7 +106,7 @@ pub async fn login(email: String, password: String) -> Result<types::User, Serve
     }
 
     // Create session data
-    let session_data = SessionData::new(user.id.as_ref().unwrap().id.to_string());
+    let session_data = SessionData::new(user.id.as_ref().unwrap().to_string());
 
     // Store in session
     session.insert("user", session_data).await?;
