@@ -13,6 +13,9 @@ pub mod pages;
 pub mod states;
 
 use pages::{signin::SignIn, signup::SignUp};
+use components::navbar::Navbar;
+
+use crate::app::pages::admin::Admin;
 
 // use crate::frontend::pages::admin::AdminPage;
 // use crate::frontend::pages::home::Home;
@@ -48,6 +51,7 @@ pub fn App() -> impl IntoView {
     
     // Provide user state context
     states::user::provide();
+    states::category::provide();
     
     // Initialize the old theme state system (for compatibility)
     // let theme_state = ThemeState::new();
@@ -81,11 +85,12 @@ pub fn App() -> impl IntoView {
     view! {
         // <div class=move || page_bg_class.get()>
             <Router>
-                // <Navbar />
+                <Navbar />
                 <FlatRoutes fallback=|| "Page not found.">
                     <Route path=StaticSegment("") view=Home/>
                     <Route path=StaticSegment("signin") view=SignIn/>
                     <Route path=StaticSegment("signup") view=SignUp/>
+                    <Route path=StaticSegment("admin") view=Admin/>
                     // <Route path=StaticSegment("admin") view=AdminPage/>
                     // <Route path=StaticSegment("design-system") view=DesignSystemPage/>
                     // <Route path=StaticSegment("cashier") view=CashierPage/>

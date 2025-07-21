@@ -19,13 +19,13 @@ pub fn SignIn() -> impl IntoView {
     });
 
     view! {
-        <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div class="min-h-screen flex items-center justify-center bg-surface-elevated py-12 px-4 sm:px-6 lg:px-8">
             <div class="max-w-md w-full space-y-8">
                 <div>
-                    <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                    <h2 class="mt-6 text-center text-3xl font-extrabold text-text">
                         "Sign in to your account"
                     </h2>
-                    <p class="mt-2 text-center text-sm text-gray-600">
+                    <p class="mt-2 text-center text-sm text-text-muted">
                         "Welcome back to Order Stream"
                     </p>
                 </div>
@@ -43,7 +43,7 @@ pub fn SignIn() -> impl IntoView {
                                 type="email"
                                 autocomplete="email"
                                 required
-                                class="relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                                class="relative block w-full px-3 py-2 border border-border bg-surface placeholder-text-muted text-text rounded-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
                                 placeholder="Email address"
                             />
                         </div>
@@ -56,17 +56,17 @@ pub fn SignIn() -> impl IntoView {
                                 type="password"
                                 autocomplete="current-password"
                                 required
-                                class="relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                                class="relative block w-full px-3 py-2 border border-border bg-surface placeholder-text-muted text-text rounded-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
                                 placeholder="Password"
                             />
                         </div>
                     </div>
 
                     <Show when=move || login_action.value().get().as_ref().map(|result| result.is_err()).unwrap_or(false)>
-                        <div class="bg-red-50 border border-red-200 rounded-md p-4">
+                        <div class="bg-error/10 border border-error/20 rounded-md p-4">
                             <div class="flex">
                                 <div class="ml-3">
-                                    <h3 class="text-sm font-medium text-red-800">
+                                    <h3 class="text-sm font-medium text-error">
                                         "Invalid email or password"
                                     </h3>
                                 </div>
@@ -78,7 +78,7 @@ pub fn SignIn() -> impl IntoView {
                         <button
                             type="submit"
                             disabled=move || login_action.pending().get()
-                            class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <Show
                                 when=move || login_action.pending().get()
@@ -96,9 +96,9 @@ pub fn SignIn() -> impl IntoView {
                     </div>
 
                     <div class="text-center">
-                        <p class="text-sm text-gray-600">
+                        <p class="text-sm text-text-muted">
                             "Don't have an account? "
-                            <a href="/signup" class="font-medium text-indigo-600 hover:text-indigo-500">
+                            <a href="/signup" class="font-medium text-primary hover:opacity-80">
                                 "Sign up"
                             </a>
                         </p>
