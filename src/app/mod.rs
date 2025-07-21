@@ -49,9 +49,14 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
 pub fn App() -> impl IntoView {
     provide_meta_context();
     
-    // Provide user state context
+    // Provide WebSocket state context first (client-side only)
+    #[cfg(feature = "hydrate")]
+    states::websocket::provide();
+    
+    // Provide data state contexts
     states::user::provide();
     states::category::provide();
+    states::product::provide();
     
     // Initialize the old theme state system (for compatibility)
     // let theme_state = ThemeState::new();

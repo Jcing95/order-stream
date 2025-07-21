@@ -4,19 +4,7 @@ use crate::common::types::Category;
 use crate::backend::category::get_categories;
 
 #[cfg(feature = "hydrate")]
-use leptos_use::{use_websocket, UseWebSocketReturn};
-#[cfg(feature = "hydrate")]
-use codee::string::JsonSerdeCodec;
-#[cfg(feature = "hydrate")]
-use serde::{Serialize, Deserialize};
-
-#[cfg(feature = "hydrate")]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum CategoryMessage {
-    CategoryAdded(Category),
-    CategoryUpdated(Category),
-    CategoryDeleted(String), // category id
-}
+use crate::app::states::websocket::{self, Message};
 
 
 
@@ -43,30 +31,29 @@ impl CategoryState {
             }
         });
 
-        // Set up WebSocket connection for real-time updates (client-side only)
+        // Subscribe to WebSocket updates (client-side only)
         #[cfg(feature = "hydrate")]
         {
             let set_categories_ws = set_categories;
             Effect::new(move |_| {
-                let UseWebSocketReturn { message, .. } = use_websocket::<CategoryMessage, CategoryMessage, JsonSerdeCodec>(
-                    &format!("ws://{}/ws", window().location().host().expect("Failed to get host"))
-                );
+                let ws_state = websocket::get();
+                let categories_signal = ws_state.categories();
                 
-                // Handle incoming WebSocket messages
+                // Handle incoming WebSocket messages for categories
                 Effect::new(move |_| {
-                    if let Some(msg) = message.get() {
+                    if let Some(msg) = categories_signal.get() {
                         match msg {
-                            CategoryMessage::CategoryAdded(category) => {
+                            Message::Add(category) => {
                                 set_categories_ws.update(|cats| cats.push(category));
                             },
-                            CategoryMessage::CategoryUpdated(updated_category) => {
+                            Message::Update(updated_category) => {
                                 set_categories_ws.update(|cats| {
                                     if let Some(cat) = cats.iter_mut().find(|c| c.id == updated_category.id) {
                                         *cat = updated_category;
                                     }
                                 });
                             },
-                            CategoryMessage::CategoryDeleted(category_id) => {
+                            Message::Delete(category_id) => {
                                 set_categories_ws.update(|cats| cats.retain(|c| c.id != category_id));
                             }
                         }

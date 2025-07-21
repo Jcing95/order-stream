@@ -25,7 +25,10 @@ async fn main() {
     let routes = generate_route_list(App);
 
     // Create WebSocket broadcast channel
-    let (ws_sender, _) = broadcast::channel::<order_stream::backend::websocket::CategoryMessage>(1000);
+    let (ws_sender, _) = broadcast::channel::<order_stream::backend::websocket::BroadcastMessage>(1000);
+    
+    // Initialize global WebSocket sender for server functions
+    order_stream::backend::websocket::init_websocket_sender(ws_sender.clone());
     
     // Configure sessions
     let session_store = SurrealSessionStore::new();

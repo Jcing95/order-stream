@@ -43,7 +43,20 @@ pub async fn create_category(
             name: req.name,
         })
         .await?;
-    c.map(Into::into).ok_or_else(|| ServerError("Failed to create category".into()))
+    
+    if let Some(category) = c {
+        let result: types::Category = category.clone().into();
+        
+        // Broadcast WebSocket update
+        #[cfg(feature = "ssr")]
+        if let Some(sender) = crate::backend::websocket::get_websocket_sender() {
+            crate::backend::websocket::broadcast_add(sender, result.clone());
+        }
+        
+        Ok(result)
+    } else {
+        Err(ServerError("Failed to create category".into()))
+    }
 }
 
 #[server(GetCategories, "/api/category")]
@@ -64,17 +77,37 @@ pub async fn update_category(
     id: String,
     update: requests::category::Update,
 ) -> Result<types::Category, ServerFnError> {
-    DB.update((CATEGORIES, &id))
+    let updated: Option<Category> = DB.update((CATEGORIES, &id))
         .merge(update)
-        .await?
-        .ok_or_else(|| ServerError("Failed to update category".into()))
+        .await?;
+        
+    if let Some(category) = updated {
+        let result: types::Category = category.into();
+        
+        // Broadcast WebSocket update
+        #[cfg(feature = "ssr")]
+        if let Some(sender) = crate::backend::websocket::get_websocket_sender() {
+            crate::backend::websocket::broadcast_update(sender, result.clone());
+        }
+        
+        Ok(result)
+    } else {
+        Err(ServerError("Failed to update category".into()))
+    }
 }
 
 #[server(DeleteCategory, "/api/category")]
 pub async fn delete_category(id: String) -> Result<(), ServerFnError> {
     let deleted: Option<Category> = DB.delete((CATEGORIES, &id)).await?;
     if deleted.is_none() {
-        return Err(ServerError(format!("Category with id {} not found", id,)));
+        return Err(ServerError(format!("Category with id {} not found", id)));
     }
+    
+    // Broadcast WebSocket update
+    #[cfg(feature = "ssr")]
+    if let Some(sender) = crate::backend::websocket::get_websocket_sender() {
+        crate::backend::websocket::broadcast_delete::<crate::common::types::Category>(sender, id);
+    }
+    
     Ok(())
 }

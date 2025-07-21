@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 use validator::Validate;
+use crate::common::resource_name::ResourceName;
+use crate::impl_resource_name;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum Role {
@@ -90,4 +92,13 @@ pub struct Event {
     #[validate(length(min = 1, max = 64))]
     pub name: String,
 }
+
+// Implement ResourceName for all types
+impl_resource_name!(Category, "category");
+impl_resource_name!(User, "user");
+impl_resource_name!(Product, "product");
+impl_resource_name!(Item, "item");
+impl_resource_name!(Order, "order");
+impl_resource_name!(Station, "station");
+impl_resource_name!(Event, "event");
 

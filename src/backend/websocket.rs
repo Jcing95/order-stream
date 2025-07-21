@@ -9,16 +9,55 @@ use futures_util::{SinkExt, StreamExt};
 
 use serde::{Serialize, Deserialize};
 
-use crate::common::types::Category;
+use crate::common::resource_name::ResourceName;
 
+/// Generic message for any resource type
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum CategoryMessage {
-    CategoryAdded(Category),
-    CategoryUpdated(Category),
-    CategoryDeleted(String), // category id
+pub enum Message<T> {
+    Add(T),
+    Update(T),
+    Delete(String), // resource id
 }
 
-pub type WebSocketSender = broadcast::Sender<CategoryMessage>;
+/// WebSocket message envelope with resource type information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WebSocketMessage<T> {
+    pub resource_type: String,
+    pub message: Message<T>,
+}
+
+impl<T: ResourceName> WebSocketMessage<T> {
+    pub fn new(message: Message<T>) -> Self {
+        Self {
+            resource_type: T::RESOURCE_NAME.to_string(),
+            message,
+        }
+    }
+}
+
+/// Type-erased WebSocket message for broadcast channel
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BroadcastMessage {
+    pub resource_type: String,
+    pub data: String, // JSON-serialized Message<T>
+}
+
+pub type WebSocketSender = broadcast::Sender<BroadcastMessage>;
+
+use std::sync::OnceLock;
+
+// Global WebSocket sender for server functions
+static WS_SENDER: OnceLock<WebSocketSender> = OnceLock::new();
+
+/// Initialize the global WebSocket sender
+pub fn init_websocket_sender(sender: WebSocketSender) {
+    WS_SENDER.set(sender).expect("WebSocket sender already initialized");
+}
+
+/// Get the global WebSocket sender
+pub fn get_websocket_sender() -> Option<&'static WebSocketSender> {
+    WS_SENDER.get()
+}
 
 pub async fn websocket_handler(
     ws: WebSocketUpgrade,
@@ -33,11 +72,10 @@ async fn websocket_connection(socket: WebSocket, sender: WebSocketSender) {
     
     // Task to forward broadcast messages to WebSocket client
     let send_task = tokio::spawn(async move {
-        while let Ok(msg) = receiver.recv().await {
-            if let Ok(json) = serde_json::to_string(&msg) {
-                if ws_sender.send(axum::extract::ws::Message::Text(json.into())).await.is_err() {
-                    break;
-                }
+        while let Ok(broadcast_msg) = receiver.recv().await {
+            // Send the JSON data directly to client
+            if ws_sender.send(axum::extract::ws::Message::Text(broadcast_msg.data.into())).await.is_err() {
+                break;
             }
         }
     });
@@ -59,14 +97,50 @@ async fn websocket_connection(socket: WebSocket, sender: WebSocketSender) {
     }
 }
 
-pub fn broadcast_category_added(sender: &WebSocketSender, category: Category) {
-    let _ = sender.send(CategoryMessage::CategoryAdded(category));
+/// Generic broadcast function for adding resources
+pub fn broadcast_add<T>(sender: &WebSocketSender, item: T) 
+where 
+    T: ResourceName + Serialize,
+{
+    let ws_message = WebSocketMessage::new(Message::Add(item));
+    if let Ok(json_data) = serde_json::to_string(&ws_message) {
+        let broadcast_msg = BroadcastMessage {
+            resource_type: T::RESOURCE_NAME.to_string(),
+            data: json_data,
+        };
+        let _ = sender.send(broadcast_msg);
+    }
 }
 
-pub fn broadcast_category_updated(sender: &WebSocketSender, category: Category) {
-    let _ = sender.send(CategoryMessage::CategoryUpdated(category));
+/// Generic broadcast function for updating resources
+pub fn broadcast_update<T>(sender: &WebSocketSender, item: T) 
+where 
+    T: ResourceName + Serialize,
+{
+    let ws_message = WebSocketMessage::new(Message::Update(item));
+    if let Ok(json_data) = serde_json::to_string(&ws_message) {
+        let broadcast_msg = BroadcastMessage {
+            resource_type: T::RESOURCE_NAME.to_string(),
+            data: json_data,
+        };
+        let _ = sender.send(broadcast_msg);
+    }
 }
 
-pub fn broadcast_category_deleted(sender: &WebSocketSender, category_id: String) {
-    let _ = sender.send(CategoryMessage::CategoryDeleted(category_id));
+/// Generic broadcast function for deleting resources
+pub fn broadcast_delete<T>(sender: &WebSocketSender, item_id: String) 
+where 
+    T: ResourceName,
+{
+    let ws_message: WebSocketMessage<T> = WebSocketMessage {
+        resource_type: T::RESOURCE_NAME.to_string(),
+        message: Message::Delete(item_id),
+    };
+    if let Ok(json_data) = serde_json::to_string(&ws_message) {
+        let broadcast_msg = BroadcastMessage {
+            resource_type: T::RESOURCE_NAME.to_string(),
+            data: json_data,
+        };
+        let _ = sender.send(broadcast_msg);
+    }
 }
