@@ -1,13 +1,15 @@
 #[cfg(feature = "ssr")]
 #[tokio::main]
 async fn main() {
-    use axum::Router;
+    use axum::{Router, routing::get};
     use leptos::prelude::*;
     use leptos_axum::{generate_route_list, LeptosRoutes};
     use order_stream::app::{shell, App};
     use order_stream::backend::db;
+    use order_stream::backend::websocket::{websocket_handler, WebSocketSender};
     use tower_sessions::{SessionManagerLayer, cookie::SameSite};
     use order_stream::backend::auth::SurrealSessionStore;
+    use tokio::sync::broadcast;
 
     // Initialize database connection
     if let Err(e) = db::initialize_database().await {
@@ -22,6 +24,9 @@ async fn main() {
     let addr = leptos_options.site_addr;
     let routes = generate_route_list(App);
 
+    // Create WebSocket broadcast channel
+    let (ws_sender, _) = broadcast::channel::<order_stream::backend::websocket::CategoryMessage>(1000);
+    
     // Configure sessions
     let session_store = SurrealSessionStore::new();
     let session_layer = SessionManagerLayer::new(session_store)
@@ -29,8 +34,14 @@ async fn main() {
         .with_same_site(SameSite::Lax)
         .with_http_only(true);
 
-    // build our application with a route
+    // Create a WebSocket router that includes the WebSocket state
+    let ws_router = Router::new()
+        .route("/ws", get(websocket_handler))
+        .with_state(ws_sender);
+
+    // build our application with routes  
     let app = Router::new()
+        .merge(ws_router)
         .leptos_routes(&leptos_options, routes, {
             let leptos_options = leptos_options.clone();
             move || shell(leptos_options.clone())
