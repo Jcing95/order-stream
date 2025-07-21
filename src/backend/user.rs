@@ -1,5 +1,4 @@
 use leptos::prelude::*;
-use leptos::logging::log;
 
 use crate::common::{requests, types};
 
@@ -13,6 +12,7 @@ pub mod ssr {
         db::DB,
     };
     pub use crate::common::types;
+    pub use leptos::logging::log;
     pub use leptos::server_fn::error::ServerFnError::ServerError;
     pub use leptos_axum::extract;
     pub use serde::{Deserialize, Serialize};
@@ -54,7 +54,8 @@ pub async fn create_user(req: requests::user::Create) -> Result<types::User, Ser
     }
     let password_hash = password_hash.unwrap();
 
-    let u: Option<User> = DB.create(USERS)
+    let u: Option<User> = DB
+        .create(USERS)
         .content(User {
             id: None,
             email: req.email,
@@ -62,14 +63,25 @@ pub async fn create_user(req: requests::user::Create) -> Result<types::User, Ser
             role: types::Role::Staff,
         })
         .await?;
-    u.map(Into::into).ok_or_else(|| ServerError("Failed to create user".into()))
+    u.map(Into::into)
+        .ok_or_else(|| ServerError("Failed to create user".into()))
 }
 
 #[server(GetUser, "/api/user")]
-pub async fn get_user(email: String) -> Result<types::User, ServerFnError> {
-    DB.select((USERS, email))
+pub async fn get_user(id: String) -> Result<types::User, ServerFnError> {
+    DB.select((USERS, id))
         .await?
         .ok_or_else(|| ServerError("User not found".into()))
+}
+
+#[cfg(feature = "ssr")]
+pub async fn get_user_by_email(email: String) -> Result<Option<User>, surrealdb::Error> {
+    let mut result = DB
+        .query("SELECT * FROM users WHERE email = $email")
+        .bind(("email", email))
+        .await?;
+    let user: Option<User> = result.take(0)?;
+    Ok(user)
 }
 
 #[server(UpdateUser, "/api/user")]
@@ -94,19 +106,26 @@ pub async fn delete_user(id: String) -> Result<(), ServerFnError> {
 
 #[server(Login, "/api/user/")]
 pub async fn login(email: String, password: String) -> Result<types::User, ServerFnError> {
+    log!("Logging in...");
     let session: Session = extract().await?;
+    log!("Session: {:?}", session);
     // Find user by email
-    let user: Option<User> = DB.select((USERS, &email)).await?;
+    let user = get_user_by_email(email.clone()).await
+        .map_err(|e| Error::InternalError(format!("Database error: {}", e)))?;
+    log!("User: {:?}", user);
 
     let user = user.ok_or_else(|| Error::NotAuthorized("Invalid credentials".to_string()))?;
+    log!("User unwrapped: {:?}", user);
 
     // Verify password
     if !verify_password(&password, &user.password_hash)? {
         return Err(Error::NotAuthorized("Invalid credentials".to_string()).into());
     }
+    log!("password verified!");
 
     // Create session data
     let session_data = SessionData::new(user.id.as_ref().unwrap().to_string());
+    log!("Session Data: {:?}", session_data);
 
     // Store in session
     session.insert("user", session_data).await?;
@@ -115,6 +134,7 @@ pub async fn login(email: String, password: String) -> Result<types::User, Serve
     session.set_expiry(Some(tower_sessions::Expiry::AtDateTime(
         get_extended_expiry(),
     )));
+    log!("expiry set");
 
     Ok(user.into())
 }

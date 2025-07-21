@@ -9,6 +9,7 @@ use tower_sessions::{
     session::{Id, Record},
     session_store, SessionStore,
 };
+use surrealdb::RecordId;
 use time::OffsetDateTime;
 use crate::backend::db::DB;
 use crate::common::errors::Error;
@@ -67,7 +68,8 @@ pub fn handle_session_extension(session: &tower_sessions::Session) {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct SessionRecord {
-    id: String,
+    id: Option<RecordId>,
+    session_id: String,
     data: HashMap<String, serde_json::Value>,
 }
 
@@ -86,7 +88,8 @@ const SESSIONS_TABLE: &str = "sessions";
 impl SessionStore for SurrealSessionStore {
     async fn create(&self, record: &mut Record) -> session_store::Result<()> {
         let session_record = SessionRecord {
-            id: record.id.to_string(),
+            id: None,
+            session_id: record.id.to_string(),
             data: record.data.clone(),
         };
 
@@ -100,7 +103,8 @@ impl SessionStore for SurrealSessionStore {
 
     async fn save(&self, record: &Record) -> session_store::Result<()> {
         let session_record = SessionRecord {
-            id: record.id.to_string(),
+            id: None,
+            session_id: record.id.to_string(),
             data: record.data.clone(),
         };
 

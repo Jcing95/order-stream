@@ -6,6 +6,8 @@ async fn main() {
     use leptos_axum::{generate_route_list, LeptosRoutes};
     use order_stream::app::{shell, App};
     use order_stream::backend::db;
+    use tower_sessions::{SessionManagerLayer, cookie::SameSite};
+    use order_stream::backend::auth::SurrealSessionStore;
 
     // Initialize database connection
     if let Err(e) = db::initialize_database().await {
@@ -20,12 +22,20 @@ async fn main() {
     let addr = leptos_options.site_addr;
     let routes = generate_route_list(App);
 
+    // Configure sessions
+    let session_store = SurrealSessionStore::new();
+    let session_layer = SessionManagerLayer::new(session_store)
+        .with_secure(false)
+        .with_same_site(SameSite::Lax)
+        .with_http_only(true);
+
     // build our application with a route
     let app = Router::new()
         .leptos_routes(&leptos_options, routes, {
             let leptos_options = leptos_options.clone();
             move || shell(leptos_options.clone())
         })
+        .layer(session_layer)
         .fallback(leptos_axum::file_and_error_handler(shell))
         .with_state(leptos_options);
 
