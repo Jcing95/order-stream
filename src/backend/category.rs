@@ -73,9 +73,23 @@ pub async fn update_category(
     id: String,
     update: requests::category::Update,
 ) -> Result<types::Category, ServerFnError> {
-    let updated: Option<Category> = DB.update((CATEGORIES, &id)).merge(update).await?;
+    // Get the existing category
+    let existing_category: Option<Category> = DB.select((CATEGORIES, &id)).await?;
+    if existing_category.is_none() {
+        return Err(ServerError("Category not found".into()));
+    }
+    let category = existing_category.unwrap();
+    let updated = Category {
+        id: category.id,
+        name: update.name.or_else(|| Some(category.name)).unwrap(),
+    };
+    // Update the category in the database
+    let updated_category: Option<Category> = DB
+        .update((CATEGORIES, &id))
+        .content(updated)
+        .await?;
 
-    if let Some(category) = updated {
+    if let Some(category) = updated_category {
         let result: types::Category = category.into();
         broadcast_update(result.clone());
         Ok(result)

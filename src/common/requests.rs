@@ -31,13 +31,7 @@ pub mod event {
 }
 
 pub mod order {
-    use crate::common::types::OrderStatus;
     use validator::Validate;
-
-    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Validate)]
-    pub struct Update {
-        pub status: Option<OrderStatus>,
-    }
 
     #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Validate)]
     pub struct Create {

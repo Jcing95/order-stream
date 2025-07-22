@@ -2,7 +2,7 @@ use leptos::prelude::*;
 
 use crate::app::components::admin::{
     categories::Categories, create_category::CreateCategory, create_product::CreateProduct,
-    products::Products,
+    products::Products, users::Users,
 };
 
 #[component]
@@ -13,11 +13,11 @@ pub fn Admin() -> impl IntoView {
                 // Page Header
                 <div class="mb-8">
                     <h1 class="text-3xl font-bold text-text mb-2">"Admin Dashboard"</h1>
-                    <p class="text-text-muted">"Manage categories and products for your restaurant"</p>
+                    <p class="text-text-muted">"Manage categories, products, and users for your restaurant"</p>
                 </div>
 
                 // Main Content Grid
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     // Products Section
                     <div class="space-y-6">
                         <div class="bg-surface rounded-lg border border-border p-6 shadow-sm">
@@ -43,6 +43,19 @@ pub fn Admin() -> impl IntoView {
                             <CreateCategory />
                         </div>
                         <Categories />
+                    </div>
+                    
+                    // Users Section
+                    <div class="space-y-6">
+                        <div class="bg-surface rounded-lg border border-border p-6 shadow-sm">
+                            <h2 class="text-xl font-semibold text-text mb-4 flex items-center">
+                                <svg class="w-5 h-5 mr-2 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5 0A4 4 0 0025 12.5v-.5"></path>
+                                </svg>
+                                "User Management"
+                            </h2>
+                        </div>
+                        <Users />
                     </div>
                 </div>
             </div>

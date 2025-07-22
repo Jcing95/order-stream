@@ -81,6 +81,50 @@ pub async fn get_item(id: String) -> Result<types::Item, ServerFnError> {
         .ok_or_else(|| ServerError("Item not found".into()))
 }
 
+#[server(UpdateItem, "/api/item")]
+pub async fn update_item(
+    id: String,
+    update: requests::item::Update,
+) -> Result<types::Item, ServerFnError> {
+    // Get the existing item
+    let existing_item: Option<Item> = DB.select((ITEMS, &id)).await?;
+    if existing_item.is_none() {
+        return Err(ServerError("Item not found".into()));
+    }
+    let item = existing_item.unwrap();
+    
+    // If product_id is being changed, get the new price
+    let new_price = if let Some(ref new_product_id) = update.product_id {
+        if new_product_id != &item.product_id {
+            use crate::backend::product::get_product;
+            let product = get_product(new_product_id.clone()).await?;
+            product.price
+        } else {
+            item.price
+        }
+    } else {
+        item.price
+    };
+    
+    let updated = Item {
+        id: item.id,
+        order_id: item.order_id,
+        product_id: update.product_id.or_else(|| Some(item.product_id)).unwrap(),
+        quantity: update.quantity.or_else(|| Some(item.quantity)).unwrap(),
+        price: new_price,
+        status: update.status.or_else(|| Some(item.status)).unwrap(),
+    };
+    // Update the item in the database
+    let updated_item: Option<Item> = DB
+        .update((ITEMS, &id))
+        .content(updated)
+        .await?;
+        
+    updated_item
+        .map(Into::into)
+        .ok_or_else(|| ServerError("Failed to update item".into()))
+}
+
 #[server(DeleteItem, "/api/item")]
 pub async fn delete_item(id: String) -> Result<(), ServerFnError> {
     let deleted: Option<Item> = DB.delete((ITEMS, &id)).await?;

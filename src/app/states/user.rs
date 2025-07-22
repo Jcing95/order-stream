@@ -1,18 +1,37 @@
 use leptos::prelude::*;
+use leptos::task::spawn_local;
 use crate::common::types::{User, Role};
+use crate::backend::user::get_all_users;
 use leptos::logging::log;
 
 #[derive(Debug, Clone)]
 pub struct UserState {
     pub user: RwSignal<Option<User>>,
     pub loading: RwSignal<bool>,
+    pub users: ReadSignal<Vec<User>>,
+    pub set_users: WriteSignal<Vec<User>>,
 }
 
 impl UserState {
     pub fn new() -> Self {
         let user: RwSignal<Option<User>> = RwSignal::new(None);
         let loading: RwSignal<bool> = RwSignal::new(true); // Start as loading
-        Self { user, loading }
+        let (users, set_users) = signal(Vec::new());
+        
+        // Load users once on initialization
+        Effect::new({
+            let set_users = set_users;
+            move |_| {
+                spawn_local(async move {
+                    match get_all_users().await {
+                        Ok(user_list) => set_users.set(user_list),
+                        Err(_) => {}, // Keep empty vec on error
+                    }
+                });
+            }
+        });
+        
+        Self { user, loading, users, set_users }
     }
 
     pub fn set_loading(&self, loading: bool) {
@@ -63,6 +82,35 @@ impl UserState {
 
     pub fn logout(&self) {
         self.user.set(None);
+    }
+
+    pub fn get_users(&self) -> ReadSignal<Vec<User>> {
+        self.users
+    }
+
+    pub fn update_user_in_list(&self, updated: User) {
+        let current_users = self.users.get_untracked();
+        let new_users: Vec<User> = current_users
+            .iter()
+            .map(|u| {
+                if u.id == updated.id {
+                    updated.clone()
+                } else {
+                    u.clone()
+                }
+            })
+            .collect();
+        self.set_users.set(new_users);
+    }
+
+    pub fn refresh_users(&self) {
+        let set_users = self.set_users;
+        spawn_local(async move {
+            match get_all_users().await {
+                Ok(user_list) => set_users.set(user_list),
+                Err(_) => {}, // Keep existing users on error
+            }
+        });
     }
 }
 

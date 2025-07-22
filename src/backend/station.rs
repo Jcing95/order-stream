@@ -72,9 +72,27 @@ pub async fn update_station(
     name: String,
     update: requests::station::Update,
 ) -> Result<types::Station, ServerFnError> {
-    DB.update((STATIONS, &name))
-        .merge(update)
-        .await?
+    // Get the existing station
+    let existing_station: Option<Station> = DB.select((STATIONS, &name)).await?;
+    if existing_station.is_none() {
+        return Err(ServerError("Station not found".into()));
+    }
+    let station = existing_station.unwrap();
+    let updated = Station {
+        id: station.id,
+        name: station.name, // Keep the original name as it's used as the key
+        category_ids: update.category_ids.or_else(|| Some(station.category_ids)).unwrap(),
+        input_statuses: update.input_statuses.or_else(|| Some(station.input_statuses)).unwrap(),
+        output_status: update.output_status.or_else(|| Some(station.output_status)).unwrap(),
+    };
+    // Update the station in the database
+    let updated_station: Option<Station> = DB
+        .update((STATIONS, &name))
+        .content(updated)
+        .await?;
+        
+    updated_station
+        .map(Into::into)
         .ok_or_else(|| ServerError("Failed to update station".into()))
 }
 

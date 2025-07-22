@@ -60,9 +60,24 @@ pub async fn update_event(
     id: String,
     update: requests::event::Update,
 ) -> Result<types::Event, ServerFnError> {
-    DB.update((EVENTS, &id))
-        .merge(update)
-        .await?
+    // Get the existing event
+    let existing_event: Option<Event> = DB.select((EVENTS, &id)).await?;
+    if existing_event.is_none() {
+        return Err(ServerError("Event not found".into()));
+    }
+    let event = existing_event.unwrap();
+    let updated = Event {
+        id: event.id,
+        name: update.name.or_else(|| Some(event.name)).unwrap(),
+    };
+    // Update the event in the database
+    let updated_event: Option<Event> = DB
+        .update((EVENTS, &id))
+        .content(updated)
+        .await?;
+        
+    updated_event
+        .map(Into::into)
         .ok_or_else(|| ServerError("Failed to update event".into()))
 }
 

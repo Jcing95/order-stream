@@ -67,6 +67,12 @@ pub async fn create_user(req: requests::user::Create) -> Result<types::User, Ser
         .ok_or_else(|| ServerError("Failed to create user".into()))
 }
 
+#[server(GetAllUsers, "/api/users")]
+pub async fn get_all_users() -> Result<Vec<types::User>, ServerFnError> {
+    let users: Vec<User> = DB.select(USERS).await?;
+    Ok(users.into_iter().map(Into::into).collect())
+}
+
 #[server(GetUser, "/api/user")]
 pub async fn get_user(id: String) -> Result<types::User, ServerFnError> {
     DB.select((USERS, id))
@@ -89,9 +95,28 @@ pub async fn update_user(
     id: String,
     update: requests::user::Update,
 ) -> Result<types::User, ServerFnError> {
-    DB.update((USERS, &id))
-        .merge(update)
-        .await?
+    log!("User update: {:?}", update);
+    
+    // Get the existing user
+    let existing_user: Option<User> = DB.select((USERS, &id)).await?;
+    if existing_user.is_none() {
+        return Err(ServerError("User not found".into()));
+    }
+    let user = existing_user.unwrap();
+    let updated = User {
+        id: user.id,
+        email: update.email.or_else(|| Some(user.email)).unwrap(),
+        password_hash: user.password_hash,
+        role: update.role.or_else(|| Some(user.role)).unwrap(),
+    };
+    // Update the user in the database
+    let updated_user: Option<User> = DB
+        .update((USERS, &id))
+        .content(updated)
+        .await?;
+    
+    updated_user
+        .map(Into::into)
         .ok_or_else(|| ServerError("Failed to update user".into()))
 }
 

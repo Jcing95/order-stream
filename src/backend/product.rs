@@ -81,9 +81,26 @@ pub async fn update_product(
     id: String,
     update: requests::product::Update,
 ) -> Result<types::Product, ServerFnError> {
-    let updated: Option<Product> = DB.update((PRODUCTS, &id)).merge(update).await?;
+    // Get the existing product
+    let existing_product: Option<Product> = DB.select((PRODUCTS, &id)).await?;
+    if existing_product.is_none() {
+        return Err(ServerError("Product not found".into()));
+    }
+    let product = existing_product.unwrap();
+    let updated = Product {
+        id: product.id,
+        name: update.name.or_else(|| Some(product.name)).unwrap(),
+        category_id: update.category_id.or_else(|| Some(product.category_id)).unwrap(),
+        price: update.price.or_else(|| Some(product.price)).unwrap(),
+        active: update.active.or_else(|| Some(product.active)).unwrap(),
+    };
+    // Update the product in the database
+    let updated_product: Option<Product> = DB
+        .update((PRODUCTS, &id))
+        .content(updated)
+        .await?;
 
-    if let Some(product) = updated {
+    if let Some(product) = updated_product {
         let result: types::Product = product.into();
         broadcast_update(result.clone());
         Ok(result)
