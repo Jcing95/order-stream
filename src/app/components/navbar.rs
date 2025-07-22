@@ -1,7 +1,11 @@
 use crate::app::{
-    components::atoms::{connection_indicator::ConnectionIndicator, icons::{Moon, OrderStream, Sun, SystemTheme}},
+    components::{
+        atoms::{connection_indicator::ConnectionIndicator, icons::{Moon, OrderStream, Sun, SystemTheme}},
+        role_gated::RoleGated,
+    },
     states::{user, websocket},
 };
+use crate::common::types::Role;
 use leptos::prelude::*;
 use leptos_meta::*;
 use leptos_router::components::A;
@@ -99,21 +103,37 @@ pub fn Navbar() -> impl IntoView {
 
     view! {
         <Meta name="color-scheme" content=move || theme.get().as_str() />
-        <nav class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+        <nav class="bg-surface border-b border-border">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between items-center h-16">
                     <div class="flex items-center">
-                        <A href="/" attr:class="flex items-center space-x-2 text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                        <A href="/" attr:class="flex items-center space-x-2 text-text hover:text-primary transition-colors">
                             <OrderStream attr:class="size-8 text-primary"/>
                             <span class="font-semibold text-lg">Order Stream</span>
                         </A>
                         <ConnectionIndicator state=websocket.state/>
+                        
+                        <div class="ml-8">
+                            <RoleGated 
+                                roles=vec![Role::Admin]
+                                children=|| {
+                                    view! {
+                                        <A 
+                                            href="/admin" 
+                                            attr:class="text-text hover:text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                                        >
+                                            Admin
+                                        </A>
+                                    }.into_any()
+                                }
+                            />
+                        </div>
                     </div>
 
                     <div class="flex items-center space-x-4">
                         <button
                             on:click=toggle_theme
-                            class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
+                            class="p-2 text-text-muted hover:text-text transition-colors rounded-md hover:bg-surface-elevated"
                             title=move || format!("Theme: {}", match theme.get() {
                                 Theme::Light => "Light",
                                 Theme::Dark => "Dark",
@@ -132,9 +152,9 @@ pub fn Navbar() -> impl IntoView {
                             fallback=|| view! {
                                 <A
                                     href="/signin"
-                                    attr:class="flex items-center space-x-1 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
+                                    attr:class="flex items-center space-x-1 px-3 py-2 text-sm text-text hover:text-primary hover:bg-surface-elevated rounded-md transition-colors"
                                 >
-                                    <svg class="w-5 h-5 text-gray-700 dark:text-gray-300" fill="currentColor" viewBox="0 0 16 16">
+                                    <svg class="w-5 h-5 text-text" fill="currentColor" viewBox="0 0 16 16">
                                         <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0"/>
                                         <path fill-rule="evenodd" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1"/>
                                     </svg>
@@ -146,11 +166,11 @@ pub fn Navbar() -> impl IntoView {
                                 if let Some(current_user) = user.get() {
                                     view! {
                                         <div class="flex items-center space-x-2">
-                                            <span class="text-sm text-gray-700 dark:text-gray-300">
+                                            <span class="text-sm text-text">
                                                 {current_user.email.clone()}
                                             </span>
-                                            <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                                                <span class="text-white text-sm font-medium">
+                                            <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                                                <span class="text-surface text-sm font-medium">
                                                     {current_user.email.chars().next().unwrap_or('U').to_uppercase().to_string()}
                                                 </span>
                                             </div>
