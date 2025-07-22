@@ -25,7 +25,7 @@ pub mod ssr {
     impl From<Category> for types::Category {
         fn from(record: Category) -> Self {
             Self {
-                id: record.id.unwrap().to_string(),
+                id: record.id.unwrap().key().to_string(),
                 name: record.name,
             }
         }

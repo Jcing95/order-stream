@@ -56,18 +56,6 @@ pub fn CreateCategory() -> impl IntoView {
                     </div>
                 </Show>
 
-                <Show when=move || create_action.value().get().as_ref().map(|result| result.is_ok()).unwrap_or(false)>
-                    <div class="bg-green-50 border border-green-200 rounded-md p-4">
-                        <div class="flex">
-                            <div class="ml-3">
-                                <h3 class="text-sm font-medium text-green-800">
-                                    "Category created successfully!"
-                                </h3>
-                            </div>
-                        </div>
-                    </div>
-                </Show>
-
                 <div>
                     <button
                         type="submit"

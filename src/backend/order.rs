@@ -25,7 +25,7 @@ pub mod ssr {
     impl From<Order> for types::Order {
         fn from(record: Order) -> Self {
             Self {
-                id: record.id.unwrap().to_string(),
+                id: record.id.unwrap().key().to_string(),
             }
         }
     }

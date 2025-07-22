@@ -28,7 +28,7 @@ pub mod ssr {
     impl From<Item> for types::Item {
         fn from(record: Item) -> Self {
             Self {
-                id: record.id.unwrap().to_string(),
+                id: record.id.unwrap().key().to_string(),
                 order_id: record.order_id,
                 product_id: record.product_id,
                 quantity: record.quantity,

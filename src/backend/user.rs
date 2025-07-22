@@ -34,7 +34,7 @@ pub mod ssr {
     impl From<User> for types::User {
         fn from(user: User) -> Self {
             types::User {
-                id: user.id.unwrap().to_string(),
+                id: user.id.unwrap().key().to_string(),
                 email: user.email,
                 role: user.role,
             }

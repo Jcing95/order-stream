@@ -22,7 +22,7 @@ pub mod ssr {
     impl From<Event> for types::Event {
         fn from(event: Event) -> Self {
             Self {
-                id: event.id.unwrap().to_string(),
+                id: event.id.unwrap().key().to_string(),
                 name: event.name,
             }
         }

@@ -26,7 +26,7 @@ pub mod ssr {
     impl From<Station> for types::Station {
         fn from(station: Station) -> Self {
             Self {
-                id: station.id.unwrap().to_string(),
+                id: station.id.unwrap().key().to_string(),
                 name: station.name,
                 category_ids: station.category_ids,
                 input_statuses: station.input_statuses,
