@@ -1,5 +1,5 @@
-use leptos::prelude::*;
 use crate::app::states;
+use leptos::prelude::*;
 
 #[component]
 pub fn StateProvider<F>(children: F) -> impl IntoView
@@ -9,22 +9,23 @@ where
     // Provide all states within the reactive context
     states::websocket::provide();
     states::category::provide();
+    states::user::provide();
     
-    let user_state = states::user::provide();
-
-    // Only initialize user on client-side to avoid threading issues
+    
     #[cfg(feature = "hydrate")]
     {
+        let user_state = states::user::get();
+        // Only initialize user on client-side to avoid threading issues
         use crate::backend::user::get_current_user;
         use leptos::logging::log;
-        
+
         // Initialize user state by fetching current user from session
         let user_resource = Resource::new_blocking(
             || (), // No dependencies
             |_| async move {
                 log!("Fetching current user...");
                 get_current_user().await
-            }
+            },
         );
 
         // Update user state when resource loads

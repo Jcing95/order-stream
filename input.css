@@ -4,6 +4,7 @@
 @theme {
   --color-primary: #4f46e5;
   --color-secondary: #64748b;
+  --color-back: #aaaaaa;
   --color-surface: #ffffff;
   --color-surface-elevated: #f9fafb;
   --color-border: #e5e7eb;
@@ -16,6 +17,7 @@
 .dark {
   --color-primary: #6366f1;
   --color-secondary: #94a3b8;
+  --color-back: #252525;
   --color-surface: #1f2937;
   --color-surface-elevated: #374151;
   --color-border: #4b5563;

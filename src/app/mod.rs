@@ -28,7 +28,7 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                 <link rel="icon" type="image/svg+xml" href="/icon.svg"/>
                 <MetaTags/>
             </head>
-            <body>
+            <body class = "bg-back">
                 <App/>
             </body>
         </html>

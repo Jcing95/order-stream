@@ -10,7 +10,7 @@ pub fn Categories() -> impl IntoView {
     let delete_action = Action::new(|input: &String| {
         let input = input.clone();
         async move {
-            delete_category(input.clone()).await;
+            let _ = delete_category(input.clone()).await;
         }
     });
 

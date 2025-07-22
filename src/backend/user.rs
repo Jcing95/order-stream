@@ -106,26 +106,20 @@ pub async fn delete_user(id: String) -> Result<(), ServerFnError> {
 
 #[server(Login, "/api/user")]
 pub async fn login(email: String, password: String) -> Result<types::User, ServerFnError> {
-    log!("Logging in...");
     let session: Session = extract().await?;
-    log!("Session: {:?}", session);
     // Find user by email
     let user = get_user_by_email(email.clone()).await
         .map_err(|e| Error::InternalError(format!("Database error: {}", e)))?;
-    log!("User: {:?}", user);
 
     let user = user.ok_or_else(|| Error::NotAuthorized("Invalid credentials".to_string()))?;
-    log!("User unwrapped: {:?}", user);
 
     // Verify password
     if !verify_password(&password, &user.password_hash)? {
         return Err(Error::NotAuthorized("Invalid credentials".to_string()).into());
     }
-    log!("password verified!");
 
     // Create session data
     let session_data = SessionData::new(user.id.as_ref().unwrap().key().to_string());
-    log!("Session Data: {:?}", session_data);
 
     // Store in session
     session.insert("user", session_data).await?;
@@ -134,7 +128,6 @@ pub async fn login(email: String, password: String) -> Result<types::User, Serve
     session.set_expiry(Some(tower_sessions::Expiry::AtDateTime(
         get_extended_expiry(),
     )));
-    log!("expiry set");
 
     Ok(user.into())
 }
