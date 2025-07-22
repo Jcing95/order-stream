@@ -1,10 +1,11 @@
 use leptos::prelude::*;
 
-use crate::common::{requests, types};
+use crate::common::types;
 
 #[cfg(feature = "ssr")]
 pub mod ssr {
     pub use crate::backend::db::DB;
+    pub use crate::backend::websocket::{broadcast_add, broadcast_delete, broadcast_update};
     pub use crate::common::types;
     pub use leptos::server_fn::error::ServerFnError::ServerError;
     pub use serde::{Deserialize, Serialize};
@@ -40,18 +41,59 @@ use ssr::*;
 
 #[server(CreateStation, "/api/station")]
 pub async fn create_station(
-    request: requests::station::Create,
+    name: String,
+    category_ids_json: String,
+    input_statuses_json: String,
+    output_status: types::OrderStatus,
 ) -> Result<types::Station, ServerFnError> {
-    let s: Option<Station> = DB.create((STATIONS, &request.name))
+    leptos::logging::log!("Creating station with name: {}", name);
+    leptos::logging::log!("Raw category_ids_json: {}", category_ids_json);
+    leptos::logging::log!("Raw input_statuses_json: {}", input_statuses_json);
+    
+    // Deserialize the JSON arrays
+    let category_ids: Vec<String> = if category_ids_json.is_empty() {
+        Vec::new()
+    } else {
+        match serde_json::from_str(&category_ids_json) {
+            Ok(ids) => ids,
+            Err(_) => {
+                leptos::logging::log!("Failed to parse category_ids_json: {}", category_ids_json);
+                return Err(ServerError("Failed to parse category_ids".into()));
+            }
+        }
+    };
+    
+    let input_statuses: Vec<types::OrderStatus> = if input_statuses_json.is_empty() {
+        Vec::new()
+    } else {
+        match serde_json::from_str(&input_statuses_json) {
+            Ok(statuses) => statuses,
+            Err(_) => {
+                leptos::logging::log!("Failed to parse input_statuses_json: {}", input_statuses_json);
+                return Err(ServerError("Failed to parse input_statuses".into()));
+            }
+        }
+    };
+    
+    leptos::logging::log!("Parsed category_ids: {:?}", category_ids);
+    leptos::logging::log!("Parsed input_statuses: {:?}", input_statuses);
+    
+    let s: Option<Station> = DB.create(STATIONS)
         .content(Station {
             id: None,
-            name: request.name,
-            category_ids: request.category_ids,
-            input_statuses: request.input_statuses,
-            output_status: request.output_status,
+            name: name.clone(),
+            category_ids,
+            input_statuses,
+            output_status,
         })
         .await?;
-    s.map(Into::into).ok_or_else(|| ServerError("Failed to create station".into()))
+    if let Some(station) = s {
+        let result: types::Station = station.into();
+        broadcast_add(result.clone());
+        Ok(result)
+    } else {
+        Err(ServerError("Failed to create station".into()))
+    }
 }
 
 #[server(GetStations, "/api/station")]
@@ -69,31 +111,70 @@ pub async fn get_station(name: String) -> Result<types::Station, ServerFnError> 
 
 #[server(UpdateStation, "/api/station")]
 pub async fn update_station(
+    id: String,
     name: String,
-    update: requests::station::Update,
+    category_ids_json: String,
+    input_statuses_json: String,
+    output_status: types::OrderStatus,
 ) -> Result<types::Station, ServerFnError> {
+    leptos::logging::log!("Updating station with id: {}, name: {}", id, name);
+    leptos::logging::log!("Raw category_ids_json: {}", category_ids_json);
+    leptos::logging::log!("Raw input_statuses_json: {}", input_statuses_json);
+    
+    // Deserialize the JSON arrays
+    let category_ids: Vec<String> = if category_ids_json.is_empty() {
+        Vec::new()
+    } else {
+        match serde_json::from_str(&category_ids_json) {
+            Ok(ids) => ids,
+            Err(_) => {
+                leptos::logging::log!("Failed to parse category_ids_json: {}", category_ids_json);
+                return Err(ServerError("Failed to parse category_ids".into()));
+            }
+        }
+    };
+    
+    let input_statuses: Vec<types::OrderStatus> = if input_statuses_json.is_empty() {
+        Vec::new()
+    } else {
+        match serde_json::from_str(&input_statuses_json) {
+            Ok(statuses) => statuses,
+            Err(_) => {
+                leptos::logging::log!("Failed to parse input_statuses_json: {}", input_statuses_json);
+                return Err(ServerError("Failed to parse input_statuses".into()));
+            }
+        }
+    };
+    
+    leptos::logging::log!("Parsed category_ids: {:?}", category_ids);
+    leptos::logging::log!("Parsed input_statuses: {:?}", input_statuses);
+    
     // Get the existing station
-    let existing_station: Option<Station> = DB.select((STATIONS, &name)).await?;
+    let existing_station: Option<Station> = DB.select((STATIONS, &id)).await?;
     if existing_station.is_none() {
         return Err(ServerError("Station not found".into()));
     }
     let station = existing_station.unwrap();
     let updated = Station {
         id: station.id,
-        name: station.name, // Keep the original name as it's used as the key
-        category_ids: update.category_ids.or_else(|| Some(station.category_ids)).unwrap(),
-        input_statuses: update.input_statuses.or_else(|| Some(station.input_statuses)).unwrap(),
-        output_status: update.output_status.or_else(|| Some(station.output_status)).unwrap(),
+        name, // Allow name to be updated
+        category_ids,
+        input_statuses,
+        output_status,
     };
     // Update the station in the database
     let updated_station: Option<Station> = DB
-        .update((STATIONS, &name))
+        .update((STATIONS, &id))
         .content(updated)
         .await?;
         
-    updated_station
-        .map(Into::into)
-        .ok_or_else(|| ServerError("Failed to update station".into()))
+    if let Some(station) = updated_station {
+        let result: types::Station = station.into();
+        broadcast_update(result.clone());
+        Ok(result)
+    } else {
+        Err(ServerError("Failed to update station".into()))
+    }
 }
 
 #[server(DeleteStation, "/api/station")]
@@ -102,5 +183,6 @@ pub async fn delete_station(id: String) -> Result<(), ServerFnError> {
     if deleted.is_none() {
         return Err(ServerError(format!("Station with id {} not found", id)));
     }
+    broadcast_delete::<types::Station>(id);
     Ok(())
 }

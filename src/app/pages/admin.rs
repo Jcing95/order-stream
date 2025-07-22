@@ -2,13 +2,14 @@ use leptos::prelude::*;
 
 use crate::app::components::admin::{
     categories::Categories, create_category::CreateCategory, create_product::CreateProduct,
-    products::Products, users::Users,
+    create_station::CreateStation, products::Products, stations::Stations, users::Users,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum AdminTab {
     Products,
     Categories,
+    Stations,
     Users,
 }
 
@@ -63,6 +64,22 @@ pub fn Admin() -> impl IntoView {
                         <button
                             class=move || format!(
                                 "flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200 flex items-center justify-center {}",
+                                if active_tab.get() == AdminTab::Stations {
+                                    "bg-primary text-white shadow-sm"
+                                } else {
+                                    "text-text hover:bg-background hover:text-text"
+                                }
+                            )
+                            on:click=move |_| set_active_tab.set(AdminTab::Stations)
+                        >
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                            </svg>
+                            "Stations"
+                        </button>
+                        <button
+                            class=move || format!(
+                                "flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200 flex items-center justify-center {}",
                                 if active_tab.get() == AdminTab::Users {
                                     "bg-primary text-white shadow-sm"
                                 } else {
@@ -108,6 +125,20 @@ pub fn Admin() -> impl IntoView {
                                     <CreateCategory />
                                 </div>
                                 <Categories />
+                            </div>
+                        }.into_any(),
+                        AdminTab::Stations => view! {
+                            <div class="space-y-6">
+                                <div class="bg-surface rounded-lg border border-border p-6 shadow-sm">
+                                    <h2 class="text-xl font-semibold text-text mb-4 flex items-center">
+                                        <svg class="w-5 h-5 mr-2 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                        </svg>
+                                        "Station Management"
+                                    </h2>
+                                    <CreateStation />
+                                </div>
+                                <Stations />
                             </div>
                         }.into_any(),
                         AdminTab::Users => view! {

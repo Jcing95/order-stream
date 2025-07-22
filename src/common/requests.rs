@@ -48,8 +48,10 @@ pub mod station {
     pub struct Create {
         #[validate(length(min = 1, max = 64))]
         pub name: String,
+        #[serde(default, rename = "category_ids[]")]
         #[validate(length(min = 1))]
         pub category_ids: Vec<String>,
+        #[serde(default, rename = "input_statuses[]")]
         #[validate(length(min = 1))]
         pub input_statuses: Vec<OrderStatus>,
         pub output_status: OrderStatus,
@@ -57,8 +59,10 @@ pub mod station {
 
     #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Validate)]
     pub struct Update {
+        #[serde(default)]
         #[validate(length(min = 1))]
         pub category_ids: Option<Vec<String>>,
+        #[serde(default)]
         #[validate(length(min = 1))]
         pub input_statuses: Option<Vec<OrderStatus>>,
         pub output_status: Option<OrderStatus>,
