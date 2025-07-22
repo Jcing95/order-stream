@@ -6,7 +6,7 @@ async fn main() {
     use leptos_axum::{generate_route_list, LeptosRoutes};
     use order_stream::app::{shell, App};
     use order_stream::backend::db;
-    use order_stream::backend::websocket::{websocket_handler};
+    use order_stream::backend::websocket::{WebSocketMessage, websocket_handler};
     use tower_sessions::{SessionManagerLayer, cookie::SameSite};
     use order_stream::backend::auth::SurrealSessionStore;
     use tokio::sync::broadcast;
@@ -25,7 +25,7 @@ async fn main() {
     let routes = generate_route_list(App);
 
     // Create WebSocket broadcast channel
-    let (ws_sender, _) = broadcast::channel::<order_stream::backend::websocket::BroadcastMessage>(1000);
+    let (ws_sender, _) = broadcast::channel::<String>(1000);
     
     // Initialize global WebSocket sender for server functions
     order_stream::backend::websocket::init_websocket_sender(ws_sender.clone());

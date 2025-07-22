@@ -12,10 +12,24 @@ use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 
 use crate::common::resource_name::ResourceName;
+use crate::common::types::*;
+
+pub trait ResourceData: ResourceName + Serialize + Debug {}
+
+// Implement ResourceData for all types
+impl ResourceData for Category {}
+impl ResourceData for User {}
+impl ResourceData for Product {}
+impl ResourceData for Item {}
+impl ResourceData for Order {}
+impl ResourceData for Station {}
+impl ResourceData for Event {}
+
 
 /// Generic message for any resource type
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Message<T> {
+pub enum Message<T> where
+    T: ResourceData, {
     Add(T),
     Update(T),
     Delete(String), // resource id
@@ -25,13 +39,13 @@ pub enum Message<T> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WebSocketMessage<T>
 where
-    T: Serialize,
+    T: ResourceData,
 {
     pub resource_type: String,
     pub message: Message<T>,
 }
 
-impl<T: ResourceName + Serialize> WebSocketMessage<T> {
+impl<T: ResourceData> WebSocketMessage<T> {
     pub fn new(message: Message<T>) -> Self {
         Self {
             resource_type: T::RESOURCE_NAME.to_string(),
@@ -47,7 +61,7 @@ pub struct BroadcastMessage {
     pub data: String, // JSON-serialized Message<T>
 }
 
-pub type WebSocketSender = broadcast::Sender<BroadcastMessage>;
+pub type WebSocketSender = broadcast::Sender<String>;
 
 use std::sync::OnceLock;
 
@@ -74,10 +88,10 @@ async fn websocket_connection(socket: WebSocket, sender: WebSocketSender) {
 
     // Task to forward broadcast messages to WebSocket client
     let send_task = tokio::spawn(async move {
-        while let Ok(broadcast_msg) = receiver.recv().await {
+        while let Ok(json_msg) = receiver.recv().await {
             // Send the JSON data directly to client
             if ws_sender
-                .send(axum::extract::ws::Message::Text(broadcast_msg.data.into()))
+                .send(axum::extract::ws::Message::Text(json_msg.into()))
                 .await
                 .is_err()
             {
@@ -106,18 +120,13 @@ async fn websocket_connection(socket: WebSocket, sender: WebSocketSender) {
 /// Generic broadcast function for adding resources
 pub fn broadcast_add<T>(item: T)
 where
-    T: ResourceName + Serialize + Debug,
+    T: ResourceData,
 {
     let ws_message = WebSocketMessage::new(Message::Add(item));
     if let Ok(json_data) = serde_json::to_string(&ws_message) {
-        let broadcast_msg = BroadcastMessage {
-            resource_type: T::RESOURCE_NAME.to_string(),
-            data: json_data,
-        };
         if let Some(sender) = WS_SENDER.get() {
-            let _ = sender.send(broadcast_msg);
+            let _ = sender.send(json_data);
             log!("Sent add: {:?}", ws_message);
-
         }
     }
 }
@@ -125,18 +134,13 @@ where
 /// Generic broadcast function for updating resources
 pub fn broadcast_update<T>(item: T)
 where
-    T: ResourceName + Serialize + Debug,
+    T: ResourceData,
 {
     let ws_message = WebSocketMessage::new(Message::Update(item));
     if let Ok(json_data) = serde_json::to_string(&ws_message) {
-        let broadcast_msg = BroadcastMessage {
-            resource_type: T::RESOURCE_NAME.to_string(),
-            data: json_data,
-        };
         if let Some(sender) = WS_SENDER.get() {
-            let _ = sender.send(broadcast_msg);
+            let _ = sender.send(json_data);
             log!("Sent update: {:?}", ws_message);
-
         }
     }
 }
@@ -144,19 +148,15 @@ where
 /// Generic broadcast function for deleting resources
 pub fn broadcast_delete<T>(item_id: String)
 where
-    T: ResourceName + Serialize + Debug,
+    T: ResourceData,
 {
     let ws_message: WebSocketMessage<T> = WebSocketMessage {
         resource_type: T::RESOURCE_NAME.to_string(),
         message: Message::Delete(item_id),
     };
     if let Ok(json_data) = serde_json::to_string(&ws_message) {
-        let broadcast_msg = BroadcastMessage {
-            resource_type: T::RESOURCE_NAME.to_string(),
-            data: json_data,
-        };
         if let Some(sender) = WS_SENDER.get() {
-            let _ = sender.send(broadcast_msg);
+            let _ = sender.send(json_data);
             log!("Sent delete: {:?}", ws_message);
         }
     }
