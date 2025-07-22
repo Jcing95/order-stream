@@ -10,7 +10,7 @@ where
     states::websocket::provide();
     states::category::provide();
     states::user::provide();
-    
+    states::product::provide();
     
     #[cfg(feature = "hydrate")]
     {

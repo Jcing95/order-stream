@@ -1,10 +1,12 @@
 use leptos::prelude::*;
 use leptos_use::core::ConnectionReadyState;
+#[cfg(feature = "hydrate")]
 use leptos_use::{use_interval, UseIntervalReturn};
 
 #[component]
 pub fn ConnectionIndicator(#[prop(into)] state: Signal<ConnectionReadyState>) -> impl IntoView {
-    let emoji = "⚡";
+    #[cfg(not(feature = "hydrate"))]
+    let emoji = "";
     #[cfg(feature = "hydrate")]
     // Get a signal that increments every second
     let UseIntervalReturn { counter, .. } = use_interval(4000);
@@ -30,7 +32,8 @@ pub fn ConnectionIndicator(#[prop(into)] state: Signal<ConnectionReadyState>) ->
 
     view! {
         <div class="ml-1 scale-75 animate-pulse">
-            {indicator}{emoji}
+            {indicator}
+            {emoji}
         </div>
     }
 }

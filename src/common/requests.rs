@@ -93,7 +93,6 @@ pub mod product {
         pub category_id: String,
         #[validate(range(min = 0.0))]
         pub price: f64,
-        pub active: bool,
     }
 }
 

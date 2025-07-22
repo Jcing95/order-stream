@@ -40,6 +40,7 @@ impl CategoryState {
         let websocket_state = websocket::get();
         Effect::new({
             let category_state = category_state.clone();
+            let websocket_state = websocket_state.clone();
             move |_| {
                 if let Some(message) = websocket_state.categories.get() {
                     match message {
@@ -53,6 +54,8 @@ impl CategoryState {
                             category_state.remove_category(&id);
                         }
                     }
+                    // Clear the signal after processing to allow new messages to trigger
+                    websocket_state.categories.set(None);
                 }
             }
         });
@@ -73,9 +76,15 @@ impl CategoryState {
     /// Update a single category (for WebSocket updates when someone modifies a category)
     pub fn update_category(&self, updated: Category) {
         self.set_categories.update(|cats| {
-            if let Some(cat) = cats.iter_mut().find(|c| c.id == updated.id) {
-                *cat = updated;
+            let mut new_cats = Vec::new();
+            for cat in cats.iter() {
+                if cat.id == updated.id {
+                    new_cats.push(updated.clone());
+                } else {
+                    new_cats.push(cat.clone());
+                }
             }
+            *cats = new_cats;
         });
     }
     

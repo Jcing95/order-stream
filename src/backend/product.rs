@@ -5,6 +5,7 @@ use leptos::prelude::*;
 #[cfg(feature = "ssr")]
 pub mod ssr {
     pub use crate::backend::db::DB;
+    pub use crate::backend::websocket::{broadcast_add, broadcast_delete, broadcast_update};
     pub use crate::common::types;
     pub use leptos::server_fn::error::ServerFnError::ServerError;
     pub use serde::{Deserialize, Serialize};
@@ -43,16 +44,23 @@ use ssr::*;
 pub async fn create_product(
     req: requests::product::Create,
 ) -> Result<types::Product, ServerFnError> {
-    let p: Option<Product> = DB.create(PRODUCTS)
+    let p: Option<Product> = DB
+        .create(PRODUCTS)
         .content(Product {
             id: None,
             name: req.name,
             category_id: req.category_id,
             price: req.price,
-            active: req.active,
+            active: true,
         })
         .await?;
-    p.map(Into::into).ok_or_else(|| ServerError("Failed to create product".into()))
+    if let Some(product) = p {
+        let result: types::Product = product.clone().into();
+        broadcast_add(result.clone());
+        Ok(result)
+    } else {
+        Err(ServerError("Failed to create product".into()))
+    }
 }
 
 #[server(GetProducts, "/api/product")]
@@ -73,10 +81,15 @@ pub async fn update_product(
     id: String,
     update: requests::product::Update,
 ) -> Result<types::Product, ServerFnError> {
-    DB.update((PRODUCTS, &id))
-        .merge(update)
-        .await?
-        .ok_or_else(|| ServerError("Failed to update product".into()))
+    let updated: Option<Product> = DB.update((PRODUCTS, &id)).merge(update).await?;
+
+    if let Some(product) = updated {
+        let result: types::Product = product.into();
+        broadcast_update(result.clone());
+        Ok(result)
+    } else {
+        Err(ServerError("Failed to update product".into()))
+    }
 }
 
 #[server(DeleteProduct, "/api/product")]
@@ -85,5 +98,6 @@ pub async fn delete_product(id: String) -> Result<(), ServerFnError> {
     if deleted.is_none() {
         return Err(ServerError(format!("Product with id {} not found", id)));
     }
+    broadcast_delete::<types::Product>(id);
     Ok(())
 }

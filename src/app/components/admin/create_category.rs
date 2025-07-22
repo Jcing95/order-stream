@@ -15,26 +15,20 @@ pub fn CreateCategory() -> impl IntoView {
 
     view! {
         <div class="max-w-md w-full space-y-8">
-            <div>
-                <h3 class="mt-6 text-center text-2xl font-bold text-text">
-                    "Create a Category"
-                </h3>
-            </div>
-            
-            <ActionForm 
+            <ActionForm
                 action=create_action
                 attr:class="mt-8 space-y-6"
             >
                 <div class="space-y-4">
                     <div>
-                        <label for="name" class="sr-only">"Category Name"</label>
+                        <label for="name" class="block text-sm font-medium text-text mb-2">"Category Name"</label>
                         <input
                             id="name"
                             name="req[name]"
                             type="text"
                             required
                             class="relative block w-full px-3 py-2 border border-border bg-surface placeholder-text-muted text-text rounded-md focus:outline-none focus:ring-primary focus:border-primary focus:z-10 sm:text-sm"
-                            placeholder="Category name"
+                            placeholder="Enter category name"
                         />
                     </div>
                 </div>
