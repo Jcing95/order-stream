@@ -3,12 +3,16 @@ use codee::string::JsonSerdeCodec;
 use leptos::logging::log;
 use leptos::prelude::*;
 use leptos_use::{use_websocket, UseWebSocketReturn};
+use serde::{Deserialize, Serialize};
 
-use leptos::prelude::*;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct WebSocketMessage {
+    resource_type: String,
+    message: serde_json::Value,
+}
 
 #[component]
 pub fn WsBridge() -> impl IntoView {
-    use codee::string::FromToStringCodec;
     use leptos_use::core::ConnectionReadyState;
     use leptos_use::{use_websocket, UseWebSocketReturn};
     let UseWebSocketReturn {
@@ -16,7 +20,7 @@ pub fn WsBridge() -> impl IntoView {
         message,
         send,
         ..
-    } = use_websocket::<String, String, FromToStringCodec>(
+    } = use_websocket::<WebSocketMessage, WebSocketMessage, JsonSerdeCodec>(
         format!("ws://{}/ws", "127.0.0.1:3000").as_str(),
     );
     let ws_state = websocket::get();
@@ -25,14 +29,12 @@ pub fn WsBridge() -> impl IntoView {
 
     Effect::new(move |_| {
         if let Some(msg) = message.get() {
-            log!("{:?}", msg);
-            if let Ok(raw_json) = serde_json::from_str::<serde_json::Value>(&msg) {
-                if let Some(resource_type) = raw_json.get("resource_type").and_then(|v| v.as_str())
-                {
-                    ws_state.handle_message(resource_type, msg.as_str());
-                } else {
-                    log!("WsBridge: Failed to parse JSON");
-                }
+            log!("Received websocket message: {:?}", msg);
+            // Convert back to JSON string for the handler
+            if let Ok(json_str) = serde_json::to_string(&msg) {
+                ws_state.handle_message(&msg.resource_type, &json_str);
+            } else {
+                log!("WsBridge: Failed to serialize message back to JSON");
             }
         }
     });
