@@ -3,9 +3,6 @@ use leptos_meta::*;
 use leptos_router::{
     components::{FlatRoutes, Route, Router},
     StaticSegment, 
-    // ParamSegment,
-    // params::Params,
-    // hooks::use_params,
 };
 
 pub mod components;
@@ -14,17 +11,9 @@ pub mod pages;
 pub mod states;
 
 use pages::{signin::SignIn, signup::SignUp};
-use components::{navbar::Navbar, ws_bridge::WsBridge};
+use components::{navbar::Navbar, ws_bridge::WsBridge, route_guard::RouteGuard, state_provider::StateProvider};
 
 use crate::app::pages::admin::Admin;
-
-// use crate::frontend::pages::admin::AdminPage;
-// use crate::frontend::pages::home::Home;
-// use crate::frontend::pages::design_system::DesignSystemPage;
-// use crate::frontend::pages::cashier::CashierPage;
-// use crate::frontend::pages::station::{DynamicStationPage, StationsOverviewPage};
-// use crate::frontend::state::theme::ThemeState;
-// use crate::frontend::design_system::{Theme, ThemeContext, Navbar};
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -49,41 +38,9 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
 #[component]
 pub fn App() -> impl IntoView {
     provide_meta_context();
-    // Provide data state contexts
-    states::provide_all();
-
-    
-    // Initialize the old theme state system (for compatibility)
-    // let theme_state = ThemeState::new();
-    // provide_context(theme_state);
-
-    // Initialize design system theme based on old theme state (untracked for initialization)
-    // let initial_theme = if theme_state.is_dark().get_untracked() {
-    //     Theme::dark()
-    // } else {
-    //     Theme::light()
-    // };
-    // ThemeContext::provide(initial_theme);
-
-    // Sync the old theme state with the design system theme
-    // Effect::new(move |_| {
-    //     let is_dark = theme_state.is_dark().get();
-    //     let new_theme = if is_dark {
-    //         Theme::dark()
-    //     } else {
-    //         Theme::light()
-    //     };
-    //     ThemeContext::set_theme(new_theme);
-    // });
-
-    // Create reactive page background based on design system theme
-    // let page_bg_class = Signal::derive(move || {
-    //     let theme = ThemeContext::use_theme().get();
-    //     format!("min-h-screen transition-colors duration-200 {}", theme.colors.background.page)
-    // });
 
     view! {
-        // <div class=move || page_bg_class.get()>
+        <StateProvider children=move || view! {
             <Router>
                 <Navbar />
                 <WsBridge />
@@ -91,16 +48,14 @@ pub fn App() -> impl IntoView {
                     <Route path=StaticSegment("") view=Home/>
                     <Route path=StaticSegment("signin") view=SignIn/>
                     <Route path=StaticSegment("signup") view=SignUp/>
-                    <Route path=StaticSegment("admin") view=Admin/>
-                    // <Route path=StaticSegment("admin") view=AdminPage/>
-                    // <Route path=StaticSegment("design-system") view=DesignSystemPage/>
-                    // <Route path=StaticSegment("cashier") view=CashierPage/>
-                    // <Route path=StaticSegment("stations") view=StationsOverviewPage/>                    
-                    // // Dynamic station routes (database-driven)
-                    // <Route path=(StaticSegment("stations"), ParamSegment("name")) view=DynamicStationRoute/>
+                    <Route path=StaticSegment("admin") view=move || view! {
+                        <RouteGuard roles=vec![crate::common::types::Role::Admin] children=move || view! {
+                            <Admin/>
+                        }.into_any() />
+                    }/>
                 </FlatRoutes>
             </Router>
-        // </div>
+        }.into_any() />
     }
 }
 

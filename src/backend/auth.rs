@@ -1,3 +1,5 @@
+use crate::backend::db::DB;
+use crate::common::errors::Error;
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
@@ -5,14 +7,12 @@ use argon2::{
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use surrealdb::RecordId;
+use time::OffsetDateTime;
 use tower_sessions::{
     session::{Id, Record},
     session_store, SessionStore,
 };
-use surrealdb::RecordId;
-use time::OffsetDateTime;
-use crate::backend::db::DB;
-use crate::common::errors::Error;
 
 pub fn hash_password(password: &str) -> Result<String, Error> {
     let salt = SaltString::generate(&mut OsRng);
@@ -25,8 +25,8 @@ pub fn hash_password(password: &str) -> Result<String, Error> {
 }
 
 pub fn verify_password(password: &str, hash: &str) -> Result<bool, Error> {
-    let parsed_hash =
-        PasswordHash::new(hash).map_err(|e| Error::InternalError(format!("Invalid password hash: {}", e)))?;
+    let parsed_hash = PasswordHash::new(hash)
+        .map_err(|e| Error::InternalError(format!("Invalid password hash: {}", e)))?;
 
     let argon2 = Argon2::default();
     Ok(argon2
@@ -60,7 +60,9 @@ pub fn handle_session_extension(session: &tower_sessions::Session) {
     if let Some(expiry) = session.expiry() {
         if let tower_sessions::Expiry::AtDateTime(expiry_time) = expiry {
             if should_extend_session(expiry_time) {
-                session.set_expiry(Some(tower_sessions::Expiry::AtDateTime(get_extended_expiry())));
+                session.set_expiry(Some(tower_sessions::Expiry::AtDateTime(
+                    get_extended_expiry(),
+                )));
             }
         }
     }
@@ -93,7 +95,8 @@ impl SessionStore for SurrealSessionStore {
             data: record.data.clone(),
         };
 
-        let _: Option<SessionRecord> = DB.create((SESSIONS_TABLE, &record.id.to_string()))
+        let _: Option<SessionRecord> = DB
+            .create((SESSIONS_TABLE, &record.id.to_string()))
             .content(session_record)
             .await
             .map_err(|e| session_store::Error::Backend(e.to_string()))?;
@@ -108,7 +111,8 @@ impl SessionStore for SurrealSessionStore {
             data: record.data.clone(),
         };
 
-        let _: Option<SessionRecord> = DB.update((SESSIONS_TABLE, &record.id.to_string()))
+        let _: Option<SessionRecord> = DB
+            .update((SESSIONS_TABLE, &record.id.to_string()))
             .content(session_record)
             .await
             .map_err(|e| session_store::Error::Backend(e.to_string()))?;
@@ -123,13 +127,11 @@ impl SessionStore for SurrealSessionStore {
             .map_err(|e| session_store::Error::Backend(e.to_string()))?;
 
         match session_record {
-            Some(record) => {
-                Ok(Some(Record {
-                    id: session_id.clone(),
-                    data: record.data,
-                    expiry_date: OffsetDateTime::now_utc() + time::Duration::days(30),
-                }))
-            }
+            Some(record) => Ok(Some(Record {
+                id: session_id.clone(),
+                data: record.data,
+                expiry_date: OffsetDateTime::now_utc() + time::Duration::days(30),
+            })),
             None => Ok(None),
         }
     }
@@ -140,29 +142,37 @@ impl SessionStore for SurrealSessionStore {
             .await
             .map_err(|e| session_store::Error::Backend(e.to_string()))?;
         if deleted.is_none() {
-                return Err(session_store::Error::Backend("Could not delete Session.".into()));
-            }
+            return Err(session_store::Error::Backend(
+                "Could not delete Session.".into(),
+            ));
+        }
         Ok(())
     }
 }
 
-pub async fn get_authenticated_user(session: &tower_sessions::Session) -> Result<crate::common::types::User, leptos::prelude::ServerFnError> {
+pub async fn get_authenticated_user(
+    session: &tower_sessions::Session,
+) -> Result<crate::common::types::User, leptos::prelude::ServerFnError> {
     use crate::backend::user::ssr::{User, USERS};
-    
+    use leptos::logging::log;
+    log!("authenticating user...");
     let session_data: Option<SessionData> = session.get("user").await?;
-    
-    let session_data = session_data.ok_or_else(|| 
-        Error::NotAuthorized("Not authenticated".to_string()))?;
-    
+
+    let session_data =
+        session_data.ok_or_else(|| Error::NotAuthorized("Not authenticated".to_string()))?;
+    log!("Session data {:?}", session_data);
+
     handle_session_extension(session);
-    
+    log!("Handled session extension...");
+
     let user: Option<User> = DB.select((USERS, &session_data.user_id)).await?;
-    
+    log!("User data {:?}", user);
+
     let user = user.ok_or_else(|| {
         let _ = session.delete();
         Error::NotAuthorized("User not found".to_string())
     })?;
-    
+    log!("returning authenticated user...");
     Ok(user.into())
 }
 
@@ -171,10 +181,10 @@ macro_rules! requireUserOrRole {
     ($user_id:expr $(, $role:ident)*) => {
         let session: tower_sessions::Session = leptos_axum::extract().await?;
         let current_user = $crate::backend::auth::get_authenticated_user(&session).await?;
-        
+
         let is_target_user = current_user.id == $user_id;
         let has_required_role = false $(|| current_user.role == $crate::common::types::Role::$role)*;
-        
+
         if !is_target_user && !has_required_role {
             return Err($crate::common::errors::Error::NotAuthorized("Access denied: must be the user or have required role".to_string()).into());
         }
@@ -189,9 +199,9 @@ macro_rules! roles {
     ($($role:ident),+) => {
         let session: tower_sessions::Session = leptos_axum::extract().await?;
         let current_user = $crate::backend::auth::get_authenticated_user(&session).await?;
-        
+
         let has_required_role = $(current_user.role == $crate::common::types::Role::$role)||+ || current_user.role == $crate::common::types::Role::Admin;
-        
+
         if !has_required_role {
             return Err($crate::common::errors::Error::NotAuthorized("Insufficient permissions".to_string()).into());
         }

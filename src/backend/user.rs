@@ -104,7 +104,7 @@ pub async fn delete_user(id: String) -> Result<(), ServerFnError> {
     Ok(())
 }
 
-#[server(Login, "/api/user/")]
+#[server(Login, "/api/user")]
 pub async fn login(email: String, password: String) -> Result<types::User, ServerFnError> {
     log!("Logging in...");
     let session: Session = extract().await?;
@@ -124,7 +124,7 @@ pub async fn login(email: String, password: String) -> Result<types::User, Serve
     log!("password verified!");
 
     // Create session data
-    let session_data = SessionData::new(user.id.as_ref().unwrap().to_string());
+    let session_data = SessionData::new(user.id.as_ref().unwrap().key().to_string());
     log!("Session Data: {:?}", session_data);
 
     // Store in session
@@ -139,15 +139,16 @@ pub async fn login(email: String, password: String) -> Result<types::User, Serve
     Ok(user.into())
 }
 
-#[server(Logout, "/api/user/")]
+#[server(Logout, "/api/user")]
 pub async fn logout() -> Result<(), ServerFnError> {
     let session: Session = extract().await?;
     let _ = session.delete().await;
     Ok(())
 }
 
-#[server(GetCurrentUser, "/api/user/")]
+#[server(GetCurrentUser, "/api/user")]
 pub async fn get_current_user() -> Result<types::User, ServerFnError> {
     let session: Session = extract().await?;
+    log!("Session: {:?}", session);
     crate::backend::auth::get_authenticated_user(&session).await
 }

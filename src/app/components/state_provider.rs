@@ -1,0 +1,50 @@
+use leptos::prelude::*;
+use crate::app::states;
+
+#[component]
+pub fn StateProvider<F>(children: F) -> impl IntoView
+where
+    F: Fn() -> AnyView + 'static + Send + Sync,
+{
+    // Provide all states within the reactive context
+    states::websocket::provide();
+    states::category::provide();
+    
+    let user_state = states::user::provide();
+
+    // Only initialize user on client-side to avoid threading issues
+    #[cfg(feature = "hydrate")]
+    {
+        use crate::backend::user::get_current_user;
+        use leptos::logging::log;
+        
+        // Initialize user state by fetching current user from session
+        let user_resource = Resource::new_blocking(
+            || (), // No dependencies
+            |_| async move {
+                log!("Fetching current user...");
+                get_current_user().await
+            }
+        );
+
+        // Update user state when resource loads
+        Effect::new(move |_| {
+            if let Some(result) = user_resource.get() {
+                match result {
+                    Ok(current_user) => {
+                        log!("Found authenticated user: {:?}", current_user);
+                        user_state.set_user(current_user);
+                    }
+                    Err(_) => {
+                        log!("No authenticated user found");
+                        // Keep user as None
+                    }
+                }
+                // Either way, we're done loading
+                user_state.set_loading(false);
+            }
+        });
+    }
+
+    children()
+}
