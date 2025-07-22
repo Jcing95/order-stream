@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use validator::Validate;
-use crate::common::resource_name::ResourceName;
+use crate::common::resource_type::ResourceName;
 use crate::impl_resource_name;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

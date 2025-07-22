@@ -2,6 +2,8 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use crate::common::types::Category;
 use crate::backend::category::get_categories;
+use crate::common::resource_type::Message;
+use crate::app::states::websocket;
 
 
 
@@ -29,15 +31,33 @@ impl CategoryState {
             }
         });
 
-        // The derived signal approach means no Effects needed here!
-        // The WebSocket state handles message parsing with derived signals
-        // The category state can simply expose a derived signal that combines
-        // the base categories with real-time updates
-
-        Self {
+        let category_state = Self {
             categories,
             set_categories,
-        }
+        };
+
+        // Connect to websocket updates
+        let websocket_state = websocket::get();
+        Effect::new({
+            let category_state = category_state.clone();
+            move |_| {
+                if let Some(message) = websocket_state.categories.get() {
+                    match message {
+                        Message::Add(category) => {
+                            category_state.add_category(category);
+                        }
+                        Message::Update(category) => {
+                            category_state.update_category(category);
+                        }
+                        Message::Delete(id) => {
+                            category_state.remove_category(&id);
+                        }
+                    }
+                }
+            }
+        });
+
+        category_state
     }
 
     /// Get the categories signal for reactive UI - this is your simple interface

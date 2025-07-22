@@ -1,4 +1,4 @@
 pub mod types;
 pub mod requests;
 pub mod errors;
-pub mod resource_name;
+pub mod resource_type;

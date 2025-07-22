@@ -1,32 +1,6 @@
 use leptos::prelude::*;
-use serde::{Serialize, Deserialize};
 use crate::common::types::*;
-use crate::common::resource_name::ResourceName;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Message<T> {
-    Add(T),
-    Update(T),
-    Delete(String),
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WebSocketMessage<T>
-where
-    T: Serialize,
-{
-    pub resource_type: String,
-    pub message: Message<T>,
-}
-
-impl<T: ResourceName + Serialize> WebSocketMessage<T> {
-    pub fn new(message: Message<T>) -> Self {
-        Self {
-            resource_type: T::RESOURCE_NAME.to_string(),
-            message,
-        }
-    }
-}
+use crate::common::resource_type::*;
 
 #[derive(Debug, Clone)]
 pub struct WebSocketState {

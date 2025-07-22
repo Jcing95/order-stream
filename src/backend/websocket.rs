@@ -2,64 +2,12 @@ use axum::{
     extract::{ws::WebSocket, WebSocketUpgrade},
     response::Response,
 };
-use std::fmt::Debug;
 use leptos::logging::log;
-
 use tokio::sync::broadcast;
-
 use futures_util::{SinkExt, StreamExt};
 
-use serde::{Deserialize, Serialize};
+use crate::common::resource_type::*;
 
-use crate::common::resource_name::ResourceName;
-use crate::common::types::*;
-
-pub trait ResourceData: ResourceName + Serialize + Debug {}
-
-// Implement ResourceData for all types
-impl ResourceData for Category {}
-impl ResourceData for User {}
-impl ResourceData for Product {}
-impl ResourceData for Item {}
-impl ResourceData for Order {}
-impl ResourceData for Station {}
-impl ResourceData for Event {}
-
-
-/// Generic message for any resource type
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Message<T> where
-    T: ResourceData, {
-    Add(T),
-    Update(T),
-    Delete(String), // resource id
-}
-
-/// WebSocket message envelope with resource type information
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WebSocketMessage<T>
-where
-    T: ResourceData,
-{
-    pub resource_type: String,
-    pub message: Message<T>,
-}
-
-impl<T: ResourceData> WebSocketMessage<T> {
-    pub fn new(message: Message<T>) -> Self {
-        Self {
-            resource_type: T::RESOURCE_NAME.to_string(),
-            message,
-        }
-    }
-}
-
-/// Type-erased WebSocket message for broadcast channel
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BroadcastMessage {
-    pub resource_type: String,
-    pub data: String, // JSON-serialized Message<T>
-}
 
 pub type WebSocketSender = broadcast::Sender<String>;
 
