@@ -1,6 +1,9 @@
 use leptos::prelude::*;
 
-use crate::{app::states::category, backend::category::delete_category};
+use crate::{
+    app::{components::atoms::icons, states::category},
+    backend::category::delete_category,
+};
 
 #[component]
 pub fn Categories() -> impl IntoView {
@@ -37,12 +40,12 @@ pub fn Categories() -> impl IntoView {
                                     <span class="text-text font-medium">{category.name}</span>
                                     <span class="text-text-muted text-sm">{"ID: "}{id.clone()}</span>
                                     <button
-                                        class="text-red-600 hover:underline"
+                                        class="bg-border/80 text-red-600 hover:bg-border hover:scale-105 p-2 rounded"
                                         on:click=move |_| {
                                             delete_action.dispatch(id.clone());
                                         }
                                     >
-                                        "Delete"
+                                        <icons::Trash attr:class="object-fit"/>
                                     </button>
                                 </div>
                             }

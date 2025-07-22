@@ -9,7 +9,7 @@ use leptos_use::{use_websocket, UseWebSocketReturn};
 pub fn WsBridge() -> impl IntoView {
     let UseWebSocketReturn {
         message,
-        ..
+        ready_state,..
     } = use_websocket::<GenericWebSocketMessage, GenericWebSocketMessage, JsonSerdeCodec>(
         format!("ws://{}/ws", "127.0.0.1:3000").as_str(),
     );
@@ -25,6 +25,11 @@ pub fn WsBridge() -> impl IntoView {
                 log!("WsBridge: Failed to serialize message back to JSON");
             }
         }
+    });
+
+    let ws_state = websocket::get();
+    Effect::new(move |_| {
+        ws_state.set_state(ready_state.get())
     });
 
     view! {

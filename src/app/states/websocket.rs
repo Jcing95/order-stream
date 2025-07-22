@@ -1,9 +1,11 @@
 use leptos::prelude::*;
+use leptos_use::core::ConnectionReadyState;
 use crate::common::types::*;
 use crate::common::resource_type::*;
 
 #[derive(Debug, Clone)]
 pub struct WebSocketState {
+    pub state: RwSignal<ConnectionReadyState>,
     pub categories: RwSignal<Option<Message<Category>>>,
     pub users: RwSignal<Option<Message<User>>>,
     pub products: RwSignal<Option<Message<Product>>>,
@@ -16,6 +18,7 @@ pub struct WebSocketState {
 impl WebSocketState {
     pub fn new() -> Self {
         Self {
+            state: RwSignal::new(ConnectionReadyState::Connecting),
             categories: RwSignal::new(None),
             users: RwSignal::new(None),
             products: RwSignal::new(None),
@@ -24,6 +27,10 @@ impl WebSocketState {
             stations: RwSignal::new(None),
             events: RwSignal::new(None),
         }
+    }
+
+    pub fn set_state(&self, state: ConnectionReadyState) {
+        self.state.set(state);
     }
 
     pub fn handle_message(&self, resource_type: &str, json_str: &str) {

@@ -7,7 +7,9 @@ use crate::app::components::admin::{create_category::CreateCategory, categories:
 pub fn Admin() -> impl IntoView {
 
     view!{
-        <CreateCategory/>
-        <Categories/>
+        <div class="flex flex-row w-full">
+            <CreateCategory attr:class="grow"/>
+            <Categories attr:class="grow-3"/>
+        </div>
     }
 }
