@@ -34,7 +34,7 @@ fn ProductDisplayItem(
     
     // Get category name reactively
     let category_name = move || {
-        categories.get_untracked()
+        categories.get()
             .iter()
             .find(|c| c.id == category_id)
             .map(|c| c.name.clone())
