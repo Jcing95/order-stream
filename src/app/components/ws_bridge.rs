@@ -3,82 +3,47 @@ use leptos::prelude::*;
 #[component]
 pub fn WsBridge() -> impl IntoView {
     use codee::string::JsonSerdeCodec;
-    use leptos_use::{use_websocket, UseWebSocketReturn};
-    use serde::{Serialize, Deserialize};
-    use crate::common::types::*;
+    #[cfg(feature = "hydrate")]
+    use leptos_use::{use_websocket_with_options, UseWebSocketReturn, UseWebSocketOptions, DummyEncoder};
     use leptos::logging::log;
+    
+    use crate::app::states::websocket;
 
-    let UseWebSocketReturn { message, .. } = use_websocket::<String, String, JsonSerdeCodec>(
-        format!(
+    
+    #[cfg(feature = "hydrate")]
+    {
+        log!("WsBridge: Starting WebSocket connection");
+        let ws_state = websocket::get();
+        let ws_url = format!(
             "ws://{}/ws",
             window().location().host().expect("Failed to get host")
-        )
-        .as_str(),
-    );
-
-    Effect::new(move || {
-        if let Some(json_str) = message.get() {
-            log!("received message {:?}", &json_str);
-            // Try to determine the resource type from the JSON
-            if let Ok(raw_json) = serde_json::from_str::<serde_json::Value>(&json_str) {
-                if let Some(resource_type) = raw_json.get("resource_type").and_then(|v| v.as_str())
-                {
-                    match resource_type {
-                        "category" => {
-                            if let Ok(ws_msg) =
-                                serde_json::from_str::<WebSocketMessage<Category>>(&json_str)
-                            {
-                                categories.set(Some(ws_msg.message));
-                            }
-                        }
-                        "user" => {
-                            if let Ok(ws_msg) =
-                                serde_json::from_str::<WebSocketMessage<User>>(&json_str)
-                            {
-                                users.set(Some(ws_msg.message));
-                            }
-                        }
-                        "product" => {
-                            if let Ok(ws_msg) =
-                                serde_json::from_str::<WebSocketMessage<Product>>(&json_str)
-                            {
-                                products.set(Some(ws_msg.message));
-                            }
-                        }
-                        "item" => {
-                            if let Ok(ws_msg) =
-                                serde_json::from_str::<WebSocketMessage<Item>>(&json_str)
-                            {
-                                items.set(Some(ws_msg.message));
-                            }
-                        }
-                        "order" => {
-                            if let Ok(ws_msg) =
-                                serde_json::from_str::<WebSocketMessage<Order>>(&json_str)
-                            {
-                                orders.set(Some(ws_msg.message));
-                            }
-                        }
-                        "station" => {
-                            if let Ok(ws_msg) =
-                                serde_json::from_str::<WebSocketMessage<Station>>(&json_str)
-                            {
-                                stations.set(Some(ws_msg.message));
-                            }
-                        }
-                        "event" => {
-                            if let Ok(ws_msg) =
-                                serde_json::from_str::<WebSocketMessage<Event>>(&json_str)
-                            {
-                                events.set(Some(ws_msg.message));
-                            }
-                        }
-                        _ => {} // Unknown resource type
+        );
+        log!("WsBridge: Connecting to {}", ws_url);
+        
+        
+        let UseWebSocketReturn { ready_state, .. } = use_websocket_with_options::<String, String, JsonSerdeCodec, (), DummyEncoder>(
+            ws_url.as_str(),
+            UseWebSocketOptions::default().on_message(move |message: &String| {
+                log!("WsBridge: received message via callback: {:?}", message);
+                // Try to determine the resource type from the JSON
+                if let Ok(raw_json) = serde_json::from_str::<serde_json::Value>(message) {
+                    if let Some(resource_type) = raw_json.get("resource_type").and_then(|v| v.as_str()) {
+                        log!("WsBridge: Processing message for resource type: {}", resource_type);
+                        ws_state.handle_message(resource_type, message);
+                    } else {
+                        log!("WsBridge: No resource_type found in message");
                     }
+                } else {
+                    log!("WsBridge: Failed to parse JSON");
                 }
-            }
-        }
-    });
+            })
+        );
+
+        // Track ready state
+        Effect::new(move || {
+            log!("WsBridge: Ready state changed: {:?}", ready_state.get());
+        });
+    }
 
     view! {<></>}
 }

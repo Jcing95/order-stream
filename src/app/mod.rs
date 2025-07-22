@@ -14,7 +14,7 @@ pub mod pages;
 pub mod states;
 
 use pages::{signin::SignIn, signup::SignUp};
-use components::navbar::Navbar;
+use components::{navbar::Navbar, ws_bridge::WsBridge};
 
 use crate::app::pages::admin::Admin;
 
@@ -86,6 +86,7 @@ pub fn App() -> impl IntoView {
         // <div class=move || page_bg_class.get()>
             <Router>
                 <Navbar />
+                <WsBridge />
                 <FlatRoutes fallback=|| "Page not found.">
                     <Route path=StaticSegment("") view=Home/>
                     <Route path=StaticSegment("signin") view=SignIn/>

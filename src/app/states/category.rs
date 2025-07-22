@@ -3,8 +3,6 @@ use leptos::task::spawn_local;
 use crate::common::types::Category;
 use crate::backend::category::get_categories;
 
-#[cfg(feature = "hydrate")]
-use crate::app::states::websocket::{self, Message};
 
 
 
