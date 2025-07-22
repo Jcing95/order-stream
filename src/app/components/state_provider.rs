@@ -12,6 +12,7 @@ where
     states::user::provide();
     states::product::provide();
     states::station::provide();
+    states::order::provide();
     
     #[cfg(feature = "hydrate")]
     {

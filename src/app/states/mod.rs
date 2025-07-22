@@ -3,3 +3,4 @@ pub mod category;
 pub mod product;
 pub mod station;
 pub mod websocket;
+pub mod order;

@@ -2,7 +2,7 @@ use leptos::prelude::*;
 use leptos_meta::*;
 use leptos_router::{
     components::{FlatRoutes, Route, Router},
-    StaticSegment, 
+    StaticSegment,
 };
 
 pub mod components;
@@ -10,10 +10,11 @@ pub mod pages;
 
 pub mod states;
 
-use pages::{signin::SignIn, signup::SignUp};
-use components::{navbar::Navbar, ws_bridge::WsBridge, route_guard::RouteGuard, state_provider::StateProvider};
+use components::{
+    navbar::Navbar, route_guard::RouteGuard, state_provider::StateProvider, ws_bridge::WsBridge,
+};
+use pages::{signin::SignIn, signup::SignUp, admin::Admin, cashier::Cashier};
 
-use crate::app::pages::admin::Admin;
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -53,6 +54,11 @@ pub fn App() -> impl IntoView {
                             <Admin/>
                         }.into_any() />
                     }/>
+                    <Route path=StaticSegment("cashier") view=move || view! {
+                        <RouteGuard roles=vec![crate::common::types::Role::Admin, crate::common::types::Role::Cashier] children=move || view! {
+                            <Cashier/>
+                        }.into_any() />
+                    }/>
                 </FlatRoutes>
             </Router>
         }.into_any() />
@@ -75,7 +81,7 @@ fn Home() -> impl IntoView {
 // #[component]
 // fn DynamicStationRoute() -> impl IntoView {
 //     let params = use_params::<StationParams>();
-    
+
 //     view! {
 //         {move || {
 //             match params.with(|params| params.clone()) {
@@ -84,7 +90,7 @@ fn Home() -> impl IntoView {
 //                     // URLs are generated as lowercase with spaces replaced by hyphens
 //                     // So we need to try both the URL format and converting back
 //                     let converted_name = name.replace("-", " ");
-                    
+
 //                     view! {
 //                         <DynamicStationPage station_name=converted_name />
 //                     }.into_any()
