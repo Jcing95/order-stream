@@ -20,7 +20,7 @@ impl UserState {
                 let user = user;
                 move |_| {
                     let ws_state = websocket::get();
-                    let users_signal = ws_state.users();
+                    let users_signal = ws_state.users;
                     
                     // Handle incoming WebSocket messages for users
                     Effect::new(move |_| {

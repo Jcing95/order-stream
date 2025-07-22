@@ -6,7 +6,7 @@ async fn main() {
     use leptos_axum::{generate_route_list, LeptosRoutes};
     use order_stream::app::{shell, App};
     use order_stream::backend::db;
-    use order_stream::backend::websocket::{websocket_handler, WebSocketSender};
+    use order_stream::backend::websocket::{websocket_handler};
     use tower_sessions::{SessionManagerLayer, cookie::SameSite};
     use order_stream::backend::auth::SurrealSessionStore;
     use tokio::sync::broadcast;

@@ -5,6 +5,7 @@ use crate::common::{requests, types};
 #[cfg(feature = "ssr")]
 pub mod ssr {
     pub use crate::backend::db::DB;
+    pub use crate::backend::websocket::{broadcast_add, broadcast_delete, broadcast_update};
     pub use crate::common::types;
     pub use leptos::server_fn::error::ServerFnError::ServerError;
     pub use serde::{Deserialize, Serialize};
@@ -37,22 +38,17 @@ use ssr::*;
 pub async fn create_category(
     req: requests::category::Create,
 ) -> Result<types::Category, ServerFnError> {
-    let c: Option<Category> = DB.create(CATEGORIES)
+    let c: Option<Category> = DB
+        .create(CATEGORIES)
         .content(Category {
             id: None,
             name: req.name,
         })
         .await?;
-    
+
     if let Some(category) = c {
         let result: types::Category = category.clone().into();
-        
-        // Broadcast WebSocket update
-        #[cfg(feature = "ssr")]
-        if let Some(sender) = crate::backend::websocket::get_websocket_sender() {
-            crate::backend::websocket::broadcast_add(sender, result.clone());
-        }
-        
+        broadcast_add(result.clone());
         Ok(result)
     } else {
         Err(ServerError("Failed to create category".into()))
@@ -77,19 +73,11 @@ pub async fn update_category(
     id: String,
     update: requests::category::Update,
 ) -> Result<types::Category, ServerFnError> {
-    let updated: Option<Category> = DB.update((CATEGORIES, &id))
-        .merge(update)
-        .await?;
-        
+    let updated: Option<Category> = DB.update((CATEGORIES, &id)).merge(update).await?;
+
     if let Some(category) = updated {
         let result: types::Category = category.into();
-        
-        // Broadcast WebSocket update
-        #[cfg(feature = "ssr")]
-        if let Some(sender) = crate::backend::websocket::get_websocket_sender() {
-            crate::backend::websocket::broadcast_update(sender, result.clone());
-        }
-        
+        broadcast_update(result.clone());
         Ok(result)
     } else {
         Err(ServerError("Failed to update category".into()))
@@ -102,12 +90,6 @@ pub async fn delete_category(id: String) -> Result<(), ServerFnError> {
     if deleted.is_none() {
         return Err(ServerError(format!("Category with id {} not found", id)));
     }
-    
-    // Broadcast WebSocket update
-    #[cfg(feature = "ssr")]
-    if let Some(sender) = crate::backend::websocket::get_websocket_sender() {
-        crate::backend::websocket::broadcast_delete::<crate::common::types::Category>(sender, id);
-    }
-    
+    broadcast_delete::<types::Category>(id);
     Ok(())
 }

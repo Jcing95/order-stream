@@ -2,12 +2,14 @@ use axum::{
     extract::{ws::WebSocket, WebSocketUpgrade},
     response::Response,
 };
+use std::fmt::Debug;
+use leptos::logging::log;
 
 use tokio::sync::broadcast;
 
 use futures_util::{SinkExt, StreamExt};
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use crate::common::resource_name::ResourceName;
 
@@ -21,12 +23,15 @@ pub enum Message<T> {
 
 /// WebSocket message envelope with resource type information
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WebSocketMessage<T> {
+pub struct WebSocketMessage<T>
+where
+    T: Serialize,
+{
     pub resource_type: String,
     pub message: Message<T>,
 }
 
-impl<T: ResourceName> WebSocketMessage<T> {
+impl<T: ResourceName + Serialize> WebSocketMessage<T> {
     pub fn new(message: Message<T>) -> Self {
         Self {
             resource_type: T::RESOURCE_NAME.to_string(),
@@ -51,12 +56,9 @@ static WS_SENDER: OnceLock<WebSocketSender> = OnceLock::new();
 
 /// Initialize the global WebSocket sender
 pub fn init_websocket_sender(sender: WebSocketSender) {
-    WS_SENDER.set(sender).expect("WebSocket sender already initialized");
-}
-
-/// Get the global WebSocket sender
-pub fn get_websocket_sender() -> Option<&'static WebSocketSender> {
-    WS_SENDER.get()
+    WS_SENDER
+        .set(sender)
+        .expect("WebSocket sender already initialized");
 }
 
 pub async fn websocket_handler(
@@ -69,17 +71,21 @@ pub async fn websocket_handler(
 async fn websocket_connection(socket: WebSocket, sender: WebSocketSender) {
     let mut receiver = sender.subscribe();
     let (mut ws_sender, mut ws_receiver) = socket.split();
-    
+
     // Task to forward broadcast messages to WebSocket client
     let send_task = tokio::spawn(async move {
         while let Ok(broadcast_msg) = receiver.recv().await {
             // Send the JSON data directly to client
-            if ws_sender.send(axum::extract::ws::Message::Text(broadcast_msg.data.into())).await.is_err() {
+            if ws_sender
+                .send(axum::extract::ws::Message::Text(broadcast_msg.data.into()))
+                .await
+                .is_err()
+            {
                 break;
             }
         }
     });
-    
+
     // Task to handle incoming WebSocket messages (if needed for bidirectional communication)
     let recv_task = tokio::spawn(async move {
         while let Some(Ok(msg)) = ws_receiver.next().await {
@@ -89,7 +95,7 @@ async fn websocket_connection(socket: WebSocket, sender: WebSocketSender) {
             }
         }
     });
-    
+
     // Wait for either task to complete (connection closed or error)
     tokio::select! {
         _ = send_task => {},
@@ -98,9 +104,9 @@ async fn websocket_connection(socket: WebSocket, sender: WebSocketSender) {
 }
 
 /// Generic broadcast function for adding resources
-pub fn broadcast_add<T>(sender: &WebSocketSender, item: T) 
-where 
-    T: ResourceName + Serialize,
+pub fn broadcast_add<T>(item: T)
+where
+    T: ResourceName + Serialize + Debug,
 {
     let ws_message = WebSocketMessage::new(Message::Add(item));
     if let Ok(json_data) = serde_json::to_string(&ws_message) {
@@ -108,14 +114,18 @@ where
             resource_type: T::RESOURCE_NAME.to_string(),
             data: json_data,
         };
-        let _ = sender.send(broadcast_msg);
+        if let Some(sender) = WS_SENDER.get() {
+            let _ = sender.send(broadcast_msg);
+            log!("Sent add: {:?}", ws_message);
+
+        }
     }
 }
 
 /// Generic broadcast function for updating resources
-pub fn broadcast_update<T>(sender: &WebSocketSender, item: T) 
-where 
-    T: ResourceName + Serialize,
+pub fn broadcast_update<T>(item: T)
+where
+    T: ResourceName + Serialize + Debug,
 {
     let ws_message = WebSocketMessage::new(Message::Update(item));
     if let Ok(json_data) = serde_json::to_string(&ws_message) {
@@ -123,14 +133,18 @@ where
             resource_type: T::RESOURCE_NAME.to_string(),
             data: json_data,
         };
-        let _ = sender.send(broadcast_msg);
+        if let Some(sender) = WS_SENDER.get() {
+            let _ = sender.send(broadcast_msg);
+            log!("Sent update: {:?}", ws_message);
+
+        }
     }
 }
 
 /// Generic broadcast function for deleting resources
-pub fn broadcast_delete<T>(sender: &WebSocketSender, item_id: String) 
-where 
-    T: ResourceName,
+pub fn broadcast_delete<T>(item_id: String)
+where
+    T: ResourceName + Serialize + Debug,
 {
     let ws_message: WebSocketMessage<T> = WebSocketMessage {
         resource_type: T::RESOURCE_NAME.to_string(),
@@ -141,6 +155,9 @@ where
             resource_type: T::RESOURCE_NAME.to_string(),
             data: json_data,
         };
-        let _ = sender.send(broadcast_msg);
+        if let Some(sender) = WS_SENDER.get() {
+            let _ = sender.send(broadcast_msg);
+            log!("Sent delete: {:?}", ws_message);
+        }
     }
 }

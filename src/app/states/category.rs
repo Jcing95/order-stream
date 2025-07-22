@@ -31,36 +31,10 @@ impl CategoryState {
             }
         });
 
-        // Subscribe to WebSocket updates (client-side only)
-        #[cfg(feature = "hydrate")]
-        {
-            let set_categories_ws = set_categories;
-            Effect::new(move |_| {
-                let ws_state = websocket::get();
-                let categories_signal = ws_state.categories();
-                
-                // Handle incoming WebSocket messages for categories
-                Effect::new(move |_| {
-                    if let Some(msg) = categories_signal.get() {
-                        match msg {
-                            Message::Add(category) => {
-                                set_categories_ws.update(|cats| cats.push(category));
-                            },
-                            Message::Update(updated_category) => {
-                                set_categories_ws.update(|cats| {
-                                    if let Some(cat) = cats.iter_mut().find(|c| c.id == updated_category.id) {
-                                        *cat = updated_category;
-                                    }
-                                });
-                            },
-                            Message::Delete(category_id) => {
-                                set_categories_ws.update(|cats| cats.retain(|c| c.id != category_id));
-                            }
-                        }
-                    }
-                });
-            });
-        }
+        // The derived signal approach means no Effects needed here!
+        // The WebSocket state handles message parsing with derived signals
+        // The category state can simply expose a derived signal that combines
+        // the base categories with real-time updates
 
         Self {
             categories,

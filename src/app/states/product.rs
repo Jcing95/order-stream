@@ -37,7 +37,7 @@ impl ProductState {
             let set_products_ws = set_products;
             Effect::new(move |_| {
                 let ws_state = websocket::get();
-                let products_signal = ws_state.products();
+                let products_signal = ws_state.products;
                 
                 // Handle incoming WebSocket messages for products
                 Effect::new(move |_| {

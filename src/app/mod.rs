@@ -10,6 +10,7 @@ use leptos_router::{
 
 pub mod components;
 pub mod pages;
+
 pub mod states;
 
 use pages::{signin::SignIn, signup::SignUp};
@@ -48,15 +49,9 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
 #[component]
 pub fn App() -> impl IntoView {
     provide_meta_context();
-    
-    // Provide WebSocket state context first (client-side only)
-    #[cfg(feature = "hydrate")]
-    states::websocket::provide();
-    
     // Provide data state contexts
-    states::user::provide();
-    states::category::provide();
-    states::product::provide();
+    states::provide_all();
+
     
     // Initialize the old theme state system (for compatibility)
     // let theme_state = ThemeState::new();
