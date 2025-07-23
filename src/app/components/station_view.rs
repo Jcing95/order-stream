@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use crate::app::states::{product, websocket};
 use crate::backend::item::{get_items_by_station, update_item, update_items_by_order};
 use crate::backend::station::get_station;
-use crate::common::{requests, types};
+use crate::common::{requests, types, german_names};
 
 #[component]
 fn ItemCard(
@@ -44,7 +44,7 @@ fn ItemCard(
                 <div class="flex-1">
                     <div class="flex items-center justify-between">
                         <h4 class="text-text font-medium">{product.name}</h4>
-                        <span class="text-xs text-text-muted">{"Order: "}{order_id}</span>
+                        <span class="text-xs text-text-muted" data-order-id=order_id.clone()>{"Order: "}{german_names::generate_german_name(&order_id)}</span>
                     </div>
                     <div class="flex items-center justify-between mt-1">
                         <div class="flex items-center space-x-2">
@@ -120,7 +120,7 @@ fn OrderGroup(
         <div class="bg-surface rounded-lg border border-border p-4">
             <div class="flex items-center justify-between mb-4">
                 <div>
-                    <h3 class="text-lg font-semibold text-text">{"Order "}{order_id.clone()}</h3>
+                    <h3 class="text-lg font-semibold text-text" data-order-id=order_id.clone()>{"Order "}{german_names::generate_german_name(&order_id.clone())}</h3>
                     <p class="text-sm text-text-muted">{format!("{} items", items_count)}</p>
                 </div>
                 <button
