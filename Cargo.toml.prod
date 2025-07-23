@@ -9,10 +9,10 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 # --- Core Leptos Dependencies ---
 # Set default-features = false to manually control 'ssr' and 'hydrate' features.
-leptos = { version = "0.8.2", features = ["nightly"] }
-leptos_router = { version = "0.8.2", features = ["nightly"] }
-leptos_meta = { version = "0.8.2" }
-leptos-use = { version = "0.16.2", optional = true }
+leptos = { version = "0.8.2", default-features = false, features = ["nightly"] }
+leptos_router = { version = "0.8.2", default-features = false, features = ["nightly"] }
+leptos_meta = { version = "0.8.2", default-features = false }
+leptos-use = { version = "0.16.2", optional = true } # Make client-side utility optional
 
 # --- Client-Side (WASM) Dependencies ---
 # These are only needed for the 'hydrate' feature.
