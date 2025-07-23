@@ -54,13 +54,26 @@ pub async fn create_user(req: requests::user::Create) -> Result<types::User, Ser
     }
     let password_hash = password_hash.unwrap();
 
+    // Check if this is the first user
+    let user_count = get_user_count().await;
+    if user_count.is_err() {
+        return Err(ServerError(format!("Database error!")));
+    }
+    let user_count = user_count.unwrap();
+    
+    let role = if user_count == 0 {
+        types::Role::Admin  // First user becomes admin
+    } else {
+        types::Role::Visitor  // All subsequent users become visitors
+    };
+
     let u: Option<User> = DB
         .create(USERS)
         .content(User {
             id: None,
             email: req.email,
             password_hash,
-            role: types::Role::Staff,
+            role,
         })
         .await?;
     u.map(Into::into)
@@ -89,6 +102,12 @@ pub async fn get_user_by_email(email: String) -> Result<Option<User>, surrealdb:
         .await?;
     let user: Option<User> = result.take(0)?;
     Ok(user)
+}
+
+#[cfg(feature = "ssr")]
+pub async fn get_user_count() -> Result<u64, surrealdb::Error> {
+    let users: Vec<User> = DB.select(USERS).await?;
+    Ok(users.len() as u64)
 }
 
 #[server(UpdateUser, "/api/user")]

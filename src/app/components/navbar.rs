@@ -1,6 +1,6 @@
 use crate::app::{
     components::{
-        atoms::{connection_indicator::ConnectionIndicator, icons::{Moon, OrderStream, Sun, SystemTheme}},
+        atoms::{connection_indicator::ConnectionIndicator, icons::{Moon, OrderStream, Sun, SystemTheme}, user_dropdown::UserDropdown},
         role_gated::RoleGated,
     },
     states::{user, websocket},
@@ -195,16 +195,10 @@ pub fn Navbar() -> impl IntoView {
                             {move || {
                                 if let Some(current_user) = user.get() {
                                     view! {
-                                        <div class="flex items-center space-x-2">
-                                            <span class="text-sm text-text">
-                                                {current_user.email.clone()}
-                                            </span>
-                                            <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                                                <span class="text-surface text-sm font-medium">
-                                                    {current_user.email.chars().next().unwrap_or('U').to_uppercase().to_string()}
-                                                </span>
-                                            </div>
-                                        </div>
+                                        <UserDropdown 
+                                            user_email=current_user.email.clone()
+                                            user_initial=current_user.email.chars().next().unwrap_or('U').to_uppercase().to_string()
+                                        />
                                     }.into_any()
                                 } else {
                                     view! { <div></div> }.into_any()
