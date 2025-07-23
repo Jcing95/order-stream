@@ -104,8 +104,8 @@ pub fn Navbar() -> impl IntoView {
 
     view! {
         <Meta name="color-scheme" content=move || theme.get().as_str() />
-        <nav class="bg-surface border-b border-border">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <nav class="bg-surface border-b border-border w-full">
+            <div class="mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between items-center h-16">
                     // Left side - Logo and connection indicator
                     <div class="flex items-center">

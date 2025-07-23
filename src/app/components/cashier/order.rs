@@ -1,8 +1,7 @@
 use leptos::prelude::*;
-use leptos::task::spawn_local;
 
 use crate::app::{
-    components::atoms::icons,
+    components::{atoms::icons, cashier::order_info},
     states::{order::{self, OrderItem}, settings, event},
 };
 use crate::backend::order::create_order;
@@ -79,6 +78,7 @@ pub fn Order() -> impl IntoView {
     let settings = settings_state.get_settings();
     let event_state = event::get();
     let events = event_state.get_events();
+    let order_info_state = order_info::get();
     
     // States for order creation
     let (is_creating_order, set_is_creating_order) = signal(false);
@@ -87,6 +87,104 @@ pub fn Order() -> impl IntoView {
     let (increase_signal, set_increase_signal) = signal::<String>(String::new());
     let (decrease_signal, set_decrease_signal) = signal::<String>(String::new());
     let (remove_signal, set_remove_signal) = signal::<String>(String::new());
+    
+    // Track order items to collapse info when new items are added
+    let (previous_item_count, set_previous_item_count) = signal(0usize);
+    
+    // Clone order_info_state for use in different closures
+    let order_info_state_items = order_info_state.clone();
+    let order_info_state_increase = order_info_state.clone();
+    
+    // Create order action
+    let create_order_action = Action::new({
+        let order_state = order_state.clone();
+        let order_items = order_items.clone();
+        let settings_state = settings_state.clone();
+        let order_info_state = order_info_state.clone();
+        let set_is_creating_order = set_is_creating_order.clone();
+        let set_order_error = set_order_error.clone();
+        
+        move |_| {
+            let order_state = order_state.clone();
+            let order_items = order_items.clone();
+            let settings_state = settings_state.clone();
+            let order_info_state = order_info_state.clone();
+            let set_is_creating_order = set_is_creating_order.clone();
+            let set_order_error = set_order_error.clone();
+            
+            async move {
+                set_is_creating_order.set(true);
+                set_order_error.set(None);
+                
+                let current_items = order_items.get_untracked();
+                if current_items.is_empty() {
+                    set_is_creating_order.set(false);
+                    return;
+                }
+                
+                let items: Vec<types::Item> = current_items
+                    .iter()
+                    .enumerate()
+                    .map(|(index, item)| types::Item {
+                        id: format!("temp_{}", index),
+                        order_id: None,
+                        product_id: item.product_id.clone(),
+                        quantity: item.quantity,
+                        price: item.price,
+                        status: types::OrderStatus::Ordered,
+                    })
+                    .collect();
+                
+                // Get active event or show error if none set
+                let active_event_id = settings_state.get_settings().get_untracked()
+                    .and_then(|s| s.active_event_id);
+                
+                let event_id = match active_event_id {
+                    Some(id) => id,
+                    None => {
+                        set_order_error.set(Some("No active event set. Please ask an admin to set an active event.".to_string()));
+                        set_is_creating_order.set(false);
+                        return;
+                    }
+                };
+                
+                let request = requests::order::Create {
+                    event: event_id,
+                    items,
+                };
+                
+                match create_order(request).await {
+                    Ok(created_order) => {
+                        // Order created successfully, show the order name
+                        order_info_state.set_order_created(created_order.id);
+                        // Clear the cart
+                        order_state.clear();
+                        set_is_creating_order.set(false);
+                    }
+                    Err(e) => {
+                        set_order_error.set(Some(format!("Failed to create order: {}", e)));
+                        set_is_creating_order.set(false);
+                    }
+                }
+            }
+        }
+    });
+
+    // Effect to collapse order info when new items are added to cart
+    Effect::new({
+        let order_items = order_items.clone();
+        move |_| {
+            let current_count = order_items.get().len();
+            let prev_count = previous_item_count.get_untracked();
+            
+            if current_count > prev_count {
+                // New item added, collapse the order info
+                order_info_state_items.collapse();
+            }
+            
+            set_previous_item_count.set(current_count);
+        }
+    });
 
     Effect::new({
         let order_state = order_state.clone();
@@ -94,6 +192,7 @@ pub fn Order() -> impl IntoView {
             let item_id = increase_signal.get();
             if !item_id.is_empty() {
                 order_state.increase_quantity(&item_id);
+                order_info_state_increase.collapse(); // Collapse order info when item is modified
                 set_increase_signal.set(String::new());
             }
         }
@@ -229,74 +328,9 @@ pub fn Order() -> impl IntoView {
                             }
                         )
                         disabled=move || is_creating_order.get()
-                        on:click={
-                            let order_state = order_state.clone();
-                            let order_items = order_items.clone();
-                            let set_is_creating_order = set_is_creating_order.clone();
-                            let set_order_error = set_order_error.clone();
-                            let is_creating_order = is_creating_order.clone();
-                            
-                            move |_| {
-                                if is_creating_order.get_untracked() {
-                                    return; // Prevent double-submission
-                                }
-                                
-                                let current_items = order_items.get_untracked();
-                                if current_items.is_empty() {
-                                    return; // Don't submit empty orders
-                                }
-                                
-                                set_is_creating_order.set(true);
-                                set_order_error.set(None);
-                                
-                                let items: Vec<types::Item> = current_items
-                                    .iter()
-                                    .enumerate()
-                                    .map(|(index, item)| types::Item {
-                                        id: format!("temp_{}", index), // Temporary ID, will be replaced by backend
-                                        order_id: None, // Will be set by backend
-                                        product_id: item.product_id.clone(),
-                                        quantity: item.quantity,
-                                        price: item.price,
-                                        status: types::OrderStatus::Ordered,
-                                    })
-                                    .collect();
-                                
-                                // Get active event or show error if none set
-                                let active_event_id = settings.get_untracked()
-                                    .and_then(|s| s.active_event_id);
-                                
-                                let event_id = match active_event_id {
-                                    Some(id) => id,
-                                    None => {
-                                        set_order_error.set(Some("No active event set. Please ask an admin to set an active event.".to_string()));
-                                        set_is_creating_order.set(false);
-                                        return;
-                                    }
-                                };
-                                
-                                let request = requests::order::Create {
-                                    event: event_id,
-                                    items,
-                                };
-                                
-                                let order_state = order_state.clone();
-                                let set_is_creating_order = set_is_creating_order.clone();
-                                let set_order_error = set_order_error.clone();
-                                
-                                spawn_local(async move {
-                                    match create_order(request).await {
-                                        Ok(_) => {
-                                            // Order created successfully, clear the cart
-                                            order_state.clear();
-                                            set_is_creating_order.set(false);
-                                        }
-                                        Err(e) => {
-                                            set_order_error.set(Some(format!("Failed to create order: {}", e)));
-                                            set_is_creating_order.set(false);
-                                        }
-                                    }
-                                });
+                        on:click=move |_| {
+                            if !is_creating_order.get_untracked() && !order_items.get_untracked().is_empty() {
+                                create_order_action.dispatch(());
                             }
                         }
                     >

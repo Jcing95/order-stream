@@ -1,40 +1,11 @@
 use leptos::prelude::*;
 use leptos_router::components::A;
-use crate::app::states::{category, station};
+use crate::app::states::station;
 
 #[component]
 fn StationCard(station: crate::common::types::Station) -> impl IntoView {
-    let category_state = category::get();
-    let categories = category_state.get_categories();
-    
     let station_id = station.id.clone();
     let station_name = station.name.clone();
-    let category_ids = station.category_ids.clone();
-    let input_statuses = station.input_statuses.clone();
-    let output_status = station.output_status;
-    
-    // Get category names reactively
-    let category_names = move || {
-        let cats = categories.get();
-        category_ids
-            .iter()
-            .filter_map(|cat_id| {
-                cats.iter()
-                    .find(|c| &c.id == cat_id)
-                    .map(|c| c.name.clone())
-            })
-            .collect::<Vec<String>>()
-            .join(", ")
-    };
-
-    let status_display = move || {
-        let input_str = input_statuses
-            .iter()
-            .map(|s| format!("{:?}", s))
-            .collect::<Vec<String>>()
-            .join(", ");
-        format!("[{}] → {:?}", input_str, output_status)
-    };
 
     view! {
         <A 
@@ -46,24 +17,6 @@ fn StationCard(station: crate::common::types::Station) -> impl IntoView {
                 <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                 </svg>
-            </div>
-            
-            <div class="space-y-2 text-sm text-text-muted">
-                <div>
-                    <span class="font-medium">"Categories: "</span>
-                    {move || {
-                        let names = category_names();
-                        if names.is_empty() {
-                            "None".to_string()
-                        } else {
-                            names
-                        }
-                    }}
-                </div>
-                <div>
-                    <span class="font-medium">"Status Flow: "</span>
-                    {move || status_display()}
-                </div>
             </div>
         </A>
     }

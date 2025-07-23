@@ -15,8 +15,6 @@ fn ItemCard(
 ) -> impl IntoView {
     let item_id = item.id.clone();
     let item_id_for_update = item_id.clone();
-    let order_id = item.order_id.clone().unwrap_or_default();
-    let status = item.status;
     
     let update_item_action = Action::new(move |_: &()| {
         let item_id = item_id_for_update.clone();
@@ -43,28 +41,7 @@ fn ItemCard(
             <div class="flex items-center justify-between">
                 <div class="flex-1">
                     <div class="flex items-center justify-between">
-                        <h4 class="text-text font-medium">{product.name}</h4>
-                        <span class="text-xs text-text-muted" data-order-id=order_id.clone()>{"Order: "}{german_names::generate_german_name(&order_id)}</span>
-                    </div>
-                    <div class="flex items-center justify-between mt-1">
-                        <div class="flex items-center space-x-2">
-                            <span class="text-sm text-text-muted">{"Qty: "}{item.quantity}</span>
-                            <span class="text-sm text-text-muted">{"€"}{format!("{:.2}", item.price)}</span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <span class=move || format!(
-                                "text-xs px-2 py-1 rounded-full {}",
-                                match status {
-                                    types::OrderStatus::Draft => "bg-gray-100 text-gray-800",
-                                    types::OrderStatus::Ordered => "bg-blue-100 text-blue-800",
-                                    types::OrderStatus::Ready => "bg-green-100 text-green-800",
-                                    types::OrderStatus::Completed => "bg-purple-100 text-purple-800",
-                                    types::OrderStatus::Cancelled => "bg-red-100 text-red-800",
-                                }
-                            )>
-                                {format!("{:?}", status)}
-                            </span>
-                        </div>
+                        <h4 class="text-text font-medium">{item.quantity}{" x "}{product.name}</h4>
                     </div>
                 </div>
                 
@@ -77,9 +54,9 @@ fn ItemCard(
                         disabled=move || update_item_action.pending().get()
                     >
                         {move || if update_item_action.pending().get() {
-                            "Updating..."
+                            "..."
                         } else {
-                            "Fertig!"
+                            "☑"
                         }}
                     </button>
                 </div>
@@ -120,7 +97,7 @@ fn OrderGroup(
         <div class="bg-surface rounded-lg border border-border p-4">
             <div class="flex items-center justify-between mb-4">
                 <div>
-                    <h3 class="text-lg font-semibold text-text" data-order-id=order_id.clone()>{"Order "}{german_names::generate_german_name(&order_id.clone())}</h3>
+                    <h3 class="text-lg font-semibold text-text" data-order-id=order_id.clone()>{"Bestellung '"}{german_names::generate_german_name(&order_id.clone())}{"'"}</h3>
                     <p class="text-sm text-text-muted">{format!("{} items", items_count)}</p>
                 </div>
                 <button
@@ -131,9 +108,9 @@ fn OrderGroup(
                     disabled=move || update_order_action.pending().get()
                 >
                     {move || if update_order_action.pending().get() {
-                        "Updating Order..."
+                        "..."
                     } else {
-                        "Alle fertig!"
+                        "☑"
                     }}
                 </button>
             </div>
@@ -260,15 +237,7 @@ pub fn StationView(station_id: String) -> impl IntoView {
                             }.into_any()
                         } else {
                             view! {
-                                <div class="space-y-4">
-                                    <div class="bg-surface-elevated rounded-lg p-4 border border-border">
-                                        <h2 class="text-lg font-semibold text-text mb-2">"Station Info"</h2>
-                                        <div class="text-sm text-text-muted">
-                                            <p>{"Processes: "}{station.input_statuses.iter().map(|s| format!("{:?}", s)).collect::<Vec<_>>().join(", ")}</p>
-                                            <p>{"Outputs: "}{format!("{:?}", station.output_status)}</p>
-                                        </div>
-                                    </div>
-                                    
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">    
                                     <For
                                         each=move || orders.clone()
                                         key=|(order_id, _)| order_id.clone()
