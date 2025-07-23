@@ -12,7 +12,7 @@ crate-type = ["cdylib", "rlib"]
 leptos = { version = "0.8.2", features = ["nightly"] }
 leptos_router = { version = "0.8.2", features = ["nightly"] }
 leptos_meta = { version = "0.8.2" }
-leptos-use = { version = "0.16.2", optional = true }
+leptos-use = { version = "0.16.2" }
 
 # --- Client-Side (WASM) Dependencies ---
 # These are only needed for the 'hydrate' feature.
@@ -23,7 +23,7 @@ web-sys = { version = "0.3.77", features = [
   "Document",
   "Storage",
   "MediaQueryList",
-], optional = true }
+] }
 
 # --- Server-Side (Binary) Dependencies ---
 # These are correctly marked as optional and will be enabled by the 'ssr' feature.
@@ -54,8 +54,6 @@ hydrate = [
     "leptos/hydrate",
     "dep:console_error_panic_hook",
     "dep:wasm-bindgen",
-    "dep:web-sys",
-    "dep:leptos-use",
 ]
 
 # --- SSR Feature: For server-side binary compilation ---
