@@ -53,7 +53,7 @@ pub mod ssr {
                     product_id: item.product_id,
                     quantity: item.quantity,
                     price: product.price, // Use current product price
-                    status: types::OrderStatus::Draft,
+                    status: types::OrderStatus::Ordered,
                 })
                 .await?;
                 
