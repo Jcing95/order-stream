@@ -5,10 +5,13 @@ use crate::app::{
     },
     states::{user, websocket},
 };
+use crate::backend::user::logout;
 use crate::common::types::Role;
 use leptos::prelude::*;
 use leptos_meta::*;
-use leptos_router::components::A;
+use leptos_router::{components::A, hooks::use_navigate};
+use leptos::task::spawn_local;
+use leptos::logging::error;
 
 #[derive(Clone, PartialEq)]
 pub enum Theme {
@@ -39,6 +42,7 @@ impl Theme {
 pub fn Navbar() -> impl IntoView {
     let user_state = user::get();
     let user = user_state.user;
+    let navigate = use_navigate();
 
     let (theme, set_theme) = signal(Theme::System);
     let (mobile_menu_open, set_mobile_menu_open) = signal(false);
@@ -101,6 +105,10 @@ pub fn Navbar() -> impl IntoView {
     };
 
     let websocket = websocket::get();
+
+    // Store values for use in closures - this creates stable references
+    let navigate_stored = store_value(navigate);
+    let user_state_stored = store_value(user_state.clone());
 
     view! {
         <Meta name="color-scheme" content=move || theme.get().as_str() />
@@ -287,13 +295,35 @@ pub fn Navbar() -> impl IntoView {
                                 {move || {
                                     if let Some(current_user) = user.get() {
                                         view! {
-                                            <div class="px-3 py-2">
+                                            <div class="px-3 py-2 space-y-3">
                                                 <div class="flex items-center space-x-3">
                                                     <div class="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-sm font-medium">
                                                         {current_user.email.chars().next().unwrap_or('U').to_uppercase().to_string()}
                                                     </div>
                                                     <div class="text-sm text-text">{current_user.email}</div>
                                                 </div>
+                                                <button
+                                                    class="w-full text-left px-3 py-2 text-sm text-error hover:text-error hover:bg-error/10 rounded-md transition-colors"
+                                                    on:click=move |_| {
+                                                        set_mobile_menu_open.set(false);
+                                                        let navigate = navigate_stored.get_value();
+                                                        let user_state = user_state_stored.get_value();
+                                                        spawn_local(async move {
+                                                            match logout().await {
+                                                                Ok(_) => {
+                                                                    // Update client-side user state
+                                                                    user_state.logout();
+                                                                    navigate("/signin", Default::default());
+                                                                }
+                                                                Err(e) => {
+                                                                    error!("Logout failed: {:?}", e);
+                                                                }
+                                                            }
+                                                        });
+                                                    }
+                                                >
+                                                    "Logout"
+                                                </button>
                                             </div>
                                         }.into_any()
                                     } else {
