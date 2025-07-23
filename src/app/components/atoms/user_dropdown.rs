@@ -1,9 +1,5 @@
-use crate::backend::user::logout;
-use crate::app::states::user;
 use leptos::prelude::*;
-use leptos_router::hooks::use_navigate;
-use leptos::task::spawn_local;
-use leptos::logging::error;
+use super::logout_button::LogoutButton;
 
 #[component]
 pub fn UserDropdown(
@@ -11,8 +7,6 @@ pub fn UserDropdown(
     user_initial: String,
 ) -> impl IntoView {
     let (is_open, set_is_open) = signal(false);
-    let navigate = use_navigate();
-    let user_state = user::get();
 
     view! {
         <div class="relative">
@@ -33,32 +27,10 @@ pub fn UserDropdown(
             <Show when=move || is_open.get()>
                 <div class="absolute right-0 mt-1 w-48 bg-surface border border-border rounded-md shadow-lg z-50">
                     <div class="py-1">
-                        <button
-                            on:click={
-                                let navigate = navigate.clone();
-                                let user_state = user_state.clone();
-                                move |_| {
-                                    set_is_open.set(false);
-                                    let navigate = navigate.clone();
-                                    let user_state = user_state.clone();
-                                    spawn_local(async move {
-                                        match logout().await {
-                                            Ok(_) => {
-                                                // Update client-side user state
-                                                user_state.logout();
-                                                navigate("/signin", Default::default());
-                                            }
-                                            Err(e) => {
-                                                error!("Logout failed: {:?}", e);
-                                            }
-                                        }
-                                    });
-                                }
-                            }
+                        <LogoutButton 
                             class="block w-full text-left px-4 py-2 text-sm text-text hover:bg-surface-elevated hover:text-primary transition-colors"
-                        >
-                            Logout
-                        </button>
+                            on_click=Box::new(move || set_is_open.set(false))
+                        />
                     </div>
                 </div>
             </Show>
