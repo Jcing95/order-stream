@@ -1,6 +1,6 @@
 use crate::app::{
     components::{
-        atoms::{connection_indicator::ConnectionIndicator, icons::{Moon, OrderStream, Sun, SystemTheme}, user_dropdown::UserDropdown},
+        atoms::{connection_indicator::ConnectionIndicator, icons::{Menu, Moon, OrderStream, Sun, SystemTheme, UserProfile}, user_dropdown::UserDropdown},
         role_gated::RoleGated,
     },
     states::{user, websocket},
@@ -188,10 +188,7 @@ pub fn Navbar() -> impl IntoView {
                                         href="/signin"
                                         attr:class="flex items-center space-x-1 px-3 py-2 text-sm text-text hover:text-primary hover:bg-surface-elevated rounded-md transition-colors"
                                     >
-                                        <svg class="w-5 h-5 text-text" fill="currentColor" viewBox="0 0 16 16">
-                                            <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0"/>
-                                            <path fill-rule="evenodd" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1"/>
-                                        </svg>
+                                        <UserProfile attr:class="w-5 h-5 text-text"/>
                                         <span>Login</span>
                                     </A>
                                 }
@@ -219,9 +216,7 @@ pub fn Navbar() -> impl IntoView {
                                 title="Toggle menu"
                             >
                                 // Hamburger icon
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-                                </svg>
+                                <Menu attr:class="w-6 h-6"/>
                             </button>
                         </div>
                     </div>
@@ -284,10 +279,7 @@ pub fn Navbar() -> impl IntoView {
                                         attr:class="flex items-center space-x-2 px-3 py-2 text-base text-text hover:text-primary hover:bg-surface rounded-md transition-colors"
                                         on:click=move |_| set_mobile_menu_open.set(false)
                                     >
-                                        <svg class="w-5 h-5 text-text" fill="currentColor" viewBox="0 0 16 16">
-                                            <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0"/>
-                                            <path fill-rule="evenodd" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1"/>
-                                        </svg>
+                                        <UserProfile attr:class="w-5 h-5 text-text"/>
                                         <span>Login</span>
                                     </A>
                                 }

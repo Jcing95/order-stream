@@ -5,6 +5,7 @@ use crate::app::states::{product, websocket};
 use crate::backend::item::{get_items_by_station, update_item, update_items_by_order};
 use crate::backend::station::get_station;
 use crate::common::{requests, types, german_names};
+use crate::app::components::atoms::icons;
 
 #[component]
 fn ItemCard(
@@ -228,9 +229,7 @@ pub fn StationView(station_id: String) -> impl IntoView {
                         if orders.is_empty() {
                             view! {
                                 <div class="text-center py-12">
-                                    <svg class="mx-auto h-12 w-12 text-text-muted mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
-                                    </svg>
+                                    <icons::Inbox attr:class="mx-auto h-12 w-12 text-text-muted mb-4"/>
                                     <p class="text-text-muted text-lg">"No items for this station"</p>
                                     <p class="text-text-muted text-sm mt-2">"Items will appear here when they match this station's criteria"</p>
                                 </div>

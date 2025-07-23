@@ -5,6 +5,7 @@ use crate::app::components::admin::{
     create_product::CreateProduct, create_station::CreateStation, events::Events,
     products::Products, stations::Stations, users::Users,
 };
+use crate::app::components::atoms::icons;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum AdminTab {
@@ -42,9 +43,7 @@ pub fn Admin() -> impl IntoView {
                             )
                             on:click=move |_| set_active_tab.set(AdminTab::Products)
                         >
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-                            </svg>
+                            <icons::Box attr:class="w-4 h-4 mr-2"/>
                             "Products"
                         </button>
                         <button
@@ -58,9 +57,7 @@ pub fn Admin() -> impl IntoView {
                             )
                             on:click=move |_| set_active_tab.set(AdminTab::Categories)
                         >
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
-                            </svg>
+                            <icons::Tag attr:class="w-4 h-4 mr-2"/>
                             "Categories"
                         </button>
                         <button
@@ -74,9 +71,7 @@ pub fn Admin() -> impl IntoView {
                             )
                             on:click=move |_| set_active_tab.set(AdminTab::Events)
                         >
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                            </svg>
+                            <icons::Calendar attr:class="w-4 h-4 mr-2"/>
                             "Events"
                         </button>
                         <button
@@ -90,9 +85,7 @@ pub fn Admin() -> impl IntoView {
                             )
                             on:click=move |_| set_active_tab.set(AdminTab::Stations)
                         >
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                            </svg>
+                            <icons::Building attr:class="w-4 h-4 mr-2"/>
                             "Stations"
                         </button>
                         <button
@@ -106,9 +99,7 @@ pub fn Admin() -> impl IntoView {
                             )
                             on:click=move |_| set_active_tab.set(AdminTab::Users)
                         >
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5 0A4 4 0 0025 12.5v-.5"></path>
-                            </svg>
+                            <icons::Users attr:class="w-4 h-4 mr-2"/>
                             "Users"
                         </button>
                     </nav>
@@ -121,9 +112,7 @@ pub fn Admin() -> impl IntoView {
                             <div class="space-y-6">
                                 <div class="bg-surface rounded-lg border border-border p-6 shadow-sm">
                                     <h2 class="text-xl font-semibold text-text mb-4 flex items-center">
-                                        <svg class="w-5 h-5 mr-2 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-                                        </svg>
+                                        <icons::Box attr:class="w-5 h-5 mr-2 text-primary"/>
                                         "Product Management"
                                     </h2>
                                     <CreateProduct />
@@ -135,9 +124,7 @@ pub fn Admin() -> impl IntoView {
                             <div class="space-y-6">
                                 <div class="bg-surface rounded-lg border border-border p-6 shadow-sm">
                                     <h2 class="text-xl font-semibold text-text mb-4 flex items-center">
-                                        <svg class="w-5 h-5 mr-2 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
-                                        </svg>
+                                        <icons::Tag attr:class="w-5 h-5 mr-2 text-primary"/>
                                         "Category Management"
                                     </h2>
                                     <CreateCategory />
@@ -149,9 +136,7 @@ pub fn Admin() -> impl IntoView {
                             <div class="space-y-6">
                                 <div class="bg-surface rounded-lg border border-border p-6 shadow-sm">
                                     <h2 class="text-xl font-semibold text-text mb-4 flex items-center">
-                                        <svg class="w-5 h-5 mr-2 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                        </svg>
+                                        <icons::Calendar attr:class="w-5 h-5 mr-2 text-primary"/>
                                         "Event Management"
                                     </h2>
                                     <CreateEvent />
@@ -163,9 +148,7 @@ pub fn Admin() -> impl IntoView {
                             <div class="space-y-6">
                                 <div class="bg-surface rounded-lg border border-border p-6 shadow-sm">
                                     <h2 class="text-xl font-semibold text-text mb-4 flex items-center">
-                                        <svg class="w-5 h-5 mr-2 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                                        </svg>
+                                        <icons::Building attr:class="w-5 h-5 mr-2 text-primary"/>
                                         "Station Management"
                                     </h2>
                                     <CreateStation />
@@ -177,9 +160,7 @@ pub fn Admin() -> impl IntoView {
                             <div class="space-y-6">
                                 <div class="bg-surface rounded-lg border border-border p-6 shadow-sm">
                                     <h2 class="text-xl font-semibold text-text mb-4 flex items-center">
-                                        <svg class="w-5 h-5 mr-2 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5 0A4 4 0 0025 12.5v-.5"></path>
-                                        </svg>
+                                        <icons::Users attr:class="w-5 h-5 mr-2 text-primary"/>
                                         "User Management"
                                     </h2>
                                 </div>
