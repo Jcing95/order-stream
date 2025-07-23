@@ -176,7 +176,13 @@ pub async fn get_items_by_station(station_id: String) -> Result<Vec<types::Item>
 }
 
 #[server(UpdateItemsByOrder, "/api/item")]
-pub async fn update_items_by_order(order_id: String, new_status: types::OrderStatus) -> Result<Vec<types::Item>, ServerFnError> {
+pub async fn update_items_by_order(order_id: String, station_id: String, new_status: types::OrderStatus) -> Result<Vec<types::Item>, ServerFnError> {
+    use crate::backend::station::get_station;
+    use crate::backend::product::get_product;
+    
+    // Get the station to access its filtering criteria
+    let station = get_station(station_id).await?;
+    
     // Get all items for the order
     let query = "SELECT * FROM items WHERE order_id = $order_id";
     let mut response = DB.query(query).bind(("order_id", order_id.clone())).await?;
@@ -184,24 +190,29 @@ pub async fn update_items_by_order(order_id: String, new_status: types::OrderSta
     
     let mut updated_items = Vec::new();
     
-    // Update each item's status
+    // Filter and update only items that belong to products in the station's categories AND match the station's input statuses
     for item in items {
-        let updated = Item {
-            id: item.id.clone(),
-            order_id: item.order_id,
-            product_id: item.product_id,
-            quantity: item.quantity,
-            price: item.price,
-            status: new_status,
-        };
+        let product = get_product(item.product_id.clone()).await?;
         
-        let updated_item: Option<Item> = DB
-            .update((ITEMS, item.id.unwrap().key().to_string().as_str()))
-            .content(updated)
-            .await?;
+        // Only update items whose products belong to this station's categories AND have the correct status
+        if station.category_ids.contains(&product.category_id) && station.input_statuses.contains(&item.status) {
+            let updated = Item {
+                id: item.id.clone(),
+                order_id: item.order_id,
+                product_id: item.product_id,
+                quantity: item.quantity,
+                price: item.price,
+                status: new_status,
+            };
             
-        if let Some(item) = updated_item {
-            updated_items.push(item.into());
+            let updated_item: Option<Item> = DB
+                .update((ITEMS, item.id.unwrap().key().to_string().as_str()))
+                .content(updated)
+                .await?;
+                
+            if let Some(item) = updated_item {
+                updated_items.push(item.into());
+            }
         }
     }
     

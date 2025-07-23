@@ -93,6 +93,7 @@ fn OrderGroup(
     order_id: String,
     items: Vec<types::Item>,
     products: HashMap<String, types::Product>,
+    station_id: String,
     station_output_status: types::OrderStatus,
     on_update: WriteSignal<u32>,
 ) -> impl IntoView {
@@ -101,9 +102,10 @@ fn OrderGroup(
     
     let update_order_action = Action::new(move |_: &()| {
         let order_id = order_id_for_bulk.clone();
+        let station_id_clone = station_id.clone();
         let new_status = station_output_status;
         async move {
-            let _ = update_items_by_order(order_id, new_status).await;
+            let _ = update_items_by_order(order_id, station_id_clone, new_status).await;
         }
     });
 
@@ -249,6 +251,7 @@ pub fn StationView(station_id: String) -> impl IntoView {
                                                     order_id=order_id
                                                     items=order_items
                                                     products=product_map.clone()
+                                                    station_id=station.id.clone()
                                                     station_output_status=station.output_status
                                                     on_update=set_refresh_trigger
                                                 />
