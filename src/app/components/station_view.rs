@@ -11,7 +11,7 @@ fn ItemCard(
     item: types::Item, 
     product: types::Product,
     station_output_status: types::OrderStatus,
-    on_update: WriteSignal<Option<String>>,
+    on_update: WriteSignal<u32>,
 ) -> impl IntoView {
     let item_id = item.id.clone();
     let item_id_for_update = item_id.clone();
@@ -34,7 +34,7 @@ fn ItemCard(
     // Trigger parent refresh when action completes
     Effect::new(move |_| {
         if update_item_action.value().get().is_some() {
-            on_update.set(Some("item_updated".to_string()));
+            on_update.update(|n| *n += 1);
         }
     });
 
@@ -94,7 +94,7 @@ fn OrderGroup(
     items: Vec<types::Item>,
     products: HashMap<String, types::Product>,
     station_output_status: types::OrderStatus,
-    on_update: WriteSignal<Option<String>>,
+    on_update: WriteSignal<u32>,
 ) -> impl IntoView {
     let order_id_for_bulk = order_id.clone();
     let items_count = items.len();
@@ -110,7 +110,7 @@ fn OrderGroup(
     // Trigger parent refresh when action completes
     Effect::new(move |_| {
         if update_order_action.value().get().is_some() {
-            on_update.set(Some("order_updated".to_string()));
+            on_update.update(|n| *n += 1);
         }
     });
 
@@ -168,7 +168,7 @@ fn OrderGroup(
 
 #[component]
 pub fn StationView(station_id: String) -> impl IntoView {
-    let (refresh_trigger, set_refresh_trigger) = signal::<Option<String>>(None);
+    let (refresh_trigger, set_refresh_trigger) = signal::<u32>(0);
     
     let station_id_mv = station_id.clone();
     // Resource to fetch station details
