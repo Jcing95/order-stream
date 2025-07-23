@@ -5,6 +5,7 @@ use crate::common::{requests, types};
 #[cfg(feature = "ssr")]
 pub mod ssr {
     pub use crate::backend::db::DB;
+    pub use crate::backend::websocket::{broadcast_add, broadcast_delete, broadcast_update};
     pub use crate::common::types;
     pub use leptos::server_fn::error::ServerFnError::ServerError;
     pub use serde::{Deserialize, Serialize};
@@ -39,7 +40,14 @@ pub async fn create_event(req: requests::event::Create) -> Result<types::Event, 
             name: req.name,
         })
         .await?;
-    e.map(Into::into).ok_or_else(|| ServerError("Failed to create event".into()))
+
+    if let Some(event) = e {
+        let result: types::Event = event.clone().into();
+        broadcast_add(result.clone());
+        Ok(result)
+    } else {
+        Err(ServerError("Failed to create event".into()))
+    }
 }
 
 #[server(GetEvents, "/api/event")]
@@ -75,17 +83,23 @@ pub async fn update_event(
         .update((EVENTS, &id))
         .content(updated)
         .await?;
-        
-    updated_event
-        .map(Into::into)
-        .ok_or_else(|| ServerError("Failed to update event".into()))
+    
+    if let Some(event) = updated_event {
+        let result: types::Event = event.clone().into();
+        broadcast_update(result.clone());
+        Ok(result)
+    } else {
+        Err(ServerError("Failed to update event".into()))
+    }
 }
 
 #[server(DeleteEvent, "/api/event")]
 pub async fn delete_event(id: String) -> Result<(), ServerFnError> {
     let deleted: Option<Event> = DB.delete((EVENTS, &id)).await?;
-    if deleted.is_none() {
-        return Err(ServerError(format!("Event with id {} not found", id)));
+    if let Some(_event) = deleted {
+        broadcast_delete::<types::Event>(id);
+        Ok(())
+    } else {
+        Err(ServerError(format!("Event with id {} not found", id)))
     }
-    Ok(())
 }

@@ -24,8 +24,7 @@ pub enum OrderStatus {
 pub struct Item {
     #[validate(length(min = 1))]
     pub id: String,
-    #[validate(length(min = 1))]
-    pub order_id: String,   // Reference to Order
+    pub order_id: Option<String>,   // Reference to Order
     #[validate(length(min = 1))]
     pub product_id: String, // Reference to Item
     #[validate(range(min = 1))]

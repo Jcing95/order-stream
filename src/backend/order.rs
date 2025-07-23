@@ -35,14 +35,29 @@ use ssr::*;
 
 #[server(CreateOrder, "/api/order")]
 pub async fn create_order(req: requests::order::Create) -> Result<types::Order, ServerFnError> {
-    let o: Option<Order> = DB.create(ORDERS)
+    use crate::backend::item::ssr::create_items;
+    
+    // First create the order
+    let order: Option<Order> = DB.create(ORDERS)
         .content(Order {
             id: None,
             event: req.event,
             created_at: Datetime::default(),
         })
         .await?;
-    o.map(Into::into).ok_or_else(|| ServerError("Failed to create order".into()))
+    
+    if order.is_none() {
+        return Err(ServerError("Failed to create order".to_string().into()));
+    }
+    let order = order.unwrap();
+    let order_id = order.id.as_ref().unwrap().key().to_string();
+    
+    // Then create all the items
+    if !req.items.is_empty() {
+        create_items(order_id, req.items).await?;
+    }
+    
+    Ok(order.into())
 }
 
 #[server(GetOrders, "/api/order")]

@@ -1,14 +1,16 @@
 use leptos::prelude::*;
 
 use crate::app::components::admin::{
-    categories::Categories, create_category::CreateCategory, create_product::CreateProduct,
-    create_station::CreateStation, products::Products, stations::Stations, users::Users,
+    categories::Categories, create_category::CreateCategory, create_event::CreateEvent,
+    create_product::CreateProduct, create_station::CreateStation, events::Events,
+    products::Products, stations::Stations, users::Users,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum AdminTab {
     Products,
     Categories,
+    Events,
     Stations,
     Users,
 }
@@ -60,6 +62,22 @@ pub fn Admin() -> impl IntoView {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
                             </svg>
                             "Categories"
+                        </button>
+                        <button
+                            class=move || format!(
+                                "flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200 flex items-center justify-center {}",
+                                if active_tab.get() == AdminTab::Events {
+                                    "bg-primary text-white shadow-sm"
+                                } else {
+                                    "text-text hover:bg-background hover:text-text"
+                                }
+                            )
+                            on:click=move |_| set_active_tab.set(AdminTab::Events)
+                        >
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            "Events"
                         </button>
                         <button
                             class=move || format!(
@@ -125,6 +143,20 @@ pub fn Admin() -> impl IntoView {
                                     <CreateCategory />
                                 </div>
                                 <Categories />
+                            </div>
+                        }.into_any(),
+                        AdminTab::Events => view! {
+                            <div class="space-y-6">
+                                <div class="bg-surface rounded-lg border border-border p-6 shadow-sm">
+                                    <h2 class="text-xl font-semibold text-text mb-4 flex items-center">
+                                        <svg class="w-5 h-5 mr-2 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                        </svg>
+                                        "Event Management"
+                                    </h2>
+                                    <CreateEvent />
+                                </div>
+                                <Events />
                             </div>
                         }.into_any(),
                         AdminTab::Stations => view! {

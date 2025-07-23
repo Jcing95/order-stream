@@ -29,7 +29,7 @@ pub mod ssr {
         fn from(record: Item) -> Self {
             Self {
                 id: record.id.unwrap().key().to_string(),
-                order_id: record.order_id,
+                order_id: Some(record.order_id),
                 product_id: record.product_id,
                 quantity: record.quantity,
                 price: record.price,
@@ -37,27 +37,39 @@ pub mod ssr {
             }
         }
     }
+
+    pub async fn create_items(order_id: String, items: Vec<types::Item>) -> Result<Vec<types::Item>, leptos::prelude::ServerFnError> {
+        use crate::backend::product::get_product;
+        let mut created_items = Vec::new();
+        
+        for item in items {
+            // Get the product to fetch the current price
+            let product = get_product(item.product_id.clone()).await?;
+            
+            let db_item: Option<Item> = DB.create(ITEMS)
+                .content(Item {
+                    id: None,
+                    order_id: order_id.clone(),
+                    product_id: item.product_id,
+                    quantity: item.quantity,
+                    price: product.price, // Use current product price
+                    status: types::OrderStatus::Draft,
+                })
+                .await?;
+                
+            if let Some(created) = db_item {
+                created_items.push(created.into());
+            } else {
+                return Err(ServerError("Failed to create item".into()));
+            }
+        }
+        
+        Ok(created_items)
+    }
 }
 #[cfg(feature = "ssr")]
 use ssr::*;
 
-#[server(CreateItem, "/api/item")]
-pub async fn create_item(req: requests::item::Create) -> Result<types::Item, ServerFnError> {
-    use crate::backend::product::get_product;
-
-    let product = get_product(req.product_id.clone()).await?;
-    let i: Option<Item> = DB.create(ITEMS)
-        .content(Item {
-            id: None,
-            order_id: req.order_id,
-            product_id: req.product_id,
-            quantity: req.quantity,
-            price: product.price,
-            status: types::OrderStatus::Draft,
-        })
-        .await?;
-    i.map(Into::into).ok_or_else(|| ServerError("Failed to create item".into()))
-}
 
 #[server(GetItemsByOrder, "/api/item")]
 pub async fn get_items_by_order(order_id: String) -> Result<Vec<types::Item>, ServerFnError> {

@@ -32,11 +32,13 @@ pub mod event {
 
 pub mod order {
     use validator::Validate;
+    use crate::common::types;
 
     #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Validate)]
     pub struct Create {
         #[validate(length(min = 1))]
         pub event: String,
+        pub items: Vec<types::Item>,
     }
 }
 

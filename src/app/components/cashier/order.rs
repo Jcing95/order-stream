@@ -1,9 +1,12 @@
 use leptos::prelude::*;
+use leptos::task::spawn_local;
 
 use crate::app::{
     components::atoms::icons,
     states::order::{self, OrderItem},
 };
+use crate::backend::order::create_order;
+use crate::common::{requests, types};
 
 #[component]
 fn OrderItemComponent(
@@ -68,6 +71,10 @@ fn OrderItemComponent(
 pub fn Order() -> impl IntoView {
     let order_state = order::get();
     let order_items = order_state.get_items();
+    
+    // States for order creation
+    let (is_creating_order, set_is_creating_order) = signal(false);
+    let (order_error, set_order_error) = signal::<Option<String>>(None);
 
     let (increase_signal, set_increase_signal) = signal::<String>(String::new());
     let (decrease_signal, set_decrease_signal) = signal::<String>(String::new());
@@ -168,8 +175,81 @@ pub fn Order() -> impl IntoView {
                         <span class="text-primary">{move || format!("€{:.2}", total_price())}</span>
                     </div>
 
-                    <button class="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-4 px-6 rounded-lg transition-colors duration-200 text-lg shadow-lg hover:shadow-xl">
-                        "Paid"
+                    <Show when=move || order_error.get().is_some()>
+                        <div class="p-3 bg-red-50 border border-red-200 rounded-lg">
+                            <p class="text-sm text-red-600">{move || order_error.get().unwrap_or_default()}</p>
+                        </div>
+                    </Show>
+
+                    <button 
+                        class=move || format!(
+                            "w-full font-semibold py-4 px-6 rounded-lg transition-colors duration-200 text-lg shadow-lg hover:shadow-xl {}",
+                            if is_creating_order.get() {
+                                "bg-gray-400 text-gray-200 cursor-not-allowed"
+                            } else {
+                                "bg-primary hover:bg-primary/90 text-white"
+                            }
+                        )
+                        disabled=move || is_creating_order.get()
+                        on:click={
+                            let order_state = order_state.clone();
+                            let order_items = order_items.clone();
+                            let set_is_creating_order = set_is_creating_order.clone();
+                            let set_order_error = set_order_error.clone();
+                            let is_creating_order = is_creating_order.clone();
+                            
+                            move |_| {
+                                if is_creating_order.get_untracked() {
+                                    return; // Prevent double-submission
+                                }
+                                
+                                let current_items = order_items.get_untracked();
+                                if current_items.is_empty() {
+                                    return; // Don't submit empty orders
+                                }
+                                
+                                set_is_creating_order.set(true);
+                                set_order_error.set(None);
+                                
+                                let items: Vec<types::Item> = current_items
+                                    .iter()
+                                    .enumerate()
+                                    .map(|(index, item)| types::Item {
+                                        id: format!("temp_{}", index), // Temporary ID, will be replaced by backend
+                                        order_id: None, // Will be set by backend
+                                        product_id: item.product_id.clone(),
+                                        quantity: item.quantity,
+                                        price: item.price,
+                                        status: types::OrderStatus::Ordered,
+                                    })
+                                    .collect();
+                                
+                                let request = requests::order::Create {
+                                    event: "default_event".to_string(), // TODO: Implement proper event selection
+                                    items,
+                                };
+                                
+                                let order_state = order_state.clone();
+                                let set_is_creating_order = set_is_creating_order.clone();
+                                let set_order_error = set_order_error.clone();
+                                
+                                spawn_local(async move {
+                                    match create_order(request).await {
+                                        Ok(_) => {
+                                            // Order created successfully, clear the cart
+                                            order_state.clear();
+                                            set_is_creating_order.set(false);
+                                        }
+                                        Err(e) => {
+                                            set_order_error.set(Some(format!("Failed to create order: {}", e)));
+                                            set_is_creating_order.set(false);
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    >
+                        {move || if is_creating_order.get() { "Creating Order..." } else { "Paid" }}
                     </button>
                 </div>
             </Show>
