@@ -5,13 +5,35 @@ use leptos::logging::log;
 use leptos::prelude::*;
 use leptos_use::{use_websocket, UseWebSocketReturn};
 
+#[cfg(feature = "hydrate")]
+fn get_websocket_url() -> String {
+    use web_sys::window;
+    let window = window().expect("should have a window in this context");
+    let location = window.location();
+    let host = location.host().unwrap_or_else(|_| "127.0.0.1:3000".to_string());
+    let protocol = if location.protocol().unwrap_or_else(|_| "http:".to_string()) == "https:" {
+        "wss:"
+    } else {
+        "ws:"
+    };
+    format!("{}//{}/ws", protocol, host)
+}
+
+#[cfg(not(feature = "hydrate"))]
+fn get_websocket_url() -> String {
+    "ws://127.0.0.1:3000/ws".to_string()
+}
+
 #[component]
 pub fn WsBridge() -> impl IntoView {
+    let ws_url = get_websocket_url();
+    log!("Connecting to WebSocket at: {}", ws_url);
+
     let UseWebSocketReturn {
         message,
         ready_state,..
     } = use_websocket::<GenericWebSocketMessage, GenericWebSocketMessage, JsonSerdeCodec>(
-        format!("ws://{}/ws", "127.0.0.1:3000").as_str(),
+        &ws_url,
     );
     let ws_state = websocket::get();
 

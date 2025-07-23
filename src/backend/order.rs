@@ -36,6 +36,7 @@ use ssr::*;
 #[server(CreateOrder, "/api/order")]
 pub async fn create_order(req: requests::order::Create) -> Result<types::Order, ServerFnError> {
     use crate::backend::item::ssr::create_items;
+    use crate::backend::websocket::broadcast_add;
     
     // First create the order
     let order: Option<Order> = DB.create(ORDERS)
@@ -52,12 +53,18 @@ pub async fn create_order(req: requests::order::Create) -> Result<types::Order, 
     let order = order.unwrap();
     let order_id = order.id.as_ref().unwrap().key().to_string();
     
+    // Convert to types::Order for broadcasting
+    let order_type: types::Order = order.clone().into();
+    
+    // Broadcast the new order
+    broadcast_add(order_type.clone());
+    
     // Then create all the items
     if !req.items.is_empty() {
         create_items(order_id, req.items).await?;
     }
     
-    Ok(order.into())
+    Ok(order_type)
 }
 
 #[server(GetOrders, "/api/order")]
@@ -76,9 +83,15 @@ pub async fn get_order(id: String) -> Result<types::Order, ServerFnError> {
 
 #[server(DeleteOrder, "/api/order")]
 pub async fn delete_order(id: String) -> Result<(), ServerFnError> {
+    use crate::backend::websocket::broadcast_delete;
+    
     let deleted: Option<Order> = DB.delete((ORDERS, &id)).await?;
     if deleted.is_none() {
         return Err(ServerError(format!("Order with id {} not found", id)));
     }
+    
+    // Broadcast the order deletion
+    broadcast_delete::<types::Order>(id);
+    
     Ok(())
 }

@@ -1,7 +1,7 @@
 use leptos::prelude::*;
 use std::collections::HashMap;
 
-use crate::app::states::{product};
+use crate::app::states::{product, websocket};
 use crate::backend::item::{get_items_by_station, update_item, update_items_by_order};
 use crate::backend::station::get_station;
 use crate::common::{requests, types};
@@ -171,6 +171,33 @@ fn OrderGroup(
 #[component]
 pub fn StationView(station_id: String) -> impl IntoView {
     let (refresh_trigger, set_refresh_trigger) = signal::<u32>(0);
+    
+    // Listen to WebSocket updates for items and orders to trigger refresh
+    let websocket_state = websocket::get();
+    Effect::new({
+        let set_refresh_trigger = set_refresh_trigger;
+        let websocket_state = websocket_state.clone();
+        move |_| {
+            if let Some(_message) = websocket_state.items.get() {
+                // Any item change should refresh all station views
+                set_refresh_trigger.update(|n| *n += 1);
+                websocket_state.items.set(None);
+            }
+        }
+    });
+    
+    // Also listen for order changes (new orders create items)
+    Effect::new({
+        let set_refresh_trigger = set_refresh_trigger;
+        let websocket_state = websocket_state.clone();
+        move |_| {
+            if let Some(_message) = websocket_state.orders.get() {
+                // New orders might have items for this station
+                set_refresh_trigger.update(|n| *n += 1);
+                websocket_state.orders.set(None);
+            }
+        }
+    });
     
     let station_id_mv = station_id.clone();
     // Resource to fetch station details

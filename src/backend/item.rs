@@ -40,6 +40,7 @@ pub mod ssr {
 
     pub async fn create_items(order_id: String, items: Vec<types::Item>) -> Result<Vec<types::Item>, leptos::prelude::ServerFnError> {
         use crate::backend::product::get_product;
+        use crate::backend::websocket::broadcast_add;
         let mut created_items = Vec::new();
         
         for item in items {
@@ -58,7 +59,12 @@ pub mod ssr {
                 .await?;
                 
             if let Some(created) = db_item {
-                created_items.push(created.into());
+                let item_type: types::Item = created.clone().into();
+                
+                // Broadcast the new item
+                broadcast_add(item_type.clone());
+                
+                created_items.push(item_type);
             } else {
                 return Err(ServerError("Failed to create item".into()));
             }
@@ -99,6 +105,8 @@ pub async fn update_item(
     id: String,
     update: requests::item::Update,
 ) -> Result<types::Item, ServerFnError> {
+    use crate::backend::websocket::broadcast_update;
+    
     // Get the existing item
     let existing_item: Option<Item> = DB.select((ITEMS, &id)).await?;
     if existing_item.is_none() {
@@ -133,17 +141,30 @@ pub async fn update_item(
         .content(updated)
         .await?;
         
-    updated_item
-        .map(Into::into)
-        .ok_or_else(|| ServerError("Failed to update item".into()))
+    if let Some(updated) = updated_item {
+        let item_type: types::Item = updated.into();
+        
+        // Broadcast the updated item
+        broadcast_update(item_type.clone());
+        
+        Ok(item_type)
+    } else {
+        Err(ServerError("Failed to update item".into()))
+    }
 }
 
 #[server(DeleteItem, "/api/item")]
 pub async fn delete_item(id: String) -> Result<(), ServerFnError> {
+    use crate::backend::websocket::broadcast_delete;
+    
     let deleted: Option<Item> = DB.delete((ITEMS, &id)).await?;
     if deleted.is_none() {
         return Err(ServerError(format!("Item with id {} not found", id)));
     }
+    
+    // Broadcast the item deletion
+    broadcast_delete::<types::Item>(id);
+    
     Ok(())
 }
 
@@ -179,6 +200,7 @@ pub async fn get_items_by_station(station_id: String) -> Result<Vec<types::Item>
 pub async fn update_items_by_order(order_id: String, station_id: String, new_status: types::OrderStatus) -> Result<Vec<types::Item>, ServerFnError> {
     use crate::backend::station::get_station;
     use crate::backend::product::get_product;
+    use crate::backend::websocket::broadcast_update;
     
     // Get the station to access its filtering criteria
     let station = get_station(station_id).await?;
@@ -211,7 +233,12 @@ pub async fn update_items_by_order(order_id: String, station_id: String, new_sta
                 .await?;
                 
             if let Some(item) = updated_item {
-                updated_items.push(item.into());
+                let item_type: types::Item = item.into();
+                
+                // Broadcast each updated item
+                broadcast_update(item_type.clone());
+                
+                updated_items.push(item_type);
             }
         }
     }
