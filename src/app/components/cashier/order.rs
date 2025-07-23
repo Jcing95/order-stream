@@ -3,7 +3,7 @@ use leptos::task::spawn_local;
 
 use crate::app::{
     components::atoms::icons,
-    states::order::{self, OrderItem},
+    states::{order::{self, OrderItem}, settings, event},
 };
 use crate::backend::order::create_order;
 use crate::common::{requests, types};
@@ -71,6 +71,10 @@ fn OrderItemComponent(
 pub fn Order() -> impl IntoView {
     let order_state = order::get();
     let order_items = order_state.get_items();
+    let settings_state = settings::get();
+    let settings = settings_state.get_settings();
+    let event_state = event::get();
+    let events = event_state.get_events();
     
     // States for order creation
     let (is_creating_order, set_is_creating_order) = signal(false);
@@ -134,6 +138,36 @@ pub fn Order() -> impl IntoView {
 
     view! {
         <div class="bg-surface rounded-lg border border-border p-6 sticky top-6">
+            // Active Event Indicator
+            <div class="mb-4 p-3 bg-background rounded-lg border border-border">
+                <div class="text-sm font-medium text-text-muted mb-1">"Active Event"</div>
+                <Show
+                    when=move || {
+                        settings.get().and_then(|s| s.active_event_id).is_some()
+                    }
+                    fallback=|| view! {
+                        <div class="text-sm text-red-600 font-medium">"No active event set"</div>
+                        <div class="text-xs text-red-500">"Ask an admin to set an active event"</div>
+                    }
+                >
+                    <div class="text-sm text-green-600 font-medium">
+                        {move || {
+                            let active_event_id = settings.get().and_then(|s| s.active_event_id);
+                            if let Some(event_id) = active_event_id {
+                                // Find the event name from the events list
+                                events.get()
+                                    .iter()
+                                    .find(|e| e.id == event_id)
+                                    .map(|e| e.name.clone())
+                                    .unwrap_or_else(|| format!("Event: {}", event_id))
+                            } else {
+                                "Unknown".to_string()
+                            }
+                        }}
+                    </div>
+                </Show>
+            </div>
+
             <Show
                 when=move || !order_items.get().is_empty()
                 fallback=|| view! {
@@ -224,8 +258,21 @@ pub fn Order() -> impl IntoView {
                                     })
                                     .collect();
                                 
+                                // Get active event or show error if none set
+                                let active_event_id = settings.get_untracked()
+                                    .and_then(|s| s.active_event_id);
+                                
+                                let event_id = match active_event_id {
+                                    Some(id) => id,
+                                    None => {
+                                        set_order_error.set(Some("No active event set. Please ask an admin to set an active event.".to_string()));
+                                        set_is_creating_order.set(false);
+                                        return;
+                                    }
+                                };
+                                
                                 let request = requests::order::Create {
-                                    event: "default_event".to_string(), // TODO: Implement proper event selection
+                                    event: event_id,
                                     items,
                                 };
                                 

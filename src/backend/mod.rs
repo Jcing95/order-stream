@@ -12,5 +12,6 @@ pub mod event;
 pub mod item;
 pub mod order;
 pub mod product;
+pub mod settings;
 pub mod station;
 pub mod user;

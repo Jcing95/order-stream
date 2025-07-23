@@ -33,6 +33,7 @@ impl ResourceData for Item {}
 impl ResourceData for Order {}
 impl ResourceData for Station {}
 impl ResourceData for Event {}
+impl ResourceData for Settings {}
 
 /// Generic message for any resource type
 #[derive(Debug, Clone, Serialize, Deserialize)]

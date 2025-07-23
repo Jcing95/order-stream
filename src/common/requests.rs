@@ -141,3 +141,12 @@ pub mod user {
         pub role: Option<Role>
     }
 }
+
+pub mod settings {
+    use validator::Validate;
+    
+    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Validate)]
+    pub struct Update {
+        pub active_event_id: Option<String>,
+    }
+}

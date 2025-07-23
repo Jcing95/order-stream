@@ -13,6 +13,7 @@ pub struct WebSocketState {
     pub orders: RwSignal<Option<Message<Order>>>,
     pub stations: RwSignal<Option<Message<Station>>>,
     pub events: RwSignal<Option<Message<Event>>>,
+    pub settings: RwSignal<Option<Message<Settings>>>,
 }
 
 impl WebSocketState {
@@ -26,6 +27,7 @@ impl WebSocketState {
             orders: RwSignal::new(None),
             stations: RwSignal::new(None),
             events: RwSignal::new(None),
+            settings: RwSignal::new(None),
         }
     }
 
@@ -68,6 +70,11 @@ impl WebSocketState {
             "event" => {
                 if let Ok(ws_msg) = serde_json::from_str::<WebSocketMessage<Event>>(json_str) {
                     self.events.set(Some(ws_msg.message));
+                }
+            }
+            "settings" => {
+                if let Ok(ws_msg) = serde_json::from_str::<WebSocketMessage<Settings>>(json_str) {
+                    self.settings.set(Some(ws_msg.message));
                 }
             }
             _ => {} // Unknown resource type

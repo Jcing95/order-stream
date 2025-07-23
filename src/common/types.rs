@@ -92,6 +92,13 @@ pub struct Event {
     pub name: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
+pub struct Settings {
+    #[validate(length(min = 1))]
+    pub id: String,
+    pub active_event_id: Option<String>,
+}
+
 // Implement ResourceName for all types
 impl_resource_name!(Category, "category");
 impl_resource_name!(User, "user");
@@ -100,4 +107,5 @@ impl_resource_name!(Item, "item");
 impl_resource_name!(Order, "order");
 impl_resource_name!(Station, "station");
 impl_resource_name!(Event, "event");
+impl_resource_name!(Settings, "settings");
 

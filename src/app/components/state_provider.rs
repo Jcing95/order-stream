@@ -10,6 +10,7 @@ where
     states::websocket::provide();
     states::category::provide();
     states::event::provide();
+    states::settings::provide();
     states::user::provide();
     states::product::provide();
     states::station::provide();
