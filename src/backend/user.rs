@@ -75,8 +75,9 @@ pub async fn get_all_users() -> Result<Vec<types::User>, ServerFnError> {
 
 #[server(GetUser, "/api/user")]
 pub async fn get_user(id: String) -> Result<types::User, ServerFnError> {
-    DB.select((USERS, id))
-        .await?
+    let user: Option<User> = DB.select((USERS, id)).await?;
+    user
+        .map(Into::into)
         .ok_or_else(|| ServerError("User not found".into()))
 }
 

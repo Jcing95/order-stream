@@ -63,8 +63,9 @@ pub async fn get_categories() -> Result<Vec<types::Category>, ServerFnError> {
 
 #[server(GetCategory, "/api/category")]
 pub async fn get_category(id: String) -> Result<types::Category, ServerFnError> {
-    DB.select((CATEGORIES, &id))
-        .await?
+    let category: Option<Category> = DB.select((CATEGORIES, &id)).await?;
+    category
+        .map(Into::into)
         .ok_or_else(|| ServerError("Category not found".into()))
 }
 

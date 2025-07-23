@@ -71,8 +71,9 @@ pub async fn get_products() -> Result<Vec<types::Product>, ServerFnError> {
 
 #[server(GetProduct, "/api/product")]
 pub async fn get_product(id: String) -> Result<types::Product, ServerFnError> {
-    DB.select((PRODUCTS, &id))
-        .await?
+    let product: Option<Product> = DB.select((PRODUCTS, &id)).await?;
+    product
+        .map(Into::into)
         .ok_or_else(|| ServerError("Product not found".into()))
 }
 

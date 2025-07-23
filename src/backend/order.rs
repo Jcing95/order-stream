@@ -68,8 +68,9 @@ pub async fn get_orders() -> Result<Vec<types::Order>, ServerFnError> {
 
 #[server(GetOrder, "/api/order")]
 pub async fn get_order(id: String) -> Result<types::Order, ServerFnError> {
-    DB.select((ORDERS, &id))
-        .await?
+    let order: Option<Order> = DB.select((ORDERS, &id)).await?;
+    order
+        .map(Into::into)
         .ok_or_else(|| ServerError("Order not found".into()))
 }
 

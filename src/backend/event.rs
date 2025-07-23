@@ -58,8 +58,9 @@ pub async fn get_events() -> Result<Vec<types::Event>, ServerFnError> {
 
 #[server(GetEvent, "/api/event")]
 pub async fn get_event(id: String) -> Result<types::Event, ServerFnError> {
-    DB.select((EVENTS, &id))
-        .await?
+    let event: Option<Event> = DB.select((EVENTS, &id)).await?;
+    event
+        .map(Into::into)
         .ok_or_else(|| ServerError("Event not found".into()))
 }
 

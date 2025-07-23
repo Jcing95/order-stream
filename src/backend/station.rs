@@ -104,8 +104,9 @@ pub async fn get_stations() -> Result<Vec<types::Station>, ServerFnError> {
 
 #[server(GetStation, "/api/station")]
 pub async fn get_station(name: String) -> Result<types::Station, ServerFnError> {
-    DB.select((STATIONS, &name))
-        .await?
+    let station: Option<Station> = DB.select((STATIONS, &name)).await?;
+    station
+        .map(Into::into)
         .ok_or_else(|| ServerError("Station not found".into()))
 }
 

@@ -88,8 +88,9 @@ pub async fn get_items() -> Result<Vec<types::Item>, ServerFnError> {
 
 #[server(GetItem, "/api/item")]
 pub async fn get_item(id: String) -> Result<types::Item, ServerFnError> {
-    DB.select((ITEMS, &id))
-        .await?
+    let item: Option<Item> = DB.select((ITEMS, &id)).await?;
+    item
+        .map(Into::into)
         .ok_or_else(|| ServerError("Item not found".into()))
 }
 
