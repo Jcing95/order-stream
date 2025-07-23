@@ -79,7 +79,7 @@ fn ItemCard(
                         {move || if update_item_action.pending().get() {
                             "Updating..."
                         } else {
-                            "Update Status"
+                            "Fertig!"
                         }}
                     </button>
                 </div>
@@ -133,7 +133,7 @@ fn OrderGroup(
                     {move || if update_order_action.pending().get() {
                         "Updating Order..."
                     } else {
-                        "Update All Items"
+                        "Alle fertig!"
                     }}
                 </button>
             </div>
