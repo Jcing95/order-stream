@@ -1,4 +1,5 @@
 use crate::backend::user::logout;
+use crate::app::states::user;
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
 use leptos::task::spawn_local;
@@ -11,6 +12,7 @@ pub fn UserDropdown(
 ) -> impl IntoView {
     let (is_open, set_is_open) = signal(false);
     let navigate = use_navigate();
+    let user_state = user::get();
 
     view! {
         <div class="relative">
@@ -34,12 +36,16 @@ pub fn UserDropdown(
                         <button
                             on:click={
                                 let navigate = navigate.clone();
+                                let user_state = user_state.clone();
                                 move |_| {
                                     set_is_open.set(false);
                                     let navigate = navigate.clone();
+                                    let user_state = user_state.clone();
                                     spawn_local(async move {
                                         match logout().await {
                                             Ok(_) => {
+                                                // Update client-side user state
+                                                user_state.logout();
                                                 navigate("/signin", Default::default());
                                             }
                                             Err(e) => {
