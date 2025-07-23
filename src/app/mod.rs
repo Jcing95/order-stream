@@ -2,7 +2,7 @@ use leptos::prelude::*;
 use leptos_meta::*;
 use leptos_router::{
     components::{FlatRoutes, Route, Router},
-    StaticSegment,
+    StaticSegment, ParamSegment,
 };
 
 pub mod components;
@@ -13,7 +13,7 @@ pub mod states;
 use components::{
     navbar::Navbar, route_guard::RouteGuard, state_provider::StateProvider, ws_bridge::WsBridge,
 };
-use pages::{signin::SignIn, signup::SignUp, admin::Admin, cashier::Cashier};
+use pages::{signin::SignIn, signup::SignUp, admin::Admin, cashier::Cashier, stations::StationsPage, station::StationPage};
 
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
@@ -57,6 +57,21 @@ pub fn App() -> impl IntoView {
                     <Route path=StaticSegment("cashier") view=move || view! {
                         <RouteGuard roles=vec![crate::common::types::Role::Admin, crate::common::types::Role::Cashier] children=move || view! {
                             <Cashier/>
+                        }.into_any() />
+                    }/>
+                    <Route path=StaticSegment("station") view=move || view! {
+                        <RouteGuard roles=vec![crate::common::types::Role::Admin, crate::common::types::Role::Cashier, crate::common::types::Role::Staff] children=move || view! {
+                            <StationsPage/>
+                        }.into_any() />
+                    }/>
+                    <Route path=StaticSegment("stations") view=move || view! {
+                        <RouteGuard roles=vec![crate::common::types::Role::Admin, crate::common::types::Role::Cashier, crate::common::types::Role::Staff] children=move || view! {
+                            <StationsPage/>
+                        }.into_any() />
+                    }/>
+                    <Route path=(StaticSegment("station"), ParamSegment("id")) view=move || view! {
+                        <RouteGuard roles=vec![crate::common::types::Role::Admin, crate::common::types::Role::Cashier, crate::common::types::Role::Staff] children=move || view! {
+                            <StationPage/>
                         }.into_any() />
                     }/>
                 </FlatRoutes>

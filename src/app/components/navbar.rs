@@ -143,6 +143,21 @@ pub fn Navbar() -> impl IntoView {
                                 }
                             />
                         </div>
+                        <div class="ml-8">
+                            <RoleGated 
+                                roles=vec![Role::Admin, Role::Cashier, Role::Staff]
+                                children=|| {
+                                    view! {
+                                        <A 
+                                            href="/stations" 
+                                            attr:class="text-text hover:text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                                        >
+                                            Stationen
+                                        </A>
+                                    }.into_any()
+                                }
+                            />
+                        </div>
                     </div>
 
                     <div class="flex items-center space-x-4">

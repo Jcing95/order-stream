@@ -146,3 +146,64 @@ pub async fn delete_item(id: String) -> Result<(), ServerFnError> {
     }
     Ok(())
 }
+
+#[server(GetItemsByStation, "/api/item")]
+pub async fn get_items_by_station(station_id: String) -> Result<Vec<types::Item>, ServerFnError> {
+    use crate::backend::station::get_station;
+    use crate::backend::product::get_product;
+    
+    // Get the station to access its filtering criteria
+    let station = get_station(station_id).await?;
+    
+    // Query items that match the station's criteria
+    let query = "SELECT * FROM items WHERE status IN $input_statuses";
+    let mut response = DB.query(query)
+        .bind(("input_statuses", station.input_statuses))
+        .await?;
+
+    let items: Vec<Item> = response.take(0)?;
+    
+    // Filter items by category (need to check product category)
+    let mut filtered_items = Vec::new();
+    for item in items {
+        let product = get_product(item.product_id.clone()).await?;
+        if station.category_ids.contains(&product.category_id) {
+            filtered_items.push(item);
+        }
+    }
+    
+    Ok(filtered_items.into_iter().map(Into::into).collect())
+}
+
+#[server(UpdateItemsByOrder, "/api/item")]
+pub async fn update_items_by_order(order_id: String, new_status: types::OrderStatus) -> Result<Vec<types::Item>, ServerFnError> {
+    // Get all items for the order
+    let query = "SELECT * FROM items WHERE order_id = $order_id";
+    let mut response = DB.query(query).bind(("order_id", order_id.clone())).await?;
+    let items: Vec<Item> = response.take(0)?;
+    
+    let mut updated_items = Vec::new();
+    
+    // Update each item's status
+    for item in items {
+        let updated = Item {
+            id: item.id.clone(),
+            order_id: item.order_id,
+            product_id: item.product_id,
+            quantity: item.quantity,
+            price: item.price,
+            status: new_status,
+        };
+        
+        let updated_item: Option<Item> = DB
+            .update((ITEMS, item.id.unwrap().key().to_string().as_str()))
+            .content(updated)
+            .await?;
+            
+        if let Some(item) = updated_item {
+            updated_items.push(item.into());
+        }
+    }
+    
+    Ok(updated_items)
+}
