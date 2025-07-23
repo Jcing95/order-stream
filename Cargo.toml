@@ -105,7 +105,7 @@ watch = false
 
 # --- IMPORTANT PRODUCTION CHANGE ---
 # Set the environment to "PROD" to disable devtools and other development-only features.
-env = "PROD"
+env = "DEV"
 
 # The features to use when compiling the bin target
 bin-features = ["ssr"]
