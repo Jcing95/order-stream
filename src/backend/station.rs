@@ -46,10 +46,6 @@ pub async fn create_station(
     input_statuses_json: String,
     output_status: types::OrderStatus,
 ) -> Result<types::Station, ServerFnError> {
-    leptos::logging::log!("Creating station with name: {}", name);
-    leptos::logging::log!("Raw category_ids_json: {}", category_ids_json);
-    leptos::logging::log!("Raw input_statuses_json: {}", input_statuses_json);
-    
     // Deserialize the JSON arrays
     let category_ids: Vec<String> = if category_ids_json.is_empty() {
         Vec::new()
@@ -57,7 +53,6 @@ pub async fn create_station(
         match serde_json::from_str(&category_ids_json) {
             Ok(ids) => ids,
             Err(_) => {
-                leptos::logging::log!("Failed to parse category_ids_json: {}", category_ids_json);
                 return Err(ServerError("Failed to parse category_ids".into()));
             }
         }
@@ -69,14 +64,10 @@ pub async fn create_station(
         match serde_json::from_str(&input_statuses_json) {
             Ok(statuses) => statuses,
             Err(_) => {
-                leptos::logging::log!("Failed to parse input_statuses_json: {}", input_statuses_json);
                 return Err(ServerError("Failed to parse input_statuses".into()));
             }
         }
     };
-    
-    leptos::logging::log!("Parsed category_ids: {:?}", category_ids);
-    leptos::logging::log!("Parsed input_statuses: {:?}", input_statuses);
     
     let s: Option<Station> = DB.create(STATIONS)
         .content(Station {
@@ -118,9 +109,6 @@ pub async fn update_station(
     input_statuses_json: String,
     output_status: types::OrderStatus,
 ) -> Result<types::Station, ServerFnError> {
-    leptos::logging::log!("Updating station with id: {}, name: {}", id, name);
-    leptos::logging::log!("Raw category_ids_json: {}", category_ids_json);
-    leptos::logging::log!("Raw input_statuses_json: {}", input_statuses_json);
     
     // Deserialize the JSON arrays
     let category_ids: Vec<String> = if category_ids_json.is_empty() {
@@ -129,7 +117,6 @@ pub async fn update_station(
         match serde_json::from_str(&category_ids_json) {
             Ok(ids) => ids,
             Err(_) => {
-                leptos::logging::log!("Failed to parse category_ids_json: {}", category_ids_json);
                 return Err(ServerError("Failed to parse category_ids".into()));
             }
         }
@@ -141,14 +128,10 @@ pub async fn update_station(
         match serde_json::from_str(&input_statuses_json) {
             Ok(statuses) => statuses,
             Err(_) => {
-                leptos::logging::log!("Failed to parse input_statuses_json: {}", input_statuses_json);
                 return Err(ServerError("Failed to parse input_statuses".into()));
             }
         }
     };
-    
-    leptos::logging::log!("Parsed category_ids: {:?}", category_ids);
-    leptos::logging::log!("Parsed input_statuses: {:?}", input_statuses);
     
     // Get the existing station
     let existing_station: Option<Station> = DB.select((STATIONS, &id)).await?;

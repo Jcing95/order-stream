@@ -2,7 +2,6 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use crate::common::types::{User, Role};
 use crate::backend::user::get_all_users;
-use leptos::logging::log;
 
 #[derive(Debug, Clone)]
 pub struct UserState {
@@ -55,7 +54,6 @@ impl UserState {
     }
 
     pub fn has_any_role(&self, roles: &[Role]) -> bool {
-        log!("Checking user {:?} for roles {:?}", self.user.get(), roles);
         if let Some(user) = self.user.get() {
             // Admin always has access
             if user.role == Role::Admin {

@@ -2,7 +2,6 @@ use axum::{
     extract::{ws::WebSocket, WebSocketUpgrade},
     response::Response,
 };
-use leptos::logging::log;
 use tokio::sync::broadcast;
 use futures_util::{SinkExt, StreamExt};
 
@@ -74,7 +73,6 @@ where
     if let Ok(json_data) = serde_json::to_string(&ws_message) {
         if let Some(sender) = WS_SENDER.get() {
             let _ = sender.send(json_data);
-            log!("Sent add: {:?}", ws_message);
         }
     }
 }
@@ -88,7 +86,6 @@ where
     if let Ok(json_data) = serde_json::to_string(&ws_message) {
         if let Some(sender) = WS_SENDER.get() {
             let _ = sender.send(json_data);
-            log!("Sent update: {:?}", ws_message);
         }
     }
 }
@@ -105,7 +102,6 @@ where
     if let Ok(json_data) = serde_json::to_string(&ws_message) {
         if let Some(sender) = WS_SENDER.get() {
             let _ = sender.send(json_data);
-            log!("Sent delete: {:?}", ws_message);
         }
     }
 }

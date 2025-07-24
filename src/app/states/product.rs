@@ -73,20 +73,17 @@ impl ProductState {
     
     /// Update a single product (for WebSocket updates when someone modifies a product)
     pub fn update_product(&self, updated: Product) {
-        leptos::logging::log!("Updating product: {:?}", updated);
         let current_products = self.products.get_untracked();
         let new_products: Vec<Product> = current_products
             .iter()
             .map(|prod| {
                 if prod.id == updated.id {
-                    leptos::logging::log!("Found product to update: {} -> {:?}", prod.id, updated);
                     updated.clone()
                 } else {
                     prod.clone()
                 }
             })
             .collect();
-        leptos::logging::log!("Setting new products vector with {} items", new_products.len());
         self.set_products.set(new_products);
     }
     

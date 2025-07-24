@@ -154,25 +154,19 @@ pub async fn get_authenticated_user(
     session: &tower_sessions::Session,
 ) -> Result<crate::common::types::User, leptos::prelude::ServerFnError> {
     use crate::backend::user::ssr::{User, USERS};
-    use leptos::logging::log;
-    log!("authenticating user...");
     let session_data: Option<SessionData> = session.get("user").await?;
 
     let session_data =
         session_data.ok_or_else(|| Error::NotAuthorized("Not authenticated".to_string()))?;
-    log!("Session data {:?}", session_data);
 
     handle_session_extension(session);
-    log!("Handled session extension...");
 
     let user: Option<User> = DB.select((USERS, &session_data.user_id)).await?;
-    log!("User data {:?}", user);
 
     let user = user.ok_or_else(|| {
         let _ = session.delete();
         Error::NotAuthorized("User not found".to_string())
     })?;
-    log!("returning authenticated user...");
     Ok(user.into())
 }
 

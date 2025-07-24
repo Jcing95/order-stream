@@ -40,18 +40,14 @@ impl StationState {
             let websocket_state = websocket_state.clone();
             move |_| {
                 if let Some(message) = websocket_state.stations.get() {
-                    leptos::logging::log!("Station state processing message: {:?}", message);
                     match message {
                         Message::Add(station) => {
-                            leptos::logging::log!("Adding station: {}", station.name);
                             station_state.add_station(station);
                         }
                         Message::Update(station) => {
-                            leptos::logging::log!("Updating station: {}", station.name);
                             station_state.update_station(station);
                         }
                         Message::Delete(id) => {
-                            leptos::logging::log!("Removing station: {}", id);
                             station_state.remove_station(&id);
                         }
                     }

@@ -114,9 +114,7 @@ pub async fn get_user_count() -> Result<u64, surrealdb::Error> {
 pub async fn update_user(
     id: String,
     update: requests::user::Update,
-) -> Result<types::User, ServerFnError> {
-    log!("User update: {:?}", update);
-    
+) -> Result<types::User, ServerFnError> {    
     // Get the existing user
     let existing_user: Option<User> = DB.select((USERS, &id)).await?;
     if existing_user.is_none() {
@@ -187,6 +185,5 @@ pub async fn logout() -> Result<(), ServerFnError> {
 #[server(GetCurrentUser, "/api/user")]
 pub async fn get_current_user() -> Result<types::User, ServerFnError> {
     let session: Session = extract().await?;
-    log!("Session: {:?}", session);
     crate::backend::auth::get_authenticated_user(&session).await
 }

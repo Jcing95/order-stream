@@ -247,7 +247,6 @@ pub fn Products() -> impl IntoView {
                     <For
                         each=move || {
                             let prods = products.get();
-                            leptos::logging::log!("Products component re-rendering with {} products", prods.len());
                             prods
                         }
                         key=|product| product.id.clone()
@@ -270,7 +269,6 @@ pub fn Products() -> impl IntoView {
                                             .find(|p| p.id == product_id_for_display)
                                             .cloned()
                                             .unwrap_or_else(|| product_fallback.clone());
-                                        leptos::logging::log!("Display product for {}: {:?}", product_id_for_display, current_product);
                                         view! {
                                             <ProductDisplayItem 
                                                 product=current_product
@@ -288,7 +286,6 @@ pub fn Products() -> impl IntoView {
                                                 .find(|p| p.id == product_id_for_edit_clone)
                                                 .cloned()
                                                 .unwrap_or_else(|| product_edit_clone.clone());
-                                            leptos::logging::log!("Edit product for {}: {:?}", product_id_for_edit_clone, current_product);
                                             view! {
                                                 <ProductEditItem 
                                                     product=current_product

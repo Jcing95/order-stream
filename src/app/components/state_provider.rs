@@ -27,7 +27,6 @@ where
         let user_resource = Resource::new_blocking(
             || (), // No dependencies
             |_| async move {
-                log!("Fetching current user...");
                 get_current_user().await
             },
         );
@@ -37,12 +36,10 @@ where
             if let Some(result) = user_resource.get() {
                 match result {
                     Ok(current_user) => {
-                        log!("Found authenticated user: {:?}", current_user);
                         user_state.set_user(current_user);
                     }
                     Err(_) => {
-                        log!("No authenticated user found");
-                        // Keep user as None
+                        log!("Not logged in.");
                     }
                 }
                 // Either way, we're done loading

@@ -327,7 +327,6 @@ pub fn Stations() -> impl IntoView {
                     <For
                         each=move || {
                             let stations_data = stations.get();
-                            leptos::logging::log!("Stations component re-rendering with {} stations", stations_data.len());
                             stations_data
                         }
                         key=|station| station.id.clone()
@@ -350,7 +349,6 @@ pub fn Stations() -> impl IntoView {
                                             .find(|s| s.id == station_id_for_display)
                                             .cloned()
                                             .unwrap_or_else(|| station_fallback.clone());
-                                        leptos::logging::log!("Display station for {}: {:?}", station_id_for_display, current_station);
                                         view! {
                                             <StationDisplayItem 
                                                 station=current_station
@@ -368,7 +366,6 @@ pub fn Stations() -> impl IntoView {
                                                 .find(|s| s.id == station_id_for_edit_clone)
                                                 .cloned()
                                                 .unwrap_or_else(|| station_edit_clone.clone());
-                                            leptos::logging::log!("Edit station for {}: {:?}", station_id_for_edit_clone, current_station);
                                             view! {
                                                 <StationEditItem 
                                                     station=current_station

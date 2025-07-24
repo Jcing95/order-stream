@@ -39,7 +39,6 @@ pub fn WsBridge() -> impl IntoView {
 
     Effect::new(move |_| {
         if let Some(msg) = message.get() {
-            log!("Received websocket message: {:?}", msg);
             // Convert back to JSON string for the handler
             if let Ok(json_str) = serde_json::to_string(&msg) {
                 ws_state.handle_message(&msg.resource_type, &json_str);

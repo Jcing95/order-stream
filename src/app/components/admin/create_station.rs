@@ -116,7 +116,6 @@ pub fn CreateStation() -> impl IntoView {
                             name="category_ids_json" 
                             value=move || {
                                 let cats = selected_categories.get();
-                                leptos::logging::log!("Selected categories: {:?}", cats);
                                 serde_json::to_string(&cats).unwrap_or_default()
                             }
                         />
@@ -151,7 +150,6 @@ pub fn CreateStation() -> impl IntoView {
                             name="input_statuses_json" 
                             value=move || {
                                 let statuses = selected_input_statuses.get();
-                                leptos::logging::log!("Selected input statuses: {:?}", statuses);
                                 serde_json::to_string(&statuses).unwrap_or_default()
                             }
                         />
