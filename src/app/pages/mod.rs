@@ -5,3 +5,4 @@ pub mod admin;
 pub mod cashier;
 pub mod station;
 pub mod stations;
+pub mod home;

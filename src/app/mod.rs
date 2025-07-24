@@ -2,7 +2,7 @@ use leptos::prelude::*;
 use leptos_meta::*;
 use leptos_router::{
     components::{FlatRoutes, Route, Router},
-    StaticSegment, ParamSegment,
+    ParamSegment, StaticSegment,
 };
 
 pub mod components;
@@ -13,8 +13,10 @@ pub mod states;
 use components::{
     navbar::Navbar, route_guard::RouteGuard, state_provider::StateProvider, ws_bridge::WsBridge,
 };
-use pages::{signin::SignIn, signup::SignUp, admin::Admin, cashier::Cashier, stations::StationsPage, station::StationPage};
-
+use pages::{
+    admin::Admin, cashier::Cashier, signin::SignIn, signup::SignUp, station::StationPage,
+    stations::StationsPage, home::Home,
+};
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -77,12 +79,5 @@ pub fn App() -> impl IntoView {
                 </FlatRoutes>
             </Router>
         }.into_any() />
-    }
-}
-
-#[component]
-fn Home() -> impl IntoView {
-    view! {
-        Hello World!
     }
 }
