@@ -1,4 +1,4 @@
-# 🍽️ OrderStream
+# <img src="public/icon.svg" width="20"> OrderStream
 
 **A real-time ordering and kitchen management system for small events**
 
