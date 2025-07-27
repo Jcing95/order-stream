@@ -1,10 +1,10 @@
-# <img src="public/icon.svg" width="20"> OrderStream
+# <img src="public/icon.svg" width="40"> OrderStream
 
 **A real-time ordering and kitchen management system for small events**
 
 OrderStream is a specialized platform designed for smaller events. It streamlines the entire food service workflow from order taking to kitchen preparation with real-time coordination.
 
-## 🎯 What is OrderStream?
+## What is OrderStream?
 
 OrderStream is perfect for **event organizers** who need:
 
@@ -14,33 +14,33 @@ OrderStream is perfect for **event organizers** who need:
 - **Event-based setups** that can be quickly set up and torn down
 - **Live updates** On the fly Menu updates
 
-## ✨ Key Features
-### 👨‍🍳 **Flexible Kitchen Stations**
+## Key Features
+### **Flexible Kitchen Stations**
 - Adaptable station views for temporary kitchen setups
 - Orders with fun and memorable names for easy identification
 - Simple status workflow: Ordered → Ready → Completed (will be customizable)
 - Perfect for volunteer kitchen staff with minimal training
 
-### 🏪 **Cashier View**
+### **Cashier View**
 - Quick product selection organized by categories
 - Real-time cart building with automatic price overview
 - Simple "Alles Bezahlt!" (All Paid!) workflow
 - Event-specific menus and pricing
 
 
-### 🎪 **Event Administration**
+### **Event Administration**
 - Quick event setup and menu configuration
 - Temporary station assignments for pop-up kitchens
 - User management for event staff and volunteers
 - Event-specific settings and real-time configuration changes
 
-### 🔄 **Real-time Event Coordination**
+### **Real-time Event Coordination**
 - WebSocket-powered live updates across all devices
 - Instant order notifications to kitchen stations
 - Real-time status updates perfect for fast-paced small events
 - Seamless coordination for small, agile teams
 
-## 🎨 Event-Friendly Design
+## Event-Friendly Design
 
 - **Clean Interface**: Easy to use under event pressure
 - **Mobile-First**: Works on any device your staff brings
@@ -49,7 +49,7 @@ OrderStream is perfect for **event organizers** who need:
 - **High Contrast**: Readable in various lighting conditions
 
 
-## 👥 User Roles for Events
+## User Roles for Events
 Will be customizable in the future
 
 | Role | Perfect For | Capabilities |
@@ -59,7 +59,7 @@ Will be customizable in the future
 | **Cashier** | Event Cashiers | Take orders and manage payment |
 | **Admin** | Event Organizers | Complete event setup and management |
 
-## 📖 How Your Event Works
+## How Your Event Works
 
 ### 1. **Pre-Event Setup**
 Event organizers quickly configure:
@@ -88,7 +88,7 @@ The system keeps everyone synchronized:
 - Event organizers can monitor overall progress
 - No confusion, no missed orders, no chaos
 
-## 🚀 Project setup
+## Project setup
 
 ### Prerequisites
 
@@ -108,7 +108,7 @@ SURREAL_NS=dev
 cargo leptos watch              # Start development server
 ```
 
-## 📄 License
+## License
 
 This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) file for details.
 
