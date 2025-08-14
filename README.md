@@ -124,10 +124,13 @@ This project is licensed under the GPL-3.0 License - see the [LICENSE](LICENSE) 
 * [ ] Product descriptions
 * [ ] Order name collision handling
 * [ ] Sort orders by creation date
-* [ ] Prevent product deletion but allow hiding
+* [ ] Prevent product deletion but allow hiding / archiving
 * [ ] RBAC + Role customization view/edit/create
 * [ ] Internationalization
 * [ ] Last order overview for Cashier view
+* [ ] more responsive UI (no zooming / scrolling)
+* [ ] Create initial draft order for name
+* [ ] NFC payment support with prepaid pool
 ---
 
 
