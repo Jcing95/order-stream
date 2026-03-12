@@ -1,18 +1,20 @@
-use crate::backend::db::DB;
+use crate::backend::db::get_pool;
 use crate::common::errors::Error;
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
 use async_trait::async_trait;
+use chrono::{Duration, Utc};
+use diesel::prelude::*;
+use diesel_async::RunQueryDsl;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use surrealdb::RecordId;
 use time::OffsetDateTime;
 use tower_sessions::{
     session::{Id, Record},
     session_store, SessionStore,
 };
+use uuid::Uuid;
 
 pub fn hash_password(password: &str) -> Result<String, Error> {
     let salt = SaltString::generate(&mut OsRng);
@@ -55,6 +57,10 @@ pub fn get_extended_expiry() -> OffsetDateTime {
     OffsetDateTime::now_utc() + time::Duration::hours(24)
 }
 
+fn get_extended_expiry_chrono() -> chrono::DateTime<Utc> {
+    Utc::now() + Duration::hours(24)
+}
+
 #[cfg(feature = "ssr")]
 pub fn handle_session_extension(session: &tower_sessions::Session) {
     if let Some(expiry) = session.expiry() {
@@ -68,36 +74,37 @@ pub fn handle_session_extension(session: &tower_sessions::Session) {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct SessionRecord {
-    id: Option<RecordId>,
-    session_id: String,
-    data: HashMap<String, serde_json::Value>,
-}
-
 #[derive(Debug, Clone)]
-pub struct SurrealSessionStore;
+pub struct PostgresSessionStore;
 
-impl SurrealSessionStore {
+impl PostgresSessionStore {
     pub fn new() -> Self {
         Self
     }
 }
 
-const SESSIONS_TABLE: &str = "sessions";
-
 #[async_trait]
-impl SessionStore for SurrealSessionStore {
+impl SessionStore for PostgresSessionStore {
     async fn create(&self, record: &mut Record) -> session_store::Result<()> {
-        let session_record = SessionRecord {
-            id: None,
-            session_id: record.id.to_string(),
-            data: record.data.clone(),
+        use crate::backend::schema::sessions::dsl::*;
+        use crate::backend::models::NewSession;
+
+        let user_id_val: Uuid = extract_user_id(record)
+            .map_err(|e| session_store::Error::Backend(e))?;
+
+        let new_session = NewSession {
+            id: record.id.to_string(),
+            user_id: user_id_val,
+            expiry_date: get_extended_expiry_chrono(),
         };
 
-        let _: Option<SessionRecord> = DB
-            .create((SESSIONS_TABLE, &record.id.to_string()))
-            .content(session_record)
+        let pool = get_pool();
+        let mut conn = pool.get().await
+            .map_err(|e| session_store::Error::Backend(e.to_string()))?;
+
+        diesel::insert_into(sessions)
+            .values(&new_session)
+            .execute(&mut conn)
             .await
             .map_err(|e| session_store::Error::Backend(e.to_string()))?;
 
@@ -105,15 +112,21 @@ impl SessionStore for SurrealSessionStore {
     }
 
     async fn save(&self, record: &Record) -> session_store::Result<()> {
-        let session_record = SessionRecord {
-            id: None,
-            session_id: record.id.to_string(),
-            data: record.data.clone(),
-        };
+        use crate::backend::schema::sessions::dsl::*;
 
-        let _: Option<SessionRecord> = DB
-            .update((SESSIONS_TABLE, &record.id.to_string()))
-            .content(session_record)
+        let user_id_val: Uuid = extract_user_id(record)
+            .map_err(|e| session_store::Error::Backend(e))?;
+
+        let pool = get_pool();
+        let mut conn = pool.get().await
+            .map_err(|e| session_store::Error::Backend(e.to_string()))?;
+
+        diesel::update(sessions.filter(id.eq(record.id.to_string())))
+            .set((
+                user_id.eq(user_id_val),
+                expiry_date.eq(get_extended_expiry_chrono()),
+            ))
+            .execute(&mut conn)
             .await
             .map_err(|e| session_store::Error::Backend(e.to_string()))?;
 
@@ -121,53 +134,109 @@ impl SessionStore for SurrealSessionStore {
     }
 
     async fn load(&self, session_id: &Id) -> session_store::Result<Option<Record>> {
-        let session_record: Option<SessionRecord> = DB
-            .select((SESSIONS_TABLE, &session_id.to_string()))
-            .await
+        use crate::backend::schema::sessions::dsl::*;
+        use crate::backend::models::DbSession;
+
+        let pool = get_pool();
+        let mut conn = pool.get().await
             .map_err(|e| session_store::Error::Backend(e.to_string()))?;
 
-        match session_record {
-            Some(record) => Ok(Some(Record {
-                id: session_id.clone(),
-                data: record.data,
-                expiry_date: OffsetDateTime::now_utc() + time::Duration::days(30),
-            })),
+        let session: Option<DbSession> = sessions
+            .filter(id.eq(session_id.to_string()))
+            .filter(expiry_date.gt(diesel::dsl::now))
+            .select(DbSession::as_select())
+            .first(&mut conn)
+            .await
+            .optional()
+            .map_err(|e| session_store::Error::Backend(e.to_string()))?;
+
+        match session {
+            Some(s) => {
+                let mut data = std::collections::HashMap::new();
+                let session_data = SessionData::new(s.user_id.to_string());
+                data.insert(
+                    "user".to_string(),
+                    serde_json::to_value(session_data)
+                        .map_err(|e| session_store::Error::Backend(e.to_string()))?,
+                );
+
+                let expiry = OffsetDateTime::from_unix_timestamp(s.expiry_date.timestamp())
+                    .unwrap_or_else(|_| get_extended_expiry());
+
+                Ok(Some(Record {
+                    id: session_id.clone(),
+                    data,
+                    expiry_date: expiry,
+                }))
+            }
             None => Ok(None),
         }
     }
 
     async fn delete(&self, session_id: &Id) -> session_store::Result<()> {
-        let deleted: Option<SessionRecord> = DB
-            .delete((SESSIONS_TABLE, &session_id.to_string()))
+        use crate::backend::schema::sessions::dsl::*;
+
+        let pool = get_pool();
+        let mut conn = pool.get().await
+            .map_err(|e| session_store::Error::Backend(e.to_string()))?;
+
+        diesel::delete(sessions.filter(id.eq(session_id.to_string())))
+            .execute(&mut conn)
             .await
             .map_err(|e| session_store::Error::Backend(e.to_string()))?;
-        if deleted.is_none() {
-            return Err(session_store::Error::Backend(
-                "Could not delete Session.".into(),
-            ));
-        }
+
         Ok(())
     }
+}
+
+fn extract_user_id(record: &Record) -> Result<Uuid, String> {
+    let session_data: SessionData = record
+        .data
+        .get("user")
+        .and_then(|v| serde_json::from_value(v.clone()).ok())
+        .ok_or_else(|| "Missing user session data".to_string())?;
+
+    Uuid::parse_str(&session_data.user_id)
+        .map_err(|e| format!("Invalid user UUID in session: {}", e))
 }
 
 pub async fn get_authenticated_user(
     session: &tower_sessions::Session,
 ) -> Result<crate::common::types::User, leptos::prelude::ServerFnError> {
-    use crate::backend::user::ssr::{User, USERS};
-    let session_data: Option<SessionData> = session.get("user").await?;
+    use crate::backend::models::{DbUser, ParseRole};
+    use crate::backend::schema::users::dsl::*;
 
+    let session_data: Option<SessionData> = session.get("user").await?;
     let session_data =
         session_data.ok_or_else(|| Error::NotAuthorized("Not authenticated".to_string()))?;
 
     handle_session_extension(session);
 
-    let user: Option<User> = DB.select((USERS, &session_data.user_id)).await?;
+    let user_uuid = Uuid::parse_str(&session_data.user_id)
+        .map_err(|_| Error::NotAuthorized("Invalid session".to_string()))?;
+
+    let pool = get_pool();
+    let mut conn = pool.get().await
+        .map_err(|e| Error::InternalError(e.to_string()))?;
+
+    let user: Option<DbUser> = users
+        .filter(id.eq(user_uuid))
+        .select(DbUser::as_select())
+        .first(&mut conn)
+        .await
+        .optional()
+        .map_err(|e| Error::InternalError(e.to_string()))?;
 
     let user = user.ok_or_else(|| {
         let _ = session.delete();
         Error::NotAuthorized("User not found".to_string())
     })?;
-    Ok(user.into())
+
+    Ok(crate::common::types::User {
+        id: user.id.to_string(),
+        email: user.email,
+        role: user.role.parse_role(),
+    })
 }
 
 #[macro_export]
