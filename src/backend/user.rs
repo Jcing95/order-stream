@@ -7,12 +7,13 @@ use crate::common::errors::Error;
 
 #[server(CreateUser, "/api/user")]
 pub async fn create_user(req: requests::user::Create) -> Result<types::User, ServerFnError> {
-    use crate::backend::auth::hash_password;
+    use crate::backend::auth::{hash_password, SessionData, get_extended_expiry};
     use crate::backend::db::get_pool;
     use crate::backend::models::{NewUser, DbUser, role_str};
     use crate::backend::schema::users::dsl::*;
     use diesel::prelude::*;
     use diesel_async::RunQueryDsl;
+    use tower_sessions::Session;
 
     let pw_hash = hash_password(&req.password)
         .map_err(|e| Error::InternalError(e.to_string()))?;
@@ -40,6 +41,13 @@ pub async fn create_user(req: requests::user::Create) -> Result<types::User, Ser
         .get_result(&mut conn)
         .await
         .map_err(|e| Error::InternalError(format!("Failed to create user: {}", e)))?;
+
+    // Auto-login: create session for the new user
+    let session: Session = leptos_axum::extract().await?;
+    let session_data = SessionData::new(user.id.to_string());
+    session.insert("user", session_data).await
+        .map_err(|e| Error::InternalError(format!("Session error: {}", e)))?;
+    session.set_expiry(Some(tower_sessions::Expiry::AtDateTime(get_extended_expiry())));
 
     Ok(user.into())
 }

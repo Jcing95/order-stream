@@ -202,7 +202,7 @@ pub async fn delete_item(item_id: String) -> Result<(), ServerFnError> {
 #[server(GetItemsByStation, "/api/item")]
 pub async fn get_items_by_station(station_id: String) -> Result<Vec<types::Item>, ServerFnError> {
     use crate::backend::db::get_pool;
-    use crate::backend::models::{DbItem, order_status_str};
+    use crate::backend::models::DbItem;
     use crate::backend::schema::items::dsl::{self, items};
     use crate::backend::schema::station_categories::dsl as sc_dsl;
     use crate::backend::schema::station_input_statuses::dsl as sis_dsl;

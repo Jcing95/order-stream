@@ -14,21 +14,8 @@ pub struct UserState {
 impl UserState {
     pub fn new() -> Self {
         let user: RwSignal<Option<User>> = RwSignal::new(None);
-        let loading: RwSignal<bool> = RwSignal::new(true); // Start as loading
+        let loading: RwSignal<bool> = RwSignal::new(true);
         let (users, set_users) = signal(Vec::new());
-        
-        // Load users once on initialization
-        Effect::new({
-            let set_users = set_users;
-            move |_| {
-                spawn_local(async move {
-                    match get_all_users().await {
-                        Ok(user_list) => set_users.set(user_list),
-                        Err(_) => {}, // Keep empty vec on error
-                    }
-                });
-            }
-        });
         
         Self { user, loading, users, set_users }
     }
