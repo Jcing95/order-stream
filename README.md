@@ -92,15 +92,16 @@ The system keeps everyone synchronized:
 
 ### Prerequisites
 
-Install [Rust](https://www.rust-lang.org/tools/install), [Leptos](https://book.leptos.dev/getting_started/) + [TailwindCLI](https://tailwindcss.com/docs/installation/tailwind-cli) and [SurrealDB](https://surrealdb.com/install) as Database
+Install [Rust](https://www.rust-lang.org/tools/install) (nightly), [cargo-leptos](https://book.leptos.dev/getting_started/) + [TailwindCLI](https://tailwindcss.com/docs/installation/tailwind-cli).
 
-create .env file with Database Connection info in project root:
-```Example env
-SURREAL_URL=127.0.0.1:8000
-SURREAL_USER=root
-SURREAL_PASS=root
-SURREAL_DB=orderstream
-SURREAL_NS=dev
+For the database, start PostgreSQL via Docker Compose:
+```bash
+docker compose up -d
+```
+
+Alternatively, create a `.env` file with your own PostgreSQL connection:
+```env
+DATABASE_URL=postgres://user:password@localhost:5432/my_database
 ```
 
 ## Development usage

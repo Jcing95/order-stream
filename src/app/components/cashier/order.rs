@@ -127,7 +127,7 @@ pub fn Order() -> impl IntoView {
                     .enumerate()
                     .map(|(index, item)| types::Item {
                         id: format!("temp_{}", index),
-                        order_id: None,
+                        order_id: String::new(),
                         product_id: item.product_id.clone(),
                         quantity: item.quantity,
                         price: item.price,

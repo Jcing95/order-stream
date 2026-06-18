@@ -1,6 +1,8 @@
 use leptos::prelude::*;
+#[cfg(feature = "hydrate")]
 use leptos_router::hooks::use_navigate;
 use crate::backend::user::CreateUser;
+#[cfg(feature = "hydrate")]
 use crate::app::states::user;
 use crate::app::components::atoms::icons;
 
@@ -8,7 +10,8 @@ use crate::app::components::atoms::icons;
 pub fn SignUp() -> impl IntoView {
     let signup_action = ServerAction::<CreateUser>::new();
 
-    // Handle successful signup
+    // Handle successful signup (client-side only to avoid SendWrapper panic)
+    #[cfg(feature = "hydrate")]
     Effect::new(move |_| {
         if let Some(Ok(user)) = signup_action.value().get() {
             let user_state = user::get();

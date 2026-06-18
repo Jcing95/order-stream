@@ -17,3 +17,9 @@ Cargo.lock
 *.pdb
 
 .env
+
+# direnv / nix
+.direnv/
+.envrc.local
+result
+result-*
