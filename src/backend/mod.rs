@@ -6,6 +6,10 @@ pub mod db;
 pub mod auth;
 #[cfg(feature = "ssr")]
 pub mod websocket;
+#[cfg(feature = "ssr")]
+pub mod schema;
+#[cfg(feature = "ssr")]
+pub mod models;
 
 pub mod category;
 pub mod event;

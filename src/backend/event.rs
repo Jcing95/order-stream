@@ -3,104 +3,130 @@ use leptos::prelude::*;
 use crate::common::{requests, types};
 
 #[cfg(feature = "ssr")]
-pub mod ssr {
-    pub use crate::backend::db::DB;
-    pub use crate::backend::websocket::{broadcast_add, broadcast_delete, broadcast_update};
-    pub use crate::common::types;
-    pub use leptos::server_fn::error::ServerFnError::ServerError;
-    pub use serde::{Deserialize, Serialize};
-    pub use surrealdb::sql::Thing;
-    use surrealdb::RecordId;
-    pub use validator::Validate;
-    pub const EVENTS: &str = "events";
-
-    #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
-    pub struct Event {
-        pub id: Option<RecordId>,
-        #[validate(length(min = 1, max = 64))]
-        pub name: String,
-    }
-    impl From<Event> for types::Event {
-        fn from(event: Event) -> Self {
-            Self {
-                id: event.id.unwrap().key().to_string(),
-                name: event.name,
-            }
-        }
-    }
-}
-#[cfg(feature = "ssr")]
-use ssr::*;
+use crate::common::errors::Error;
 
 #[server(CreateEvent, "/api/event")]
 pub async fn create_event(req: requests::event::Create) -> Result<types::Event, ServerFnError> {
-    let e: Option<Event> = DB.create(EVENTS)
-        .content(Event {
-            id: None,
-            name: req.name,
-        })
-        .await?;
+    use crate::backend::db::get_pool;
+    use crate::backend::models::{DbEvent, NewEvent};
+    use crate::backend::websocket::broadcast_add;
+    use crate::backend::schema::events::dsl::*;
+    use diesel::prelude::*;
+    use diesel_async::RunQueryDsl;
 
-    if let Some(event) = e {
-        let result: types::Event = event.clone().into();
-        broadcast_add(result.clone());
-        Ok(result)
-    } else {
-        Err(ServerError("Failed to create event".into()))
-    }
+    let pool = get_pool();
+    let mut conn = pool.get().await.map_err(|e| Error::InternalError(e.to_string()))?;
+
+    let event: DbEvent = diesel::insert_into(events)
+        .values(NewEvent { name: &req.name })
+        .returning(DbEvent::as_returning())
+        .get_result(&mut conn)
+        .await
+        .map_err(|e| Error::InternalError(format!("Failed to create event: {}", e)))?;
+
+    let result: types::Event = event.into();
+    broadcast_add(result.clone());
+    Ok(result)
 }
 
 #[server(GetEvents, "/api/event")]
 pub async fn get_events() -> Result<Vec<types::Event>, ServerFnError> {
-    let events: Vec<Event> = DB.select(EVENTS).await?;
-    Ok(events.into_iter().map(Into::into).collect())
+    use crate::backend::db::get_pool;
+    use crate::backend::models::DbEvent;
+    use crate::backend::schema::events::dsl::*;
+    use diesel::prelude::*;
+    use diesel_async::RunQueryDsl;
+
+    let pool = get_pool();
+    let mut conn = pool.get().await.map_err(|e| Error::InternalError(e.to_string()))?;
+
+    let result: Vec<DbEvent> = events
+        .select(DbEvent::as_select())
+        .load(&mut conn)
+        .await
+        .map_err(|e| Error::InternalError(e.to_string()))?;
+
+    Ok(result.into_iter().map(Into::into).collect())
 }
 
 #[server(GetEvent, "/api/event")]
-pub async fn get_event(id: String) -> Result<types::Event, ServerFnError> {
-    let event: Option<Event> = DB.select((EVENTS, &id)).await?;
-    event
-        .map(Into::into)
-        .ok_or_else(|| ServerError("Event not found".into()))
+pub async fn get_event(event_id: String) -> Result<types::Event, ServerFnError> {
+    use crate::backend::db::get_pool;
+    use crate::backend::models::DbEvent;
+    use crate::backend::schema::events::dsl::*;
+    use diesel::prelude::*;
+    use diesel_async::RunQueryDsl;
+
+    let eid: i32 = event_id.parse()
+        .map_err(|_| Error::InternalError("Invalid event ID".to_string()))?;
+
+    let pool = get_pool();
+    let mut conn = pool.get().await.map_err(|e| Error::InternalError(e.to_string()))?;
+
+    let event: Option<DbEvent> = events
+        .filter(id.eq(eid))
+        .select(DbEvent::as_select())
+        .first(&mut conn)
+        .await
+        .optional()
+        .map_err(|e| Error::InternalError(e.to_string()))?;
+
+    event.map(Into::into)
+        .ok_or_else(|| Error::InternalError("Event not found".to_string()).into())
 }
 
 #[server(UpdateEvent, "/api/event")]
 pub async fn update_event(
-    id: String,
+    event_id: String,
     update: requests::event::Update,
 ) -> Result<types::Event, ServerFnError> {
-    // Get the existing event
-    let existing_event: Option<Event> = DB.select((EVENTS, &id)).await?;
-    if existing_event.is_none() {
-        return Err(ServerError("Event not found".into()));
-    }
-    let event = existing_event.unwrap();
-    let updated = Event {
-        id: event.id,
-        name: update.name.or_else(|| Some(event.name)).unwrap(),
-    };
-    // Update the event in the database
-    let updated_event: Option<Event> = DB
-        .update((EVENTS, &id))
-        .content(updated)
-        .await?;
-    
-    if let Some(event) = updated_event {
-        let result: types::Event = event.clone().into();
-        broadcast_update(result.clone());
-        Ok(result)
-    } else {
-        Err(ServerError("Failed to update event".into()))
-    }
+    use crate::backend::db::get_pool;
+    use crate::backend::models::{DbEvent, UpdateEvent};
+    use crate::backend::websocket::broadcast_update;
+    use crate::backend::schema::events::dsl::*;
+    use diesel::prelude::*;
+    use diesel_async::RunQueryDsl;
+
+    let eid: i32 = event_id.parse()
+        .map_err(|_| Error::InternalError("Invalid event ID".to_string()))?;
+
+    let pool = get_pool();
+    let mut conn = pool.get().await.map_err(|e| Error::InternalError(e.to_string()))?;
+
+    let event: DbEvent = diesel::update(events.filter(id.eq(eid)))
+        .set(UpdateEvent { name: update.name })
+        .returning(DbEvent::as_returning())
+        .get_result(&mut conn)
+        .await
+        .map_err(|e| Error::InternalError(format!("Failed to update event: {}", e)))?;
+
+    let result: types::Event = event.into();
+    broadcast_update(result.clone());
+    Ok(result)
 }
 
 #[server(DeleteEvent, "/api/event")]
-pub async fn delete_event(id: String) -> Result<(), ServerFnError> {
-    let deleted: Option<Event> = DB.delete((EVENTS, &id)).await?;
-    if let Some(_event) = deleted {
-        broadcast_delete::<types::Event>(id);
-        Ok(())
-    } else {
-        Err(ServerError(format!("Event with id {} not found", id)))
+pub async fn delete_event(event_id: String) -> Result<(), ServerFnError> {
+    use crate::backend::db::get_pool;
+    use crate::backend::websocket::broadcast_delete;
+    use crate::backend::schema::events::dsl::*;
+    use diesel::prelude::*;
+    use diesel_async::RunQueryDsl;
+
+    let eid: i32 = event_id.parse()
+        .map_err(|_| Error::InternalError("Invalid event ID".to_string()))?;
+
+    let pool = get_pool();
+    let mut conn = pool.get().await.map_err(|e| Error::InternalError(e.to_string()))?;
+
+    let rows = diesel::delete(events.filter(id.eq(eid)))
+        .execute(&mut conn)
+        .await
+        .map_err(|e| Error::InternalError(e.to_string()))?;
+
+    if rows == 0 {
+        return Err(Error::InternalError(format!("Event {} not found", event_id)).into());
     }
+    broadcast_delete::<types::Event>(event_id);
+    Ok(())
 }

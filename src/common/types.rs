@@ -24,9 +24,10 @@ pub enum OrderStatus {
 pub struct Item {
     #[validate(length(min = 1))]
     pub id: String,
-    pub order_id: Option<String>,   // Reference to Order
     #[validate(length(min = 1))]
-    pub product_id: String, // Reference to Item
+    pub order_id: String,
+    #[validate(length(min = 1))]
+    pub product_id: String, // Reference to Product
     #[validate(range(min = 1))]
     pub quantity: u32,
     #[validate(range(min = 0.0))]
@@ -68,6 +69,7 @@ pub struct Category {
 pub struct Order {
     #[validate(length(min = 1))]
     pub id: String,
+    pub event_id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]

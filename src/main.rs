@@ -8,10 +8,10 @@ async fn main() {
     use order_stream::backend::db;
     use order_stream::backend::websocket::websocket_handler;
     use tower_sessions::{SessionManagerLayer, cookie::SameSite};
-    use order_stream::backend::auth::SurrealSessionStore;
+    use order_stream::backend::auth::PostgresSessionStore;
     use tokio::sync::broadcast;
 
-    // Initialize database connection
+    // Initialize database connection pool
     if let Err(e) = db::initialize_database().await {
         eprintln!("Failed to initialize database: {}", e);
         std::process::exit(1);
@@ -31,7 +31,7 @@ async fn main() {
     order_stream::backend::websocket::init_websocket_sender(ws_sender.clone());
     
     // Configure sessions
-    let session_store = SurrealSessionStore::new();
+    let session_store = PostgresSessionStore::new();
     let session_layer = SessionManagerLayer::new(session_store)
         .with_secure(false)
         .with_same_site(SameSite::Lax)
@@ -54,7 +54,6 @@ async fn main() {
         .with_state(leptos_options);
 
     // run our app with hyper
-    // Server functions are automatically registered by Leptos
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     println!("listening on http://{}", &addr);
     println!("Server functions available at /api/*");

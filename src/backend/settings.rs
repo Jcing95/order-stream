@@ -3,93 +3,73 @@ use leptos::prelude::*;
 use crate::common::{requests, types};
 
 #[cfg(feature = "ssr")]
-pub mod ssr {
-    pub use crate::backend::db::DB;
-    pub use crate::backend::websocket::{broadcast_add, broadcast_delete, broadcast_update};
-    pub use crate::common::types;
-    pub use leptos::server_fn::error::ServerFnError::ServerError;
-    pub use serde::{Deserialize, Serialize};
-    pub use surrealdb::sql::Thing;
-    use surrealdb::RecordId;
-    pub use validator::Validate;
-
-    pub const SETTINGS: &str = "settings";
-    pub const SETTINGS_ID: &str = "global";
-
-    #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
-    pub struct Settings {
-        pub id: Option<RecordId>,
-        pub active_event_id: Option<String>,
-    }
-
-    impl From<Settings> for types::Settings {
-        fn from(settings: Settings) -> Self {
-            Self {
-                id: settings.id.unwrap().key().to_string(),
-                active_event_id: settings.active_event_id,
-            }
-        }
-    }
-}
-#[cfg(feature = "ssr")]
-use ssr::*;
+use crate::common::errors::Error;
 
 #[server(GetSettings, "/api/settings")]
 pub async fn get_settings() -> Result<types::Settings, ServerFnError> {
-    // Try to get existing settings
-    let existing: Option<Settings> = DB.select((SETTINGS, SETTINGS_ID)).await?;
-    
-    if let Some(settings) = existing {
-        Ok(settings.into())
-    } else {
-        // Create default settings if they don't exist
-        let default_settings: Option<Settings> = DB
-            .create((SETTINGS, SETTINGS_ID))
-            .content(Settings {
-                id: None,
-                active_event_id: None,
-            })
-            .await?;
-            
-        default_settings
-            .map(Into::into)
-            .ok_or_else(|| ServerError("Failed to create default settings".into()))
-    }
+    use crate::backend::db::get_pool;
+    use crate::backend::models::DbSettings;
+    use crate::backend::schema::settings::dsl::*;
+    use diesel::prelude::*;
+    use diesel_async::RunQueryDsl;
+
+    let pool = get_pool();
+    let mut conn = pool.get().await.map_err(|e| Error::InternalError(e.to_string()))?;
+
+    let s: DbSettings = settings
+        .select(DbSettings::as_select())
+        .first(&mut conn)
+        .await
+        .map_err(|e| Error::InternalError(format!("Failed to load settings: {}", e)))?;
+
+    Ok(s.into())
 }
 
 #[server(UpdateSettings, "/api/settings")]
 pub async fn update_settings(
     update: requests::settings::Update,
 ) -> Result<types::Settings, ServerFnError> {
-    // Get existing settings or create default
-    let current_settings = get_settings().await?;
-    
-    let updated = Settings {
-        id: None, // Will be ignored by SurrealDB for updates
-        active_event_id: update.active_event_id.or(current_settings.active_event_id),
+    use crate::backend::db::get_pool;
+    use crate::backend::models::{DbSettings, UpdateSettings};
+    use crate::backend::websocket::broadcast_update;
+    use crate::backend::schema::settings::dsl::*;
+    use diesel::prelude::*;
+    use diesel_async::RunQueryDsl;
+
+    // Convert Option<String> → Option<Option<i32>>
+    // Some("123") → Some(Some(123))
+    // Some("") or None → Some(None) clears the value
+    let new_event_id: Option<Option<i32>> = match update.active_event_id {
+        Some(ref s) if !s.is_empty() => {
+            let eid: i32 = s.parse()
+                .map_err(|_| Error::InternalError("Invalid event ID".to_string()))?;
+            Some(Some(eid))
+        }
+        Some(_) => Some(None), // empty string clears the event
+        None => None,          // no change
     };
-    
-    // Update the settings in the database
-    let updated_settings: Option<Settings> = DB
-        .update((SETTINGS, SETTINGS_ID))
-        .content(updated)
-        .await?;
-    
-    if let Some(settings) = updated_settings {
-        let result: types::Settings = settings.clone().into();
-        broadcast_update(result.clone());
-        Ok(result)
-    } else {
-        Err(ServerError("Failed to update settings".into()))
-    }
+
+    let pool = get_pool();
+    let mut conn = pool.get().await.map_err(|e| Error::InternalError(e.to_string()))?;
+
+    let s: DbSettings = diesel::update(settings.filter(id.eq(1)))
+        .set(UpdateSettings { active_event_id: new_event_id })
+        .returning(DbSettings::as_select())
+        .get_result(&mut conn)
+        .await
+        .map_err(|e| Error::InternalError(format!("Failed to update settings: {}", e)))?;
+
+    let result: types::Settings = s.into();
+    broadcast_update(result.clone());
+    Ok(result)
 }
 
 #[server(SetActiveEvent, "/api/settings")]
 pub async fn set_active_event(event_id: String) -> Result<types::Settings, ServerFnError> {
-    let update = requests::settings::Update {
+    update_settings(requests::settings::Update {
         active_event_id: Some(event_id),
-    };
-    update_settings(update).await
+    })
+    .await
 }
 
 #[server(GetActiveEvent, "/api/settings")]

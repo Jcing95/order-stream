@@ -221,9 +221,7 @@ pub fn StationView(station_id: String) -> impl IntoView {
                         // Group items by order_id
                         let mut orders: HashMap<String, Vec<types::Item>> = HashMap::new();
                         for item in items {
-                            if let Some(order_id) = &item.order_id {
-                                orders.entry(order_id.clone()).or_insert_with(Vec::new).push(item);
-                            }
+                            orders.entry(item.order_id.clone()).or_insert_with(Vec::new).push(item);
                         }
                         
                         if orders.is_empty() {

@@ -1,0 +1,65 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits"
+  ],
+  "timezone": "Europe/Berlin",
+  "prConcurrentLimit": 10,
+  "prHourlyLimit": 0,
+  "nix": {
+    "enabled": true
+  },
+  "lockFileMaintenance": {
+    "enabled": true
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "wasm-bindgen-cli version pinned in the Nix dev shell",
+      "managerFilePatterns": ["/^flake\\.nix$/"],
+      "matchStrings": ["wasmBindgenVersion\\s*=\\s*\"(?<currentValue>[^\"]+)\""],
+      "datasourceTemplate": "crate",
+      "depNameTemplate": "wasm-bindgen-cli"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Leptos crates are version-coupled and break if bumped individually",
+      "matchManagers": ["cargo"],
+      "matchPackageNames": [
+        "leptos",
+        "leptos_router",
+        "leptos_meta",
+        "leptos_axum",
+        "leptos-use"
+      ],
+      "groupName": "leptos"
+    },
+    {
+      "description": "wasm-bindgen crate and the CLI pinned in flake.nix must move together",
+      "matchPackageNames": ["wasm-bindgen", "wasm-bindgen-cli"],
+      "groupName": "wasm-bindgen"
+    },
+    {
+      "description": "Diesel crates share a release train",
+      "matchManagers": ["cargo"],
+      "matchPackageNames": ["diesel", "diesel_migrations", "diesel-async"],
+      "groupName": "diesel"
+    },
+    {
+      "description": "A Postgres major needs a dump/restore of the pgdata volume",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["postgres"],
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "end2end tooling is dev-only, batch it",
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["devDependencies"],
+      "groupName": "end2end dev dependencies"
+    }
+  ]
+}

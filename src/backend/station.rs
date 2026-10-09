@@ -3,41 +3,7 @@ use leptos::prelude::*;
 use crate::common::types;
 
 #[cfg(feature = "ssr")]
-pub mod ssr {
-    pub use crate::backend::db::DB;
-    pub use crate::backend::websocket::{broadcast_add, broadcast_delete, broadcast_update};
-    pub use crate::common::types;
-    pub use leptos::server_fn::error::ServerFnError::ServerError;
-    pub use serde::{Deserialize, Serialize};
-    pub use surrealdb::sql::Thing;
-    use surrealdb::RecordId;
-    pub use validator::Validate;
-    pub const STATIONS: &str = "stations";
-
-    #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
-    pub struct Station {
-        pub id: Option<RecordId>,
-        #[validate(length(min = 1, max = 64))]
-        pub name: String,
-        pub category_ids: Vec<String>,
-        pub input_statuses: Vec<types::OrderStatus>,
-        pub output_status: types::OrderStatus,
-    }
-
-    impl From<Station> for types::Station {
-        fn from(station: Station) -> Self {
-            Self {
-                id: station.id.unwrap().key().to_string(),
-                name: station.name,
-                category_ids: station.category_ids,
-                input_statuses: station.input_statuses,
-                output_status: station.output_status,
-            }
-        }
-    }
-}
-#[cfg(feature = "ssr")]
-use ssr::*;
+use crate::common::errors::Error;
 
 #[server(CreateStation, "/api/station")]
 pub async fn create_station(
@@ -46,127 +12,273 @@ pub async fn create_station(
     input_statuses_json: String,
     output_status: types::OrderStatus,
 ) -> Result<types::Station, ServerFnError> {
-    // Deserialize the JSON arrays
+    use crate::backend::db::get_pool;
+    use crate::backend::models::{DbStation, NewStation, StationCategory, StationInputStatus, station_from_parts, order_status_str};
+    use crate::backend::websocket::broadcast_add;
+    use crate::backend::schema::stations::dsl::stations;
+    use crate::backend::schema::station_categories::dsl as sc_dsl;
+    use crate::backend::schema::station_input_statuses::dsl as sis_dsl;
+    use diesel::prelude::*;
+    use diesel_async::RunQueryDsl;
+
     let category_ids: Vec<String> = if category_ids_json.is_empty() {
-        Vec::new()
+        vec![]
     } else {
-        match serde_json::from_str(&category_ids_json) {
-            Ok(ids) => ids,
-            Err(_) => {
-                return Err(ServerError("Failed to parse category_ids".into()));
-            }
-        }
+        serde_json::from_str(&category_ids_json)
+            .map_err(|_| Error::InternalError("Failed to parse category_ids".to_string()))?
     };
-    
+
     let input_statuses: Vec<types::OrderStatus> = if input_statuses_json.is_empty() {
-        Vec::new()
+        vec![]
     } else {
-        match serde_json::from_str(&input_statuses_json) {
-            Ok(statuses) => statuses,
-            Err(_) => {
-                return Err(ServerError("Failed to parse input_statuses".into()));
-            }
-        }
+        serde_json::from_str(&input_statuses_json)
+            .map_err(|_| Error::InternalError("Failed to parse input_statuses".to_string()))?
     };
-    
-    let s: Option<Station> = DB.create(STATIONS)
-        .content(Station {
-            id: None,
-            name: name.clone(),
-            category_ids,
-            input_statuses,
-            output_status,
-        })
-        .await?;
-    if let Some(station) = s {
-        let result: types::Station = station.into();
-        broadcast_add(result.clone());
-        Ok(result)
-    } else {
-        Err(ServerError("Failed to create station".into()))
+
+    let cat_ids_i32: Vec<i32> = category_ids.iter()
+        .map(|s| s.parse().map_err(|_| Error::InternalError("Invalid category ID".to_string())))
+        .collect::<Result<_, _>>()?;
+
+    let pool = get_pool();
+    let mut conn = pool.get().await.map_err(|e| Error::InternalError(e.to_string()))?;
+
+    let station: DbStation = diesel::insert_into(stations)
+        .values(NewStation { name: &name, output_status: order_status_str(output_status) })
+        .returning(DbStation::as_returning())
+        .get_result(&mut conn)
+        .await
+        .map_err(|e| Error::InternalError(format!("Failed to create station: {}", e)))?;
+
+    // Insert junction rows
+    let sc_rows: Vec<StationCategory> = cat_ids_i32.iter()
+        .map(|&cid| StationCategory { station_id: station.id, category_id: cid })
+        .collect();
+    if !sc_rows.is_empty() {
+        diesel::insert_into(sc_dsl::station_categories)
+            .values(&sc_rows)
+            .execute(&mut conn)
+            .await
+            .map_err(|e| Error::InternalError(e.to_string()))?;
     }
+
+    let sis_rows: Vec<StationInputStatus> = input_statuses.iter()
+        .map(|&s| StationInputStatus { station_id: station.id, status: order_status_str(s).to_string() })
+        .collect();
+    if !sis_rows.is_empty() {
+        diesel::insert_into(sis_dsl::station_input_statuses)
+            .values(&sis_rows)
+            .execute(&mut conn)
+            .await
+            .map_err(|e| Error::InternalError(e.to_string()))?;
+    }
+
+    let result = station_from_parts(
+        station,
+        cat_ids_i32,
+        input_statuses.iter().map(|&s| order_status_str(s).to_string()).collect(),
+    );
+    broadcast_add(result.clone());
+    Ok(result)
 }
 
 #[server(GetStations, "/api/station")]
 pub async fn get_stations() -> Result<Vec<types::Station>, ServerFnError> {
-    let stations: Vec<Station> = DB.select(STATIONS).await?;
-    Ok(stations.into_iter().map(Into::into).collect())
+    use crate::backend::db::get_pool;
+    use crate::backend::models::{DbStation, station_from_parts};
+    use crate::backend::schema::stations::dsl::stations;
+    use crate::backend::schema::station_categories::dsl as sc_dsl;
+    use crate::backend::schema::station_input_statuses::dsl as sis_dsl;
+    use diesel::prelude::*;
+    use diesel_async::RunQueryDsl;
+
+    let pool = get_pool();
+    let mut conn = pool.get().await.map_err(|e| Error::InternalError(e.to_string()))?;
+
+    let db_stations: Vec<DbStation> = stations
+        .select(DbStation::as_select())
+        .load(&mut conn)
+        .await
+        .map_err(|e| Error::InternalError(e.to_string()))?;
+
+    let mut result = Vec::new();
+    for station in db_stations {
+        let cat_ids: Vec<i32> = sc_dsl::station_categories
+            .filter(sc_dsl::station_id.eq(station.id))
+            .select(sc_dsl::category_id)
+            .load(&mut conn)
+            .await
+            .map_err(|e| Error::InternalError(e.to_string()))?;
+
+        let input_status_strs: Vec<String> = sis_dsl::station_input_statuses
+            .filter(sis_dsl::station_id.eq(station.id))
+            .select(sis_dsl::status)
+            .load(&mut conn)
+            .await
+            .map_err(|e| Error::InternalError(e.to_string()))?;
+
+        result.push(station_from_parts(station, cat_ids, input_status_strs));
+    }
+    Ok(result)
 }
 
 #[server(GetStation, "/api/station")]
-pub async fn get_station(name: String) -> Result<types::Station, ServerFnError> {
-    let station: Option<Station> = DB.select((STATIONS, &name)).await?;
-    station
-        .map(Into::into)
-        .ok_or_else(|| ServerError("Station not found".into()))
+pub async fn get_station(station_id: String) -> Result<types::Station, ServerFnError> {
+    use crate::backend::db::get_pool;
+    use crate::backend::models::{DbStation, station_from_parts};
+    use crate::backend::schema::stations::dsl::{stations, id};
+    use crate::backend::schema::station_categories::dsl as sc_dsl;
+    use crate::backend::schema::station_input_statuses::dsl as sis_dsl;
+    use diesel::prelude::*;
+    use diesel_async::RunQueryDsl;
+
+    let sid: i32 = station_id.parse()
+        .map_err(|_| Error::InternalError("Invalid station ID".to_string()))?;
+
+    let pool = get_pool();
+    let mut conn = pool.get().await.map_err(|e| Error::InternalError(e.to_string()))?;
+
+    let station: Option<DbStation> = stations
+        .filter(id.eq(sid))
+        .select(DbStation::as_select())
+        .first(&mut conn)
+        .await
+        .optional()
+        .map_err(|e| Error::InternalError(e.to_string()))?;
+
+    let station = station.ok_or_else(|| Error::InternalError("Station not found".to_string()))?;
+
+    let cat_ids: Vec<i32> = sc_dsl::station_categories
+        .filter(sc_dsl::station_id.eq(sid))
+        .select(sc_dsl::category_id)
+        .load(&mut conn)
+        .await
+        .map_err(|e| Error::InternalError(e.to_string()))?;
+
+    let input_status_strs: Vec<String> = sis_dsl::station_input_statuses
+        .filter(sis_dsl::station_id.eq(sid))
+        .select(sis_dsl::status)
+        .load(&mut conn)
+        .await
+        .map_err(|e| Error::InternalError(e.to_string()))?;
+
+    Ok(station_from_parts(station, cat_ids, input_status_strs))
 }
 
 #[server(UpdateStation, "/api/station")]
 pub async fn update_station(
-    id: String,
+    station_id: String,
     name: String,
     category_ids_json: String,
     input_statuses_json: String,
     output_status: types::OrderStatus,
 ) -> Result<types::Station, ServerFnError> {
-    
-    // Deserialize the JSON arrays
+    use crate::backend::db::get_pool;
+    use crate::backend::models::{DbStation, UpdateStation, StationCategory, StationInputStatus, station_from_parts, order_status_str};
+    use crate::backend::websocket::broadcast_update;
+    use crate::backend::schema::stations::dsl::{stations, id};
+    use crate::backend::schema::station_categories::dsl as sc_dsl;
+    use crate::backend::schema::station_input_statuses::dsl as sis_dsl;
+    use diesel::prelude::*;
+    use diesel_async::RunQueryDsl;
+
+    let sid: i32 = station_id.parse()
+        .map_err(|_| Error::InternalError("Invalid station ID".to_string()))?;
+
     let category_ids: Vec<String> = if category_ids_json.is_empty() {
-        Vec::new()
+        vec![]
     } else {
-        match serde_json::from_str(&category_ids_json) {
-            Ok(ids) => ids,
-            Err(_) => {
-                return Err(ServerError("Failed to parse category_ids".into()));
-            }
-        }
+        serde_json::from_str(&category_ids_json)
+            .map_err(|_| Error::InternalError("Failed to parse category_ids".to_string()))?
     };
-    
+
     let input_statuses: Vec<types::OrderStatus> = if input_statuses_json.is_empty() {
-        Vec::new()
+        vec![]
     } else {
-        match serde_json::from_str(&input_statuses_json) {
-            Ok(statuses) => statuses,
-            Err(_) => {
-                return Err(ServerError("Failed to parse input_statuses".into()));
-            }
-        }
+        serde_json::from_str(&input_statuses_json)
+            .map_err(|_| Error::InternalError("Failed to parse input_statuses".to_string()))?
     };
-    
-    // Get the existing station
-    let existing_station: Option<Station> = DB.select((STATIONS, &id)).await?;
-    if existing_station.is_none() {
-        return Err(ServerError("Station not found".into()));
+
+    let cat_ids_i32: Vec<i32> = category_ids.iter()
+        .map(|s| s.parse().map_err(|_| Error::InternalError("Invalid category ID".to_string())))
+        .collect::<Result<_, _>>()?;
+
+    let pool = get_pool();
+    let mut conn = pool.get().await.map_err(|e| Error::InternalError(e.to_string()))?;
+
+    let station: DbStation = diesel::update(stations.filter(id.eq(sid)))
+        .set(UpdateStation {
+            name: Some(name),
+            output_status: Some(order_status_str(output_status).to_string()),
+        })
+        .returning(DbStation::as_returning())
+        .get_result(&mut conn)
+        .await
+        .map_err(|e| Error::InternalError(format!("Failed to update station: {}", e)))?;
+
+    // Replace junction rows
+    diesel::delete(sc_dsl::station_categories.filter(sc_dsl::station_id.eq(sid)))
+        .execute(&mut conn)
+        .await
+        .map_err(|e| Error::InternalError(e.to_string()))?;
+
+    diesel::delete(sis_dsl::station_input_statuses.filter(sis_dsl::station_id.eq(sid)))
+        .execute(&mut conn)
+        .await
+        .map_err(|e| Error::InternalError(e.to_string()))?;
+
+    let sc_rows: Vec<StationCategory> = cat_ids_i32.iter()
+        .map(|&cid| StationCategory { station_id: sid, category_id: cid })
+        .collect();
+    if !sc_rows.is_empty() {
+        diesel::insert_into(sc_dsl::station_categories)
+            .values(&sc_rows)
+            .execute(&mut conn)
+            .await
+            .map_err(|e| Error::InternalError(e.to_string()))?;
     }
-    let station = existing_station.unwrap();
-    let updated = Station {
-        id: station.id,
-        name, // Allow name to be updated
-        category_ids,
-        input_statuses,
-        output_status,
-    };
-    // Update the station in the database
-    let updated_station: Option<Station> = DB
-        .update((STATIONS, &id))
-        .content(updated)
-        .await?;
-        
-    if let Some(station) = updated_station {
-        let result: types::Station = station.into();
-        broadcast_update(result.clone());
-        Ok(result)
-    } else {
-        Err(ServerError("Failed to update station".into()))
+
+    let sis_rows: Vec<StationInputStatus> = input_statuses.iter()
+        .map(|&s| StationInputStatus { station_id: sid, status: order_status_str(s).to_string() })
+        .collect();
+    if !sis_rows.is_empty() {
+        diesel::insert_into(sis_dsl::station_input_statuses)
+            .values(&sis_rows)
+            .execute(&mut conn)
+            .await
+            .map_err(|e| Error::InternalError(e.to_string()))?;
     }
+
+    let result = station_from_parts(
+        station,
+        cat_ids_i32,
+        input_statuses.iter().map(|&s| order_status_str(s).to_string()).collect(),
+    );
+    broadcast_update(result.clone());
+    Ok(result)
 }
 
 #[server(DeleteStation, "/api/station")]
-pub async fn delete_station(id: String) -> Result<(), ServerFnError> {
-    let deleted: Option<Station> = DB.delete((STATIONS, &id)).await?;
-    if deleted.is_none() {
-        return Err(ServerError(format!("Station with id {} not found", id)));
+pub async fn delete_station(station_id: String) -> Result<(), ServerFnError> {
+    use crate::backend::db::get_pool;
+    use crate::backend::websocket::broadcast_delete;
+    use crate::backend::schema::stations::dsl::{stations, id};
+    use diesel::prelude::*;
+    use diesel_async::RunQueryDsl;
+
+    let sid: i32 = station_id.parse()
+        .map_err(|_| Error::InternalError("Invalid station ID".to_string()))?;
+
+    let pool = get_pool();
+    let mut conn = pool.get().await.map_err(|e| Error::InternalError(e.to_string()))?;
+
+    let rows = diesel::delete(stations.filter(id.eq(sid)))
+        .execute(&mut conn)
+        .await
+        .map_err(|e| Error::InternalError(e.to_string()))?;
+
+    if rows == 0 {
+        return Err(Error::InternalError(format!("Station {} not found", station_id)).into());
     }
-    broadcast_delete::<types::Station>(id);
+    broadcast_delete::<types::Station>(station_id);
     Ok(())
 }
