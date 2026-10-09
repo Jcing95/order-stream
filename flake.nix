@@ -31,7 +31,7 @@
           postgresqlSupport = true;
         };
 
-        wasmBindgenVersion = "0.2.120";
+        wasmBindgenVersion = "0.2.129";
       in
       {
         devShells.default = pkgs.mkShell {
